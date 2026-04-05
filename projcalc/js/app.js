@@ -37,9 +37,118 @@ function rd() {
   S.personDist = +g('personDist').value || 200;
 }
 
+// ─── Shift curve helpers ──────────────────────────────────────────────────────
+function interpolateShiftCurve(curve, ratio) {
+  if (!curve || curve.length === 0) return null;
+  if (ratio <= curve[0][0]) return { up: curve[0][1], dn: curve[0][2] };
+  const last = curve[curve.length - 1];
+  if (ratio >= last[0]) return { up: last[1], dn: last[2] };
+  for (let i = 0; i < curve.length - 1; i++) {
+    if (ratio >= curve[i][0] && ratio <= curve[i + 1][0]) {
+      const t = (ratio - curve[i][0]) / (curve[i + 1][0] - curve[i][0]);
+      return {
+        up: curve[i][1] + t * (curve[i + 1][1] - curve[i][1]),
+        dn: curve[i][2] + t * (curve[i + 1][2] - curve[i][2]),
+      };
+    }
+  }
+  return null;
+}
+
+// Returns {up, dn} shift limits in % for the current throw ratio
+function getShiftLimits() {
+  const p = store.activePreset;
+  if (!p) return { up: S.maxUp, dn: S.maxDn };
+  if (p.shiftCurve) {
+    const v = interpolateShiftCurve(p.shiftCurve, S.ratio);
+    if (v) return v;
+  }
+  return { up: p.sUp, dn: p.sDn };
+}
+
+// Draw/update the lens shift curve SVG in the sidebar
+function drawShiftCurve() {
+  const p    = store.activePreset;
+  const wrap = g('shiftCurveWrap');
+  if (!p || p.shiftType !== 'optical') { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  const svg = g('shiftCurveSvg');
+  const W   = Math.max(svg.parentElement ? svg.parentElement.clientWidth : 0, 180);
+  const H   = 58;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.style.width  = W + 'px';
+  svg.style.height = H + 'px';
+
+  const rMin  = p.rMin;
+  const rMax  = p.fixed ? p.rMin : p.rMax;
+  const rSpan = Math.max(rMax - rMin, 0.001);
+  const totalPct = p.sUp + p.sDn || 1;
+
+  const PL = 4, PR = 4, PT = 4, PB = 14;
+  const cW = W - PL - PR, cHpx = H - PT - PB;
+
+  const xS  = r  => PL + Math.min(1, Math.max(0, (r - rMin) / rSpan)) * cW;
+  const yS  = pc => PT + (1 - (pc + p.sDn) / totalPct) * cHpx;
+
+  const dk      = matchMedia('(prefers-color-scheme: dark)').matches;
+  const fillCol = dk ? 'rgba(59,130,246,.18)' : 'rgba(59,130,246,.10)';
+  const lineCol = dk ? '#3b82f6'               : '#2563eb';
+  const zeroCol = dk ? '#3f3f46'               : '#e4e4e7';
+  const bgCol   = dk ? '#27272a'               : '#f4f4f5';
+  const lblCol  = dk ? '#71717a'               : '#a1a1aa';
+
+  const getLim = r => {
+    if (p.shiftCurve) { const v = interpolateShiftCurve(p.shiftCurve, r); if (v) return v; }
+    return { up: p.sUp, dn: p.sDn };
+  };
+
+  const steps = p.fixed ? 2 : 32;
+  let topPts = [], botPts = [];
+  for (let i = 0; i < steps; i++) {
+    const r = rMin + (i / (steps - 1)) * rSpan;
+    const lim = getLim(r);
+    topPts.push([xS(r), yS(lim.up)]);
+    botPts.push([xS(r), yS(-lim.dn)]);
+  }
+
+  const toPath = pts => pts.map((pt, i) => `${i ? 'L' : 'M'}${pt[0].toFixed(1)},${pt[1].toFixed(1)}`).join('');
+  const area   = toPath(topPts) + toPath([...botPts].reverse()).replace('M', 'L') + 'Z';
+  const zy     = yS(0);
+  const cx     = xS(S.ratio);
+  const lim    = getLim(S.ratio);
+  const inRng  = S.shiftPct >= -lim.dn && S.shiftPct <= lim.up;
+  const cy     = Math.max(PT + 3, Math.min(H - PB - 3, yS(S.shiftPct)));
+  const dotCol = inRng ? '#10b981' : '#ef4444';
+
+  svg.innerHTML =
+    `<rect x="0" y="0" width="${W}" height="${H}" fill="${bgCol}" rx="3"/>` +
+    `<path d="${area}" fill="${fillCol}"/>` +
+    `<line x1="${PL}" y1="${zy.toFixed(1)}" x2="${W - PR}" y2="${zy.toFixed(1)}" stroke="${zeroCol}" stroke-width="0.8"/>` +
+    `<path d="${toPath(topPts)}" fill="none" stroke="${lineCol}" stroke-width="1.2"/>` +
+    `<path d="${toPath(botPts)}" fill="none" stroke="${lineCol}" stroke-width="1.2"/>` +
+    `<line x1="${cx.toFixed(1)}" y1="${PT}" x2="${cx.toFixed(1)}" y2="${H - PB}" stroke="${dk ? '#52525b' : '#d4d4d8'}" stroke-width="0.8" stroke-dasharray="3,2"/>` +
+    `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.5" fill="${dotCol}" opacity=".9"/>` +
+    `<text x="${PL}" y="${H - 2}" font-size="8" fill="${lblCol}" font-family="monospace">${rMin.toFixed(2)}</text>` +
+    `<text x="${(W - PR).toFixed(1)}" y="${H - 2}" font-size="8" fill="${lblCol}" font-family="monospace" text-anchor="end">${rMax.toFixed(2)}</text>` +
+    `<text x="${cx.toFixed(1)}" y="${H - 2}" font-size="8" fill="${dotCol}" font-family="monospace" text-anchor="middle">${S.ratio.toFixed(2)}</text>` +
+    `<text x="${(W - PR).toFixed(1)}" y="${PT + 8}" font-size="8" fill="${lblCol}" font-family="monospace" text-anchor="end">+${lim.up.toFixed(0)}%</text>` +
+    `<text x="${(W - PR).toFixed(1)}" y="${(H - PB - 1).toFixed(1)}" font-size="8" fill="${lblCol}" font-family="monospace" text-anchor="end">-${lim.dn.toFixed(0)}%</text>` +
+    `<text x="${PL}" y="${PT + 8}" font-size="8" fill="${dotCol}" font-family="monospace">${(S.shiftPct >= 0 ? '+' : '') + S.shiftPct.toFixed(1)}%</text>`;
+}
+
 // ─── Main refresh ─────────────────────────────────────────────────────────────
 function refresh() {
   rd();
+
+  // Apply shift curve limits at current throw ratio (updates maxUp/maxDn)
+  if (store.activePreset && store.activePreset.shiftType === 'optical') {
+    const lims = getShiftLimits();
+    S.maxUp = lims.up;
+    S.maxDn = lims.dn;
+    g('maxUp').value = lims.up.toFixed(1);
+    g('maxDn').value = lims.dn.toFixed(1);
+  }
 
   // Clamp tilt to keystone limit
   const tiltEl = g('tiltDeg');
@@ -103,6 +212,7 @@ function refresh() {
 
   draw(r);
   renderRes(r);
+  drawShiftCurve();
 }
 
 // ─── Geometry triangle solver ─────────────────────────────────────────────────
@@ -188,6 +298,7 @@ function clearPreset() {
   lb.classList.toggle('on', store.lkState.ratio);
   g('lkBody').classList.remove('pl');
   g('zoomRow').style.display = 'none';
+  g('shiftCurveWrap').style.display = 'none';
 }
 
 function applyPreset(p) {
@@ -313,8 +424,7 @@ function autoSolvePosition() {
   // → shiftM - dist·tan(tilt) = delta
   const delta = cH_goal - lH;
 
-  const maxUp = S.maxUp;
-  const maxDn = S.maxDn;
+  const { up: maxUp, dn: maxDn } = getShiftLimits();  // curve-aware at current ratio
   const maxKS = S.maxKS;
 
   // Use as much shift as possible first (prefer no-keystone)

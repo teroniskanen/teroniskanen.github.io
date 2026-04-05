@@ -1,21 +1,25 @@
 // --- Projector & Room Data ---
 
-// dMin/dMax = focus distance range in cm (verify against model spec sheet)
+// dMin/dMax  = focus distance range in cm (verify against model spec sheet)
+// shiftType  = 'optical' | 'digital' | 'none'
+// digitalZoom= true if zoom is electronic/digital (image-crop), not optical
+// shiftCurve = null (flat — use sUp/sDn at all ratios) or array of [ratio, upPct, dnPct] points
+//              for models where the available shift percentage changes with zoom position
 export const PRESETS = [
-  {id:'eb800f',   name:'Epson EB-800F',              aspectVal:'1.77777778', rMin:.27, rMax:.37, sUp:0,  sDn:0,  fixed:false, ks:30, bodyH:10,   dMin:60,  dMax:350},
-  {id:'ehls100',  name:'Epson EH-LS100',             aspectVal:'1.6',        rMin:.27, rMax:.27, sUp:0,  sDn:0,  fixed:true,  ks:30, bodyH:10,   dMin:45,  dMax:160},
-  {id:'gt1080e',  name:'Optoma GT1080e',             aspectVal:'1.77777778', rMin:.49, rMax:.49, sUp:0,  sDn:0,  fixed:true,  ks:40, bodyH:9,    dMin:74,  dMax:762},
-  {id:'zh450st',  name:'Optoma ZH450ST',             aspectVal:'1.77777778', rMin:.50, rMax:.50, sUp:0,  sDn:0,  fixed:true,  ks:40, bodyH:9,    dMin:65,  dMax:762},
-  {id:'l1050_lu', name:'Epson EB-L1050U + ELPLU03S', aspectVal:'1.6',        rMin:.65, rMax:.78, sUp:67, sDn:67, fixed:false, ks:30, bodyH:14,   dMin:93,  dMax:1320},
-  {id:'ml1050st', name:'Optoma ML1050ST+',           aspectVal:'1.6',        rMin:.80, rMax:.80, sUp:0,  sDn:0,  fixed:true,  ks:40, bodyH:9,    dMin:50,  dMax:400},
-  {id:'l1050_lw', name:'Epson EB-L1050U + ELPLW05',  aspectVal:'1.6',        rMin:1.04,rMax:1.46,sUp:67, sDn:67, fixed:false, ks:30, bodyH:14,   dMin:93,  dMax:1830},
-  {id:'np525ul',  name:'NEC NP-P525UL',              aspectVal:'1.6',        rMin:1.23,rMax:2.00,sUp:62, sDn:0,  fixed:false, ks:30, bodyH:13,   dMin:84,  dMax:1830},
-  {id:'g6450wu',  name:'Epson EB-G6450WU',           aspectVal:'1.6',        rMin:1.26,rMax:2.30,sUp:67, sDn:67, fixed:false, ks:30, bodyH:12,   dMin:93,  dMax:1830},
-  {id:'tw9000',   name:'Epson EH-TW9000',            aspectVal:'1.77777778', rMin:1.34,rMax:2.87,sUp:96, sDn:96, fixed:false, ks:30, bodyH:12,   dMin:200, dMax:1000},
-  {id:'l530u',    name:'Epson EB-L530U',             aspectVal:'1.6',        rMin:1.35,rMax:2.20,sUp:50, sDn:50, fixed:false, ks:30, bodyH:13.6, dMin:86,  dMax:1780},
-  {id:'l690u',    name:'Epson EB-L690U',             aspectVal:'1.6',        rMin:1.35,rMax:2.20,sUp:50, sDn:50, fixed:false, ks:30, bodyH:13.6, dMin:86,  dMax:1780},
-  {id:'eb1980wu', name:'Epson EB-1980WU',            aspectVal:'1.6',        rMin:1.38,rMax:2.28,sUp:0,  sDn:0,  fixed:false, ks:30, bodyH:12,   dMin:93,  dMax:1830},
-  {id:'l1050_lm', name:'Epson EB-L1050U + ELPLM08',  aspectVal:'1.6',        rMin:1.44,rMax:2.32,sUp:67, sDn:67, fixed:false, ks:30, bodyH:14,   dMin:93,  dMax:1830},
+  {id:'eb800f',   name:'Epson EB-800F',              aspectVal:'1.77777778', rMin:.27, rMax:.37, sUp:0,  sDn:0,  fixed:false, ks:30, bodyH:10,   dMin:60,  dMax:350,  shiftType:'none',    digitalZoom:false, shiftCurve:null},
+  {id:'ehls100',  name:'Epson EH-LS100',             aspectVal:'1.6',        rMin:.27, rMax:.27, sUp:0,  sDn:0,  fixed:true,  ks:30, bodyH:10,   dMin:45,  dMax:160,  shiftType:'none',    digitalZoom:false, shiftCurve:null},
+  {id:'gt1080e',  name:'Optoma GT1080e',             aspectVal:'1.77777778', rMin:.49, rMax:.49, sUp:0,  sDn:0,  fixed:true,  ks:40, bodyH:9,    dMin:74,  dMax:762,  shiftType:'none',    digitalZoom:false, shiftCurve:null},
+  {id:'zh450st',  name:'Optoma ZH450ST',             aspectVal:'1.77777778', rMin:.50, rMax:.50, sUp:0,  sDn:0,  fixed:true,  ks:40, bodyH:9,    dMin:65,  dMax:762,  shiftType:'none',    digitalZoom:false, shiftCurve:null},
+  {id:'l1050_lu', name:'Epson EB-L1050U + ELPLU03S', aspectVal:'1.6',        rMin:.65, rMax:.78, sUp:67, sDn:67, fixed:false, ks:30, bodyH:14,   dMin:93,  dMax:1320, shiftType:'optical', digitalZoom:false, shiftCurve:null},
+  {id:'ml1050st', name:'Optoma ML1050ST+',           aspectVal:'1.6',        rMin:.80, rMax:.80, sUp:0,  sDn:0,  fixed:true,  ks:40, bodyH:9,    dMin:50,  dMax:400,  shiftType:'none',    digitalZoom:false, shiftCurve:null},
+  {id:'l1050_lw', name:'Epson EB-L1050U + ELPLW05',  aspectVal:'1.6',        rMin:1.04,rMax:1.46,sUp:67, sDn:67, fixed:false, ks:30, bodyH:14,   dMin:93,  dMax:1830, shiftType:'optical', digitalZoom:false, shiftCurve:null},
+  {id:'np525ul',  name:'NEC NP-P525UL',              aspectVal:'1.6',        rMin:1.23,rMax:2.00,sUp:62, sDn:0,  fixed:false, ks:30, bodyH:13,   dMin:84,  dMax:1830, shiftType:'optical', digitalZoom:false, shiftCurve:null},
+  {id:'g6450wu',  name:'Epson EB-G6450WU',           aspectVal:'1.6',        rMin:1.26,rMax:2.30,sUp:67, sDn:67, fixed:false, ks:30, bodyH:12,   dMin:93,  dMax:1830, shiftType:'optical', digitalZoom:false, shiftCurve:null},
+  {id:'tw9000',   name:'Epson EH-TW9000',            aspectVal:'1.77777778', rMin:1.34,rMax:2.87,sUp:96, sDn:96, fixed:false, ks:30, bodyH:12,   dMin:200, dMax:1000, shiftType:'optical', digitalZoom:false, shiftCurve:null},
+  {id:'l530u',    name:'Epson EB-L530U',             aspectVal:'1.6',        rMin:1.35,rMax:2.20,sUp:50, sDn:50, fixed:false, ks:30, bodyH:13.6, dMin:86,  dMax:1780, shiftType:'optical', digitalZoom:false, shiftCurve:null},
+  {id:'l690u',    name:'Epson EB-L690U',             aspectVal:'1.6',        rMin:1.35,rMax:2.20,sUp:50, sDn:50, fixed:false, ks:30, bodyH:13.6, dMin:86,  dMax:1780, shiftType:'optical', digitalZoom:false, shiftCurve:null},
+  {id:'eb1980wu', name:'Epson EB-1980WU',            aspectVal:'1.6',        rMin:1.38,rMax:2.28,sUp:0,  sDn:0,  fixed:false, ks:30, bodyH:12,   dMin:93,  dMax:1830, shiftType:'none',    digitalZoom:false, shiftCurve:null},
+  {id:'l1050_lm', name:'Epson EB-L1050U + ELPLM08',  aspectVal:'1.6',        rMin:1.44,rMax:2.32,sUp:67, sDn:67, fixed:false, ks:30, bodyH:14,   dMin:93,  dMax:1830, shiftType:'optical', digitalZoom:false, shiftCurve:null},
 ];
 
 export const DEFAULT_ROOMS = [

@@ -140,9 +140,12 @@
   .tog { display: flex; align-items: center; gap: 6px; height: 24px; margin-bottom: 4px; flex-shrink: 0; }
   .tog label { font-size: 11px; color: var(--color-text-secondary); flex: 1; }
   
-  .rp-row { display: flex; gap: 4px; height: 24px; margin-bottom: 4px; flex-shrink: 0; align-items: center; }
-  .rp-row input[type=text] { font-size: 11px; flex: 1; padding: 2px 6px; height: 24px; }
-  .rp-row button { font-size: 11px; padding: 0 8px; border: 1px solid var(--color-border-secondary); border-radius: var(--border-radius-sm); background: transparent; color: var(--color-text-primary); cursor: pointer; height: 24px; flex-shrink: 0; }
+  .rname-inp { width:100%; font-size:11px; height:24px; padding:2px 6px; margin-bottom:3px; flex-shrink:0; font-family:var(--font-sans); background:var(--color-background-primary); border:1px solid var(--color-border-tertiary); color:var(--color-text-primary); border-radius:var(--border-radius-sm); outline:none; box-sizing:border-box; }
+  .rname-inp:focus { border-color:var(--color-border-info); }
+  .rp-btns { display:flex; gap:4px; margin-bottom:4px; flex-shrink:0; }
+  .rp-btns button { font-size:11px; padding:0 8px; border:1px solid var(--color-border-secondary); border-radius:var(--border-radius-sm); background:transparent; color:var(--color-text-primary); cursor:pointer; height:24px; flex:1; }
+  .whlk-row { display:flex; align-items:center; justify-content:flex-end; gap:4px; height:18px; margin-bottom:1px; flex-shrink:0; padding-right:18px; }
+  .whlk-lbl { font-size:9px; color:var(--color-text-tertiary); letter-spacing:0.04em; }
 
   .rc { background: var(--color-background-secondary); border-radius: var(--border-radius-sm); padding: 5px 8px; flex: 1 1 140px; }
   .rc.tw { background: var(--color-background-warning); flex: 1 1 100%; }
@@ -179,8 +182,8 @@
 
   <div class="sec">Room preset</div>
   <select class="psel" id="rsel"></select>
-  <div class="rp-row">
-    <input type="text" id="rname" placeholder="Save as..." maxlength="24">
+  <input type="text" id="rname" class="rname-inp" placeholder="Save as..." maxlength="24">
+  <div class="rp-btns">
     <button id="rsave">Save</button>
     <button id="rdel">Del</button>
   </div>
@@ -219,7 +222,8 @@
    <div style="width:27px; flex-shrink:0;"></div>
   </div>
 
-  <div class="f"><label>Media width</label><input type="number" id="imgW" value="300" step="1" min="10" max="3000"><button class="lkbtn" id="lkImgW" title="Lock Media Width"></button><span class="u">cm</span></div>
+  <div class="f"><label>Media width</label><input type="number" id="imgW" value="300" step="1" min="10" max="3000"><span class="u">cm</span></div>
+  <div class="whlk-row"><span class="whlk-lbl">lock W+H</span><button class="lkbtn" id="lkImgW" title="Lock both media dimensions (W and H together)"></button></div>
   <div class="f"><label>Media height</label><input type="number" id="imgH" step="1" min="10" max="3000"><span class="u">cm</span></div>
 
   <div class="sec">Media position on wall</div>
@@ -239,6 +243,10 @@
     <span style="font-size:10px;color:var(--color-text-tertiary);padding:0 2px;">/ −</span>
     <input type="number" id="maxDn" value="50" step="1" min="0" style="width:26px">
     <span class="u" style="margin-left:2px">%</span>
+  </div>
+  <div id="shiftCurveWrap" style="display:none; flex-shrink:0; margin-bottom:4px;">
+    <div style="font-size:9px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Shift range @ ratio</div>
+    <svg id="shiftCurveSvg" style="width:100%;height:58px;display:block;border-radius:3px;overflow:visible;"></svg>
   </div>
 
   <div class="sec">Projector mounting</div>

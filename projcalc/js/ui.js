@@ -82,6 +82,16 @@ export function renderRes(r) {
     );
   }
 
+  if (store.activePreset && store.activePreset.shiftType === 'digital' && Math.abs(r.shiftM) > 0.01) {
+    h += card('Shift type', 'Digital shift — image quality reduced', 'warn', 'Digital', true);
+  }
+
+  if (store.activePreset && store.activePreset.digitalZoom) {
+    const p = store.activePreset;
+    // warn any time digital zoom projector is in use
+    h += card('Zoom type', 'Digital zoom — image quality reduced', 'warn', 'Digital', true);
+  }
+
   // Show aspect name using the preset's aspectVal string (avoids toFixed floating-point mismatch)
   if ((r.isLetterboxed || r.isPillared) && store.activePreset) {
     const nName = ASPECT_NAMES[store.activePreset.aspectVal] || store.activePreset.aspectVal;
