@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="40" fill="#2563eb"/>
+  <!-- Projector body -->
+  <rect x="52" y="70" width="88" height="52" rx="8" fill="#fff" opacity="0.95"/>
+  <!-- Lens -->
+  <circle cx="96" cy="96" r="16" fill="#2563eb" stroke="#fff" stroke-width="3"/>
+  <circle cx="96" cy="96" r="8" fill="#60a5fa"/>
+  <!-- Beam lines -->
+  <line x1="80" y1="88" x2="28" y2="64"  stroke="#93c5fd" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <line x1="80" y1="104" x2="28" y2="128" stroke="#93c5fd" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <!-- Screen on wall -->
+  <rect x="20" y="62" width="10" height="68" rx="2" fill="#fff" opacity="0.6"/>
+  <!-- Mount rod -->
+  <rect x="94" y="36" width="4" height="34" rx="2" fill="#fff" opacity="0.7"/>
+</svg>

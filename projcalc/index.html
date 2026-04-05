@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Projector Installation Calculator</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563eb">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  /* --- Theme Variables --- */
+  :root {
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f4f4f5;
+    --color-background-info: #eff6ff;
+    --color-background-warning: #fffbeb;
+    --color-background-success: #f0fdf4;
+    --color-background-danger: #fef2f2;
+    
+    --color-border-secondary: #e4e4e7;
+    --color-border-tertiary: #d4d4d8;
+    --color-border-info: #3b82f6;
+    --color-border-warning: #f59e0b;
+    --color-border-success: #10b981;
+    --color-border-danger: #ef4444;
+    
+    --color-text-primary: #18181b;
+    --color-text-secondary: #52525b;
+    --color-text-tertiary: #71717a;
+    --color-text-info: #2563eb;
+    --color-text-warning: #d97706;
+    --color-text-success: #059669;
+    --color-text-danger: #dc2626;
+    
+    --font-sans: system-ui, -apple-system, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --border-radius-sm: 4px;
+    --transition-speed: 0.2s;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background-primary: #18181b;
+      --color-background-secondary: #27272a;
+      --color-background-info: #172554;
+      --color-background-warning: #422006;
+      --color-background-success: #052e16;
+      --color-background-danger: #450a0a;
+      
+      --color-border-secondary: #3f3f46;
+      --color-border-tertiary: #52525b;
+      --color-border-info: #3b82f6;
+      --color-border-warning: #f59e0b;
+      --color-border-success: #10b981;
+      --color-border-danger: #ef4444;
+      
+      --color-text-primary: #f4f4f5;
+      --color-text-secondary: #d4d4d8;
+      --color-text-tertiary: #a1a1aa;
+      --color-text-info: #60a5fa;
+      --color-text-warning: #fbbf24;
+      --color-text-success: #34d399;
+      --color-text-danger: #f87171;
+    }
+  }
+
+  /* --- Reset & Layout --- */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { 
+    font-family: var(--font-sans); 
+    background: var(--color-background-primary); 
+    color: var(--color-text-primary);
+    width: 100vw;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+  }
+
+  .g { display: flex; width: 100%; height: 100%; overflow: hidden; }
+
+  /* Left Sidebar */
+  .lp {
+    width: 320px; flex-shrink: 0;
+    border-right: 1px solid var(--color-border-tertiary);
+    padding: 12px; overflow-y: auto;
+    display: flex; flex-direction: column;
+    background: var(--color-background-secondary);
+  }
+
+  /* Right Content */
+  .rp { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100%; background: var(--color-background-primary); }
+  .dia { flex: 1; position: relative; min-height: 200px; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  .res {
+    border-top: 1px solid var(--color-border-tertiary);
+    padding: 10px; display: flex; flex-wrap: wrap; gap: 6px;
+    height: auto; max-height: 35%; overflow-y: auto;
+    align-content: flex-start; background: var(--color-background-primary);
+  }
+
+  /* --- Typography & Form Elements --- */
+  .sec { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-tertiary); border-bottom: 1px solid var(--color-border-tertiary); padding-bottom: 4px; margin-top: 12px; margin-bottom: 6px; flex-shrink: 0; }
+  .f { display: flex; align-items: center; gap: 5px; height: 24px; margin-bottom: 3px; flex-shrink: 0; }
+  .f label { font-size: 12px; color: var(--color-text-secondary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  
+  input[type=number], select, input[type=text] {
+    font-family: var(--font-mono); font-size: 12px; background: var(--color-background-primary);
+    border: 1px solid var(--color-border-tertiary); color: var(--color-text-primary);
+    border-radius: var(--border-radius-sm); outline: none; transition: border-color var(--transition-speed);
+  }
+  .f input[type=number], .f select { text-align: right; width: 75px; padding: 2px 6px; height: 24px; flex-shrink: 0; }
+  input:focus, select:focus { border-color: var(--color-border-info); }
+
+  input[type=range] { -webkit-appearance: none; background: transparent; }
+  input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: var(--color-border-tertiary); border-radius: 2px; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%; background: var(--color-text-info); margin-top: -4px; cursor: pointer; }
+
+  .ro { background: transparent !important; border-color: transparent !important; color: var(--color-text-tertiary) !important; cursor: default; }
+  .inp-p { background: var(--color-background-warning) !important; border-color: var(--color-border-warning) !important; color: var(--color-text-warning) !important; }
+  .u { font-size: 10px; color: var(--color-text-tertiary); width: 16px; flex-shrink: 0; text-align: left; }
+  
+  .lkbtn { width: 22px; height: 22px; flex-shrink: 0; border: 1px solid var(--color-border-secondary); border-radius: var(--border-radius-sm); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--color-text-tertiary); transition: all var(--transition-speed); }
+  .lkbtn:hover { background: var(--color-background-secondary); }
+  .lkbtn.on { background: var(--color-background-info); border-color: var(--color-border-info); color: var(--color-text-info); }
+  .lkbtn.pl { background: var(--color-background-warning); border-color: var(--color-border-warning); color: var(--color-text-warning); cursor: default; }
+  .drv { border-color: var(--color-border-success) !important; background: var(--color-background-success) !important; color: var(--color-text-success) !important; }
+
+  .rr { display: flex; gap: 4px; height: 24px; margin-bottom: 4px; flex-shrink: 0; }
+  .rr input { display: none; }
+  .rr label { flex: 1; font-size: 11px; text-align: center; border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-sm); cursor: pointer; color: var(--color-text-secondary); user-select: none; height: 24px; display: flex; align-items: center; justify-content: center; transition: all var(--transition-speed); }
+  .rr input:checked + label { border-color: var(--color-border-info); color: var(--color-text-info); background: var(--color-background-info); font-weight: 600; }
+
+  .pbox { background: var(--color-background-warning); color: var(--color-text-warning); border-radius: var(--border-radius-sm); padding: 6px; margin-bottom: 4px; font-size: 10px; line-height: 1.4; display: none; gap: 8px; flex-shrink: 0; }
+  .pbox.on { display: flex; }
+  .pi-t { flex: 1; }
+  .pi-c { cursor: pointer; font-size: 10px; text-decoration: underline; white-space: nowrap; flex-shrink: 0; font-weight: 600; }
+
+  .psel { width: 100%; font-size: 12px; padding: 4px 6px; height: 26px; margin-bottom: 6px; flex-shrink: 0; }
+  .tog { display: flex; align-items: center; gap: 6px; height: 24px; margin-bottom: 4px; flex-shrink: 0; }
+  .tog label { font-size: 11px; color: var(--color-text-secondary); flex: 1; }
+  
+  .rp-row { display: flex; gap: 4px; height: 24px; margin-bottom: 4px; flex-shrink: 0; align-items: center; }
+  .rp-row input[type=text] { font-size: 11px; flex: 1; padding: 2px 6px; height: 24px; }
+  .rp-row button { font-size: 11px; padding: 0 8px; border: 1px solid var(--color-border-secondary); border-radius: var(--border-radius-sm); background: transparent; color: var(--color-text-primary); cursor: pointer; height: 24px; flex-shrink: 0; }
+
+  .rc { background: var(--color-background-secondary); border-radius: var(--border-radius-sm); padding: 5px 8px; flex: 1 1 140px; }
+  .rc.tw { background: var(--color-background-warning); flex: 1 1 100%; }
+  .rl { font-size: 9px; color: var(--color-text-tertiary); margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .rv { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--color-text-primary); }
+  .rv.warn { color: var(--color-text-danger); }
+  .rv.ok { color: var(--color-text-success); }
+  .rv.ti { color: var(--color-text-warning); }
+  .ba { font-size: 8px; padding: 2px 4px; border-radius: 3px; margin-top: 3px; display: inline-block; font-weight: 600; text-transform: uppercase; }
+  .ba.ok { background: var(--color-background-success); color: var(--color-text-success); }
+  .ba.warn { background: var(--color-background-danger); color: var(--color-text-danger); }
+  .tlbl { width: 100%; font-size: 9px; color: var(--color-text-warning); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding-top: 4px; border-top: 1px solid var(--color-border-warning); margin-top: 2px; }
+  .ar-info { font-size: 9px; color: var(--color-text-warning); margin-top: 2px; line-height: 1.3; }
+
+  /* Mobile */
+  @media (max-width: 600px) {
+    .lp { width: 185px; padding: 8px 6px; }
+    .f label { font-size: 10px; }
+    .f input[type=number], .f select { width: 55px; font-size: 10px; padding: 2px 4px; }
+    .u { font-size: 9px; width: 12px; }
+    .sec { font-size: 9px; margin-top: 8px; }
+    .rc { flex: 1 1 120px; }
+    #zoomSlider { width: 55px !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="g">
+ <div class="lp">
+  <div class="sec" style="margin-top:0">Projector preset</div>
+  <select class="psel" id="psel"></select>
+  <div class="pbox" id="pbox"><div class="pi-t" id="pi-t"></div><span class="pi-c" id="pi-c">Clear</span></div>
+
+  <div class="sec">Room preset</div>
+  <select class="psel" id="rsel"></select>
+  <div class="rp-row">
+    <input type="text" id="rname" placeholder="Save as..." maxlength="24">
+    <button id="rsave">Save</button>
+    <button id="rdel">Del</button>
+  </div>
+
+  <div class="sec">Room</div>
+  <div class="f"><label>Drawing view width</label><input type="number" id="viewW" value="500" step="10" min="100"><span class="u">cm</span></div>
+  <div class="f"><label>Ceiling height</label><input type="number" id="ceilH" value="500" step="5" min="50" max="3000"><span class="u">cm</span></div>
+  <div class="f"><label>Wall height</label><input type="number" id="wallH" value="300" step="5" min="50" max="3000"><span class="u">cm</span></div>
+  <div class="f">
+   <label>Throw distance</label>
+   <input type="number" id="dist" value="405" step="5" min="20" max="5000">
+   <button class="lkbtn" id="lkDist" title="Lock Throw Distance"></button><span class="u">cm</span>
+  </div>
+
+  <div class="sec">Image & Media</div>
+  <div class="f">
+    <label>Media aspect ratio</label>
+    <select id="aspect">
+      <option value="1.77777778">16:9</option>
+      <option value="1.6">16:10</option>
+      <option value="1.33333333">4:3</option>
+      <option value="2.37037037">21:9</option>
+    </select>
+    <span class="u"></span>
+  </div>
+  <div id="arInfo" class="ar-info" style="display:none;"></div>
+  
+  <div class="f">
+   <label>Throw ratio</label>
+   <input type="number" id="ratio" value="1.35" step="0.01" min="0.05" max="20">
+   <button class="lkbtn" id="lkRatio" title="Lock Throw Ratio"></button><span class="u">:1</span>
+  </div>
+  <div class="f" id="zoomRow" style="display:none; height:14px; margin-top:-3px; margin-bottom:5px;">
+   <label style="font-size:10px; color:var(--color-text-tertiary); flex:1; text-align:right; padding-right:8px;">Lens zoom</label>
+   <input type="range" id="zoomSlider" style="width:75px; flex-shrink:0; margin:0; padding:0;">
+   <div style="width:27px; flex-shrink:0;"></div>
+  </div>
+
+  <div class="f"><label>Media width</label><input type="number" id="imgW" value="300" step="1" min="10" max="3000"><span class="u">cm</span></div>
+  <div class="f"><label>Media height (calc)</label><input type="number" id="imgH" class="ro" readonly><span class="u">cm</span></div>
+
+  <div class="sec">Media position on wall</div>
+  <div class="rr">
+    <input type="radio" name="pt" id="ptB" value="bottom" checked><label for="ptB">Bottom</label>
+    <input type="radio" name="pt" id="ptC" value="center"><label for="ptC">Center</label>
+    <input type="radio" name="pt" id="ptT" value="top"><label for="ptT">Top</label>
+  </div>
+  <div class="f"><label id="posLbl">Media bottom height</label><input type="number" id="targetH" value="70" step="5" min="0"><span class="u">cm</span></div>
+
+  <div class="sec">Lens shift (V)</div>
+  <div class="f"><label>Shift %</label><input type="number" id="sPct" value="0" step="0.5"><span class="u">%</span></div>
+  <div class="f"><label>Shift mm (sync)</label><input type="number" id="sMm" step="1"><span class="u">mm</span></div>
+  <div class="f">
+    <label>Spec limit +/−</label>
+    <input type="number" id="maxUp" value="50" step="1" min="0" style="width:26px">
+    <span style="font-size:10px;color:var(--color-text-tertiary);padding:0 2px;">/ −</span>
+    <input type="number" id="maxDn" value="50" step="1" min="0" style="width:26px">
+    <span class="u" style="margin-left:2px">%</span>
+  </div>
+
+  <div class="sec">Projector mounting</div>
+  <div class="f">
+   <label>Drop from ceiling</label>
+   <input type="number" id="dropV" value="200" step="1" min="1">
+   <button class="lkbtn" id="lkDrop" title="Lock Drop"></button><span class="u">cm</span>
+  </div>
+  <div class="f" id="dropModeRow" style="height:12px; margin-bottom:2px">
+   <label style="font-size:9px; color:var(--color-text-tertiary)" id="dropModeLabel">Derived from media position</label>
+  </div>
+  <div class="f">
+   <label>Lens to mount top</label>
+   <input type="number" id="bodyH" value="13.6" step="0.5" min="0">
+   <button class="lkbtn" id="lkBody" title="Lock Body Height"></button><span class="u">cm</span>
+  </div>
+
+  <div class="sec">Tilt</div>
+  <div class="f"><label>Tilt angle (down +)</label><input type="number" id="tiltDeg" value="0" step="0.5" min="-45" max="45"><span class="u">°</span></div>
+  <div class="f"><label>Max keystone limit</label><input type="number" id="maxKS" value="30" step="1" min="0" max="90"><button class="lkbtn" id="lkKS" title="Lock Keystone"></button><span class="u">°</span></div>
+
+  <div class="sec">Person / shadow check</div>
+  <div class="tog"><label>Show 175 cm person</label><input type="checkbox" id="personOn"></div>
+  <div class="f"><label>Person distance</label><input type="number" id="personDist" value="200" step="5" min="10"><span class="u">cm</span></div>
+ </div>
+
+ <div class="rp">
+  <div class="dia"><canvas id="cv"></canvas></div>
+  <div class="res" id="res"></div>
+ </div>
+</div>
+
+<script>
+  // Register service worker for PWA offline support
+  // Note: requires HTTPS or localhost — won't activate over file:// protocol
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+</script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
