@@ -23,36 +23,44 @@ export function compute() {
   // Lens shift is a percentage of the native panel height
   const shiftM = (S.shiftPct / 100) * nativeH;
 
+  const tr      = S.tiltDeg * Math.PI / 180;
+  const hasTilt = Math.abs(S.tiltDeg) > 0.01;
+
   let lH, cH, drop;
   if (dropDriver) {
     drop = S.drop; lH = S.ceilH - drop; cH = lH + shiftM;
   } else {
+    // cH = target image centre; invert combined model so image lands exactly there:
+    // tCH = lH + shiftM - dist·tan(tr) = cH  →  lH = cH - shiftM + dist·tan(tr)
     cH = S.posType === 'bottom' ? S.targetH + mediaH / 2
        : S.posType === 'top'    ? S.targetH - mediaH / 2
        :                          S.targetH;
-    lH = cH - shiftM; drop = S.ceilH - lH;
+    lH   = cH - shiftM + S.dist * Math.tan(tr);
+    drop = S.ceilH - lH;
   }
 
   const rod     = drop - S.bodyH;
   const shiftOk = S.shiftPct >= -S.maxDn && S.shiftPct <= S.maxUp;
   const lensOk  = lH > 0 && lH < S.ceilH;
 
-  const imgTop    = cH + mediaH / 2,  imgBot    = cH - mediaH / 2;
-  const nativeTop = cH + nativeH / 2, nativeBot = cH - nativeH / 2;
+  // Combined model: shift and tilt both contribute to effective image centre
+  const tCH = lH + shiftM - S.dist * Math.tan(tr);
 
-  const tr     = S.tiltDeg * Math.PI / 180;
-  const tCH    = lH - S.dist * Math.tan(tr);
-  const hasTilt = Math.abs(S.tiltDeg) > 0.01;
+  const imgTop    = cH + mediaH  / 2;
+  const imgBot    = cH - mediaH  / 2;
+  const nativeTop = cH + nativeH / 2;
+  const nativeBot = cH - nativeH / 2;
 
-  const effTop    = hasTilt ? tCH + mediaH  / 2 : imgTop;
-  const effBot    = hasTilt ? tCH - mediaH  / 2 : imgBot;
-  const effNatTop = hasTilt ? tCH + nativeH / 2 : nativeTop;
-  const effNatBot = hasTilt ? tCH - nativeH / 2 : nativeBot;
+  // Effective bounds always from combined tCH
+  const effTop    = tCH + mediaH  / 2;
+  const effBot    = tCH - mediaH  / 2;
+  const effNatTop = tCH + nativeH / 2;
+  const effNatBot = tCH - nativeH / 2;
 
-  const ksN       = Math.abs(S.tiltDeg);
-  const ksOk      = ksN <= S.maxKS;
+  const ksN        = Math.abs(S.tiltDeg);
+  const ksOk       = ksN <= S.maxKS;
   const aboveSight = lH > effTop;
-  const wallGap   = S.wallH - effTop;
+  const wallGap    = S.wallH - effTop;
 
   let shadowH = null, personClears = false;
   if (S.personOn && S.personDist > 0 && S.personDist < S.dist) {

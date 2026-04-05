@@ -195,7 +195,7 @@ export function draw(r) {
   // Optical axis
   ctx.strokeStyle = c.axis; ctx.lineWidth = 0.8*dpr; ctx.setLineDash([4*dpr, 4*dpr]);
   ctx.beginPath();
-  ctx.moveTo(lX, lY); ctx.lineTo(wX, sy(r.hasTilt ? r.tCH : r.cH));
+  ctx.moveTo(lX, lY); ctx.lineTo(wX, sy(r.tCH));
   ctx.stroke(); ctx.setLineDash([]);
 
   // Projector mount (rod + body)

@@ -95,7 +95,7 @@ function refresh() {
   if (store.dropDriver) {
     const edgeH = S.posType === 'bottom' ? r.effBot
                 : S.posType === 'top'    ? r.effTop
-                :                          r.cH;
+                :                          r.tCH;
     g('targetH').value = edgeH.toFixed(1);
   } else {
     g('dropV').value = r.drop.toFixed(1);
@@ -296,8 +296,58 @@ g('dropV').addEventListener('input', function() {
   refresh();
 });
 
+// ─── Auto-solve: when drop is locked, find shift+tilt to reach target position ─
+function autoSolvePosition() {
+  rd();
+  const nativeAspect = store.activePreset ? parseFloat(store.activePreset.aspectVal) : S.aspect;
+  const nativeW = S.dist / S.ratio;
+  const nativeH = nativeW / nativeAspect;
+  const mediaH  = S.aspect >= nativeAspect ? nativeW / S.aspect : nativeH;
+
+  const cH_goal = S.posType === 'bottom' ? S.targetH + mediaH / 2
+                : S.posType === 'top'    ? S.targetH - mediaH / 2
+                :                          S.targetH;
+
+  const lH = S.ceilH - S.drop;
+  // Need: tCH = lH + shiftM - dist·tan(tilt) = cH_goal
+  // → shiftM - dist·tan(tilt) = delta
+  const delta = cH_goal - lH;
+
+  const maxUp = S.maxUp;
+  const maxDn = S.maxDn;
+  const maxKS = S.maxKS;
+
+  // Use as much shift as possible first (prefer no-keystone)
+  const shiftPctRaw  = nativeH > 0 ? (delta / nativeH) * 100 : 0;
+  const shiftPct     = Math.max(-maxDn, Math.min(maxUp, shiftPctRaw));
+  const shiftM_used  = (shiftPct / 100) * nativeH;
+  const shiftMm      = Math.round(shiftM_used * 10);
+
+  // Remaining offset after shift → cover with tilt
+  // dist·tan(tilt) = shiftM_used - delta  →  tilt = atan((shiftM_used - delta) / dist)
+  const remaining = delta - shiftM_used;
+  let tiltDeg = 0;
+  if (Math.abs(remaining) > 0.1 && S.dist > 0) {
+    tiltDeg = Math.atan((shiftM_used - delta) / S.dist) * 180 / Math.PI;
+    tiltDeg = Math.max(-maxKS, Math.min(maxKS, tiltDeg));
+  }
+
+  g('sPct').value     = shiftPct.toFixed(2);
+  g('sMm').value      = shiftMm;
+  g('tiltDeg').value  = tiltDeg.toFixed(1);
+  store.dropDriver    = true;
+  updateDropModeLabel();
+}
+
 function imageEdit() {
-  if (!store.lkState.drop) { store.dropDriver = false; updateDropModeLabel(); }
+  if (store.lkState.drop) {
+    // Drop locked: auto-solve shift + tilt to reach target
+    autoSolvePosition();
+  } else {
+    // Drop free: let compute() derive drop from target position
+    store.dropDriver = false;
+    updateDropModeLabel();
+  }
   refresh();
 }
 
