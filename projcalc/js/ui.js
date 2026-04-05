@@ -73,6 +73,15 @@ export function renderRes(r) {
     );
   }
 
+  if (!r.distOk && store.activePreset) {
+    h += card('Focus distance',
+      `${store.activePreset.dMin}–${store.activePreset.dMax} cm`,
+      'warn',
+      'Out of focus range',
+      true
+    );
+  }
+
   // Show aspect name using the preset's aspectVal string (avoids toFixed floating-point mismatch)
   if ((r.isLetterboxed || r.isPillared) && store.activePreset) {
     const nName = ASPECT_NAMES[store.activePreset.aspectVal] || store.activePreset.aspectVal;

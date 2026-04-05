@@ -65,6 +65,10 @@ export function compute() {
     ? S.ratio >= activePreset.rMin - 0.001 && S.ratio <= activePreset.rMax + 0.001
     : true;
 
+  const distOk = activePreset && activePreset.dMin != null
+    ? S.dist >= activePreset.dMin && S.dist <= activePreset.dMax
+    : true;
+
   return {
     mediaW, mediaH, nativeW, nativeH, shiftM,
     cH, lH, drop, rod,
@@ -73,6 +77,6 @@ export function compute() {
     effTop, effBot, effNatTop, effNatBot,
     aboveSight, wallGap,
     shadowH, personClears,
-    ratioOk, isLetterboxed, isPillared, nativeAspect,
+    ratioOk, isLetterboxed, isPillared, nativeAspect, distOk,
   };
 }

@@ -5,7 +5,7 @@ import { draw } from './draw.js';
 import { pLock, buildRoomSel, updateDropModeLabel, renderRes } from './ui.js';
 
 // ─── Initialise lock button icons ────────────────────────────────────────────
-['lkDist','lkRatio','lkBody','lkDrop','lkKS'].forEach(id => g(id).innerHTML = USVG);
+['lkDist','lkRatio','lkBody','lkDrop','lkKS','lkImgW'].forEach(id => g(id).innerHTML = USVG);
 
 // ─── Build projector preset dropdown ─────────────────────────────────────────
 const psel = g('psel');
@@ -23,6 +23,7 @@ function rd() {
   S.aspect   = +g('aspect').value;
   S.ratio    = +g('ratio').value   || 1.35;
   S.imgW     = +g('imgW').value    || 300;
+  S.imgH     = +g('imgH').value    || 0;
   S.shiftPct = +g('sPct').value    || 0;
   S.maxUp    = +g('maxUp').value;
   S.maxDn    = +g('maxDn').value;
@@ -54,6 +55,23 @@ function refresh() {
   } else {
     g('sPct').readOnly = false; g('sMm').readOnly = false;
     g('sPct').classList.remove('ro'); g('sMm').classList.remove('ro');
+  }
+
+  // If media width is locked, back-calculate ratio (or dist if ratio is fixed) to maintain locked width
+  if (store.lkState.imgW && S.imgW > 0) {
+    const nativeAspect = store.activePreset ? parseFloat(store.activePreset.aspectVal) : S.aspect;
+    const reqNativeW = S.aspect >= nativeAspect ? S.imgW : S.imgW * (nativeAspect / S.aspect);
+    if (reqNativeW > 0) {
+      const rFixed = g('ratio').readOnly || store.lkState.ratio;
+      if (!rFixed) {
+        S.ratio = S.dist / reqNativeW;
+        g('ratio').value = S.ratio.toFixed(2);
+        if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = g('ratio').value;
+      } else if (!store.lkState.dist) {
+        S.dist = S.ratio * reqNativeW;
+        g('dist').value = S.dist.toFixed(1);
+      }
+    }
   }
 
   const r = compute();
@@ -92,10 +110,17 @@ function tri(changed) {
   rd();
   const rFixed = g('ratio').readOnly || store.lkState.ratio;
   const dFixed = g('dist').readOnly  || store.lkState.dist;
+  const wFixed = store.lkState.imgW;
   const nativeAspect = store.activePreset ? parseFloat(store.activePreset.aspectVal) : S.aspect;
 
   if (changed === 'ratio') {
-    if (!dFixed) {
+    if (wFixed) {
+      // ratio changed, width locked → update dist
+      if (!dFixed) {
+        const reqNativeW = S.aspect >= nativeAspect ? S.imgW : S.imgW * (nativeAspect / S.aspect);
+        g('dist').value = (S.ratio * reqNativeW).toFixed(1);
+      }
+    } else if (!dFixed) {
       const nativeW = S.dist / S.ratio;
       g('imgW').value = (S.aspect >= nativeAspect
         ? nativeW
@@ -104,20 +129,41 @@ function tri(changed) {
     }
   } else if (changed === 'width') {
     const reqNativeW = S.aspect >= nativeAspect ? S.imgW : S.imgW * (nativeAspect / S.aspect);
-    if (rFixed && !dFixed) {
+    // width changed → prefer updating dist; only fall back to ratio if dist is locked
+    if (!dFixed) {
+      g('dist').value = (S.ratio * reqNativeW).toFixed(1);
+    } else if (!rFixed) {
+      g('ratio').value = (S.dist / reqNativeW).toFixed(2);
+      if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = g('ratio').value;
+    }
+  } else if (changed === 'height') {
+    // height changed → derive width from aspect, then same as 'width'
+    const newW = S.imgH * S.aspect;
+    g('imgW').value = newW.toFixed(1);
+    S.imgW = newW;
+    const reqNativeW = S.aspect >= nativeAspect ? newW : newW * (nativeAspect / S.aspect);
+    if (!dFixed) {
       g('dist').value = (S.ratio * reqNativeW).toFixed(1);
     } else if (!rFixed) {
       g('ratio').value = (S.dist / reqNativeW).toFixed(2);
       if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = g('ratio').value;
     }
   } else if (changed === 'dist') {
-    if (rFixed) {
+    if (wFixed) {
+      // dist changed, width locked → update ratio
+      if (!rFixed) {
+        const reqNativeW = S.aspect >= nativeAspect ? S.imgW : S.imgW * (nativeAspect / S.aspect);
+        g('ratio').value = (S.dist / reqNativeW).toFixed(2);
+        if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = g('ratio').value;
+      }
+    } else if (rFixed) {
       const nativeW = S.dist / S.ratio;
       g('imgW').value = (S.aspect >= nativeAspect
         ? nativeW
         : nativeW * (S.aspect / nativeAspect)
       ).toFixed(1);
     } else if (S.imgW > 0) {
+      // dist changed, nothing locked → update ratio (keep width as reference)
       const reqNativeW = S.aspect >= nativeAspect ? S.imgW : S.imgW * (nativeAspect / S.aspect);
       g('ratio').value = (S.dist / reqNativeW).toFixed(2);
       if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = g('ratio').value;
@@ -187,9 +233,9 @@ function toggleLock(key) {
   if (key === 'ratio' && store.activePreset && store.activePreset.fixed) return;
   if (key === 'body'  && store.activePreset) return;
   store.lkState[key] = !store.lkState[key];
-  const ids   = { dist:'lkDist', ratio:'lkRatio', body:'lkBody', drop:'lkDrop', ks:'lkKS' };
-  const inpIds = { dist:'dist',   ratio:'ratio',   body:'bodyH',  ks:'maxKS' };
-  const btn   = g(ids[key]);
+  const ids    = { dist:'lkDist', ratio:'lkRatio', body:'lkBody', drop:'lkDrop', ks:'lkKS', imgW:'lkImgW' };
+  const inpIds = { dist:'dist',   ratio:'ratio',   body:'bodyH',  ks:'maxKS',    imgW:'imgW' };
+  const btn    = g(ids[key]);
   btn.classList.toggle('on', store.lkState[key]);
   btn.innerHTML = store.lkState[key] ? LSVG : USVG;
   if (key !== 'drop' && inpIds[key] && !g(inpIds[key]).classList.contains('inp-p')) {
@@ -201,8 +247,8 @@ function toggleLock(key) {
   }
 }
 
-['lkDist','lkRatio','lkBody','lkDrop','lkKS'].forEach(id => {
-  const key = { lkDist:'dist', lkRatio:'ratio', lkBody:'body', lkDrop:'drop', lkKS:'ks' }[id];
+['lkDist','lkRatio','lkBody','lkDrop','lkKS','lkImgW'].forEach(id => {
+  const key = { lkDist:'dist', lkRatio:'ratio', lkBody:'body', lkDrop:'drop', lkKS:'ks', lkImgW:'imgW' }[id];
   g(id).addEventListener('click', () => toggleLock(key));
 });
 
@@ -270,6 +316,7 @@ g('ratio').addEventListener('input', function() {
   }
 });
 g('imgW').addEventListener('input', function() { tri('width'); refresh(); });
+g('imgH').addEventListener('input', function() { tri('height'); refresh(); });
 g('dist').addEventListener('input', function() {
   if (!this.readOnly) { tri('dist'); refresh(); }
 });

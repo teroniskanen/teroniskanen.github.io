@@ -15,7 +15,7 @@ export const S = {
 export const store = {
   activePreset: null,
   dropDriver:   false,
-  lkState:      { dist:false, ratio:false, body:false, drop:false, ks:false },
+  lkState:      { dist:false, ratio:false, body:false, drop:false, ks:false, imgW:false },
   roomPresets:  [],
 };
 
