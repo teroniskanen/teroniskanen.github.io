@@ -20,8 +20,17 @@ export function compute() {
   const isPillared   = Math.abs(mediaW - nativeW) > 0.1;
   const isLetterboxed = Math.abs(mediaH - nativeH) > 0.1;
 
-  // Lens shift is a percentage of the native panel height
-  const shiftM = (S.shiftPct / 100) * nativeH;
+  // Built-in vertical offset: image centre above (+) or below (−) lens at zero user-shift.
+  // In standard (floor/table-top) orientation this is positive (image projects upward).
+  // When ceiling-mounted the projector is inverted so the sign flips.
+  const vOffsetPct = activePreset ? (activePreset.vOffset || 0) : 0;
+  const naturalShiftPct = floorMode ? vOffsetPct : -vOffsetPct;
+
+  // User-applied lens shift (positive = image moves UP in room regardless of mount orientation)
+  const userShiftM = (S.shiftPct / 100) * nativeH;
+
+  // Total shift from lens to image centre (built-in offset + user adjustment)
+  const shiftM = ((naturalShiftPct + S.shiftPct) / 100) * nativeH;
 
   const tr      = S.tiltDeg * Math.PI / 180;
   const hasTilt = Math.abs(S.tiltDeg) > 0.01;
@@ -85,7 +94,7 @@ export function compute() {
     : true;
 
   return {
-    mediaW, mediaH, nativeW, nativeH, shiftM,
+    mediaW, mediaH, nativeW, nativeH, shiftM, userShiftM,
     cH, lH, drop, rod,
     shiftOk, lensOk,
     tCH, hasTilt, ksN, ksOk,

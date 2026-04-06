@@ -61,8 +61,12 @@ export function renderRes(r) {
 
   h += card('Lens height',     `${r.lH.toFixed(1)} cm`,   r.lensOk ? '' : 'warn');
   h += card(store.floorMode ? 'Pedestal height' : 'Drop (ceil→lens)', `${r.drop.toFixed(1)} cm`, '');
-  h += card('Shift',
-    `${r.shiftM >= 0 ? '+' : ''}${(r.shiftM * 10).toFixed(0)} mm / ${r.shiftOk ? '' : '⚠ '}${store.activePreset ? `±${store.activePreset.sUp}%` : `${Math.abs(Math.round(r.shiftM / (r.nativeH || 1) * 100))}%`}`,
+  // S.maxUp / S.maxDn are already ceiling-flipped room-direction limits (updated in refresh())
+  const shiftLimitStr = store.activePreset
+    ? `+${S.maxUp.toFixed(0)}%/−${S.maxDn.toFixed(0)}%`
+    : `${Math.abs(Math.round(r.userShiftM / (r.nativeH || 1) * 100))}%`;
+  h += card('Shift (user)',
+    `${r.userShiftM >= 0 ? '+' : ''}${(r.userShiftM * 10).toFixed(0)} mm / ${r.shiftOk ? '' : '⚠ '}${shiftLimitStr}`,
     r.shiftOk ? 'ok' : 'warn',
     r.shiftOk ? 'In range' : 'Out of range'
   );

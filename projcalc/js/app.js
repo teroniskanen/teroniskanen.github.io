@@ -54,15 +54,22 @@ function interpolateShiftCurve(curve, ratio) {
   return null;
 }
 
-// Returns {up, dn} shift limits in % for the current throw ratio
+// Returns {up, dn} shift limits in % for the current throw ratio, in room coordinates.
+// Positive = image moves UP in room. In ceiling mode the projector is physically inverted, so
+// the mechanical sUp/sDn swap: what was "shift up" on the body now moves the image downward.
 function getShiftLimits() {
   const p = store.activePreset;
   if (!p) return { up: S.maxUp, dn: S.maxDn };
+  let up, dn;
   if (p.shiftCurve) {
     const v = interpolateShiftCurve(p.shiftCurve, S.ratio);
-    if (v) return v;
+    if (v) { up = v.up; dn = v.dn; }
+    else   { up = p.sUp; dn = p.sDn; }
+  } else {
+    up = p.sUp; dn = p.sDn;
   }
-  return { up: p.sUp, dn: p.sDn };
+  // Ceiling mount: shift direction is inverted in room coordinates
+  return store.floorMode ? { up, dn } : { up: dn, dn: up };
 }
 
 // Draw/update the lens shift curve SVG in the sidebar
@@ -87,8 +94,23 @@ function drawShiftCurve() {
   const PL = 4, PR = 4, PT = 4, PB = 14;
   const cW = W - PL - PR, cHpx = H - PT - PB;
 
+  // Mechanical limits at a given throw ratio
+  const getLim = r => {
+    if (p.shiftCurve) { const v = interpolateShiftCurve(p.shiftCurve, r); if (v) return v; }
+    return { up: p.sUp, dn: p.sDn };
+  };
+
+  // Room-direction limits: in ceiling mode sUp/sDn swap because the projector is inverted
+  const getRoomLim = r => {
+    const m = getLim(r);
+    return store.floorMode ? { up: m.up, dn: m.dn } : { up: m.dn, dn: m.up };
+  };
+  const roomLimAtCurrent = getRoomLim(S.ratio);
+  const roomTotalPct = roomLimAtCurrent.up + roomLimAtCurrent.dn || 1;
+
   const xS  = r  => PL + Math.min(1, Math.max(0, (r - rMin) / rSpan)) * cW;
-  const yS  = pc => PT + (1 - (pc + p.sDn) / totalPct) * cHpx;
+  // yS maps room-direction shift% to canvas Y (top = max up, bottom = max down)
+  const yS  = pc => PT + (1 - (pc + roomLimAtCurrent.dn) / roomTotalPct) * cHpx;
 
   const _t = document.documentElement.dataset.theme;
   const dk = _t === 'dark' ? true : _t === 'light' ? false : matchMedia('(prefers-color-scheme: dark)').matches;
@@ -98,26 +120,20 @@ function drawShiftCurve() {
   const bgCol   = dk ? '#27272a'               : '#f4f4f5';
   const lblCol  = dk ? '#71717a'               : '#a1a1aa';
 
-  const getLim = r => {
-    if (p.shiftCurve) { const v = interpolateShiftCurve(p.shiftCurve, r); if (v) return v; }
-    return { up: p.sUp, dn: p.sDn };
-  };
-
   const steps = p.fixed ? 2 : 32;
   let topPts = [], botPts = [];
   for (let i = 0; i < steps; i++) {
     const r = rMin + (i / (steps - 1)) * rSpan;
-    const lim = getLim(r);
-    topPts.push([xS(r), yS(lim.up)]);
-    botPts.push([xS(r), yS(-lim.dn)]);
+    const rl = getRoomLim(r);
+    topPts.push([xS(r), yS(rl.up)]);
+    botPts.push([xS(r), yS(-rl.dn)]);
   }
 
   const toPath = pts => pts.map((pt, i) => `${i ? 'L' : 'M'}${pt[0].toFixed(1)},${pt[1].toFixed(1)}`).join('');
   const area   = toPath(topPts) + toPath([...botPts].reverse()).replace('M', 'L') + 'Z';
   const zy     = yS(0);
   const cx     = xS(S.ratio);
-  const lim    = getLim(S.ratio);
-  const inRng  = S.shiftPct >= -lim.dn && S.shiftPct <= lim.up;
+  const inRng  = S.shiftPct >= -roomLimAtCurrent.dn && S.shiftPct <= roomLimAtCurrent.up;
   const cy     = Math.max(PT + 3, Math.min(H - PB - 3, yS(S.shiftPct)));
   const dotCol = inRng ? '#10b981' : '#ef4444';
 
@@ -132,8 +148,8 @@ function drawShiftCurve() {
     `<text x="${PL}" y="${H - 2}" font-size="8" fill="${lblCol}" font-family="monospace">${rMin.toFixed(2)}</text>` +
     `<text x="${(W - PR).toFixed(1)}" y="${H - 2}" font-size="8" fill="${lblCol}" font-family="monospace" text-anchor="end">${rMax.toFixed(2)}</text>` +
     `<text x="${cx.toFixed(1)}" y="${H - 2}" font-size="8" fill="${dotCol}" font-family="monospace" text-anchor="middle">${S.ratio.toFixed(2)}</text>` +
-    `<text x="${(W - PR).toFixed(1)}" y="${PT + 8}" font-size="8" fill="${lblCol}" font-family="monospace" text-anchor="end">+${lim.up.toFixed(0)}%</text>` +
-    `<text x="${(W - PR).toFixed(1)}" y="${(H - PB - 1).toFixed(1)}" font-size="8" fill="${lblCol}" font-family="monospace" text-anchor="end">-${lim.dn.toFixed(0)}%</text>` +
+    `<text x="${(W - PR).toFixed(1)}" y="${PT + 8}" font-size="8" fill="${lblCol}" font-family="monospace" text-anchor="end">+${roomLimAtCurrent.up.toFixed(0)}%</text>` +
+    `<text x="${(W - PR).toFixed(1)}" y="${(H - PB - 1).toFixed(1)}" font-size="8" fill="${lblCol}" font-family="monospace" text-anchor="end">-${roomLimAtCurrent.dn.toFixed(0)}%</text>` +
     `<text x="${PL}" y="${PT + 8}" font-size="8" fill="${dotCol}" font-family="monospace">${(S.shiftPct >= 0 ? '+' : '') + S.shiftPct.toFixed(1)}%</text>`;
 }
 
@@ -443,11 +459,17 @@ function autoSolvePosition() {
                 :                          S.targetH;
 
   const lH = store.floorMode ? S.drop + S.bodyH : S.ceilH - S.drop;
-  // Need: tCH = lH + shiftM - dist·tan(tilt) = cH_goal
-  // → shiftM - dist·tan(tilt) = delta
-  const delta = cH_goal - lH;
 
-  const { up: maxUp, dn: maxDn } = getShiftLimits();  // curve-aware at current ratio
+  // Subtract the projector's built-in vertical offset from the target so we only solve for
+  // the user-adjustable portion of shift (see compute.js for the same offset logic).
+  const vOffsetPct = store.activePreset ? (store.activePreset.vOffset || 0) : 0;
+  const naturalOffsetM = store.floorMode ? (vOffsetPct / 100) * nativeH : -(vOffsetPct / 100) * nativeH;
+
+  // Need: tCH = lH + naturalOffsetM + userShiftM - dist·tan(tilt) = cH_goal
+  // → userShiftM - dist·tan(tilt) = delta
+  const delta = cH_goal - lH - naturalOffsetM;
+
+  const { up: maxUp, dn: maxDn } = getShiftLimits();  // curve-aware + ceiling-flipped
   const maxKS = S.maxKS;
 
   // Use as much shift as possible first (prefer no-keystone)

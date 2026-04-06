@@ -177,6 +177,14 @@ export function draw(r) {
     ctx.fillText(`${PERSON_H}cm`, pX+5*dpr, pTopY+3*dpr);
   }
 
+  // Lens-level reference line: horizontal at lens height from wall to projector.
+  // Where it crosses the image rectangle shows whether the lens is at top / centre / bottom
+  // of the image — makes the built-in vOffset (vertical offset) immediately visible.
+  ctx.strokeStyle = c.lens; ctx.lineWidth = 0.7*dpr; ctx.globalAlpha = 0.45;
+  ctx.setLineDash([2*dpr, 4*dpr]);
+  ctx.beginPath(); ctx.moveTo(wX, lY); ctx.lineTo(lX, lY); ctx.stroke();
+  ctx.globalAlpha = 1; ctx.setLineDash([]);
+
   // Optical axis
   ctx.strokeStyle = c.axis; ctx.lineWidth = 0.8*dpr; ctx.setLineDash([4*dpr, 4*dpr]);
   ctx.beginPath();
