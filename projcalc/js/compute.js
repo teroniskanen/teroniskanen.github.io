@@ -2,7 +2,7 @@ import { S, store } from './state.js';
 import { PERSON_H } from './data.js';
 
 export function compute() {
-  const { activePreset, dropDriver } = store;
+  const { activePreset, dropDriver, floorMode } = store;
   // In manual mode nativeAspect === S.aspect, so isPillared/isLetterboxed are always false
   const nativeAspect = activePreset ? parseFloat(activePreset.aspectVal) : S.aspect;
 
@@ -28,7 +28,11 @@ export function compute() {
 
   let lH, cH, drop;
   if (dropDriver) {
-    drop = S.drop; lH = S.ceilH - drop; cH = lH + shiftM;
+    drop = S.drop;
+    // floor mode: drop = pedestal height; lH = pedestal + bodyH_from_base
+    // ceil mode:  drop = distance ceiling→lens; lH = ceilH − drop
+    lH = floorMode ? drop + S.bodyH : S.ceilH - drop;
+    cH = lH + shiftM;
   } else {
     // cH = target image centre; invert combined model so image lands exactly there:
     // tCH = lH + shiftM - dist·tan(tr) = cH  →  lH = cH - shiftM + dist·tan(tr)
@@ -36,10 +40,11 @@ export function compute() {
        : S.posType === 'top'    ? S.targetH - mediaH / 2
        :                          S.targetH;
     lH   = cH - shiftM + S.dist * Math.tan(tr);
-    drop = S.ceilH - lH;
+    drop = floorMode ? lH - S.bodyH : S.ceilH - lH;
   }
 
-  const rod     = drop - S.bodyH;
+  // rod = extension rod above body (ceiling mount only)
+  const rod = floorMode ? 0 : drop - S.bodyH;
   const shiftOk = S.shiftPct >= -S.maxDn && S.shiftPct <= S.maxUp;
   const lensOk  = lH > 0 && lH < S.ceilH;
 

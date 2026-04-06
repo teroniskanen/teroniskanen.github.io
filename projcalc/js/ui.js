@@ -22,8 +22,17 @@ export function buildRoomSel() {
 // Update the drop mode label and input styling
 export function updateDropModeLabel() {
   const el = g('dropModeLabel'), dv = g('dropV');
+  const dropLbl  = g('dropLbl');
+  const bodyHLbl = g('bodyHLbl');
+  if (store.floorMode) {
+    if (dropLbl)  dropLbl.textContent  = 'Pedestal height';
+    if (bodyHLbl) bodyHLbl.textContent = 'Lens above pedestal';
+  } else {
+    if (dropLbl)  dropLbl.textContent  = 'Drop from ceiling';
+    if (bodyHLbl) bodyHLbl.textContent = 'Lens to mount top';
+  }
   if (store.dropDriver) {
-    el.textContent  = 'Driver: drop sets projector height';
+    el.textContent = store.floorMode ? 'Driver: pedestal height sets projector' : 'Driver: drop sets projector height';
     el.style.color  = 'var(--color-text-success)';
     dv.classList.add('drv');
   } else {
@@ -51,7 +60,7 @@ export function renderRes(r) {
   }
 
   h += card('Lens height',     `${r.lH.toFixed(1)} cm`,   r.lensOk ? '' : 'warn');
-  h += card('Drop (ceil→lens)',`${r.drop.toFixed(1)} cm`,  '');
+  h += card(store.floorMode ? 'Pedestal height' : 'Drop (ceil→lens)', `${r.drop.toFixed(1)} cm`, '');
   h += card('Shift',
     `${r.shiftM >= 0 ? '+' : ''}${(r.shiftM * 10).toFixed(0)} mm / ${r.shiftOk ? '' : '⚠ '}${store.activePreset ? `±${store.activePreset.sUp}%` : `${Math.abs(Math.round(r.shiftM / (r.nativeH || 1) * 100))}%`}`,
     r.shiftOk ? 'ok' : 'warn',

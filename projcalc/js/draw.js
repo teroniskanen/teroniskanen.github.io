@@ -1,9 +1,14 @@
-import { S } from './state.js';
+import { S, store } from './state.js';
 import { PERSON_H } from './data.js';
 
 const cv  = document.getElementById('cv');
 const ctx = cv.getContext('2d');
-const dk  = () => matchMedia('(prefers-color-scheme: dark)').matches;
+const dk  = () => {
+  const t = document.documentElement.dataset.theme;
+  if (t === 'dark')  return true;
+  if (t === 'light') return false;
+  return matchMedia('(prefers-color-scheme: dark)').matches;
+};
 
 function C() {
   const d = dk();
@@ -169,12 +174,35 @@ export function draw(r) {
   ctx.stroke(); ctx.setLineDash([]);
 
   // Projector mount (rod + body)
-  const bH   = Math.max(S.bodyH*(dH/scH), 10*dpr), bW = 24*dpr, bTop = lY - bH;
-  ctx.fillStyle = c.rod;
-  ctx.fillRect(lX-1.5*dpr, sy(S.ceilH), 3*dpr, bTop-sy(S.ceilH));
-  ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 6*dpr; ctx.shadowOffsetY = 3*dpr;
-  ctx.fillStyle = c.proj; ctx.strokeStyle = c.projS; ctx.lineWidth = 1.2*dpr;
-  rr(lX-bW/2, bTop, bW, bH, 3*dpr); ctx.fill(); ctx.stroke();
+  const bH = Math.max(S.bodyH*(dH/scH), 10*dpr), bW = 24*dpr;
+  if (store.floorMode) {
+    // Pedestal block from floor up to S.drop
+    const pedTop  = sy(S.drop);
+    const pedBot  = sy(0);
+    const pedH    = pedBot - pedTop;
+    if (pedH > 1) {
+      ctx.fillStyle = c.rod;
+      ctx.fillRect(lX - bW*0.4, pedTop, bW*0.8, pedH);
+    }
+    // Body sits on pedestal — lens is at top
+    const bBot = lY + bH;
+    ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 6*dpr; ctx.shadowOffsetY = -3*dpr;
+    ctx.fillStyle = c.proj; ctx.strokeStyle = c.projS; ctx.lineWidth = 1.2*dpr;
+    rr(lX-bW/2, lY, bW, bH, 3*dpr); ctx.fill(); ctx.stroke();
+    // Legs (4 short lines at bottom)
+    const legW = 4*dpr, legH = 5*dpr;
+    ctx.fillStyle = c.projS;
+    ctx.fillRect(lX - bW/2 + 2*dpr, bBot - 1*dpr, legW, legH);
+    ctx.fillRect(lX + bW/2 - legW - 2*dpr, bBot - 1*dpr, legW, legH);
+  } else {
+    // Ceiling mount — body above lens
+    const bTop = lY - bH;
+    ctx.fillStyle = c.rod;
+    ctx.fillRect(lX-1.5*dpr, sy(S.ceilH), 3*dpr, bTop-sy(S.ceilH));
+    ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 6*dpr; ctx.shadowOffsetY = 3*dpr;
+    ctx.fillStyle = c.proj; ctx.strokeStyle = c.projS; ctx.lineWidth = 1.2*dpr;
+    rr(lX-bW/2, bTop, bW, bH, 3*dpr); ctx.fill(); ctx.stroke();
+  }
   ctx.shadowColor = 'transparent';
   ctx.fillStyle = c.lens;
   ctx.beginPath(); ctx.arc(lX, lY, 4*dpr, 0, Math.PI*2); ctx.fill();

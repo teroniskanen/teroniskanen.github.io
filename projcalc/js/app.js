@@ -90,7 +90,8 @@ function drawShiftCurve() {
   const xS  = r  => PL + Math.min(1, Math.max(0, (r - rMin) / rSpan)) * cW;
   const yS  = pc => PT + (1 - (pc + p.sDn) / totalPct) * cHpx;
 
-  const dk      = matchMedia('(prefers-color-scheme: dark)').matches;
+  const _t = document.documentElement.dataset.theme;
+  const dk = _t === 'dark' ? true : _t === 'light' ? false : matchMedia('(prefers-color-scheme: dark)').matches;
   const fillCol = dk ? 'rgba(59,130,246,.18)' : 'rgba(59,130,246,.10)';
   const lineCol = dk ? '#3b82f6'               : '#2563eb';
   const zeroCol = dk ? '#3f3f46'               : '#e4e4e7';
@@ -404,6 +405,13 @@ g('rdel').addEventListener('click', () => {
   if (!isNaN(i) && i >= 0) { store.roomPresets.splice(i, 1); buildRoomSel(); }
 });
 
+// ─── Mount mode (ceiling / pedestal) ─────────────────────────────────────────
+document.querySelectorAll('input[name="mount"]').forEach(el => el.addEventListener('change', function() {
+  store.floorMode = (this.value === 'floor');
+  updateDropModeLabel();
+  refresh();
+}));
+
 // ─── Drop mode ────────────────────────────────────────────────────────────────
 g('dropV').addEventListener('input', function() {
   if (!store.dropDriver) { store.dropDriver = true; updateDropModeLabel(); }
@@ -422,7 +430,7 @@ function autoSolvePosition() {
                 : S.posType === 'top'    ? S.targetH - mediaH / 2
                 :                          S.targetH;
 
-  const lH = S.ceilH - S.drop;
+  const lH = store.floorMode ? S.drop + S.bodyH : S.ceilH - S.drop;
   // Need: tCH = lH + shiftM - dist·tan(tilt) = cH_goal
   // → shiftM - dist·tan(tilt) = delta
   const delta = cH_goal - lH;
@@ -515,6 +523,16 @@ g('aspect').addEventListener('change', function() { tri('aspect'); refresh(); })
 });
 g('personOn').addEventListener('change', refresh);
 
+// ─── Theme toggle ─────────────────────────────────────────────────────────────
+g('themeBtn').addEventListener('click', () => {
+  const html = document.documentElement;
+  const isDark = html.dataset.theme === 'dark' ||
+    (html.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+  html.dataset.theme = isDark ? 'light' : 'dark';
+  g('themeBtn').textContent = isDark ? '☽' : '☀';
+  refresh();
+});
+
 // ─── Resize observer + dark mode ─────────────────────────────────────────────
 let resizeTimer;
 const ro = new ResizeObserver(() => {
@@ -525,4 +543,8 @@ ro.observe(document.querySelector('.dia'));
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refresh);
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
+{
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  g('themeBtn').textContent = isDark ? '☽' : '☀';
+}
 setTimeout(refresh, 100);
