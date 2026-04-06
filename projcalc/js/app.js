@@ -16,7 +16,6 @@ PRESETS.forEach(p => {
 
 // ─── Read DOM inputs into S ───────────────────────────────────────────────────
 function rd() {
-  S.viewW    = +g('viewW').value   || 500;
   S.ceilH    = +g('ceilH').value   || 500;
   S.wallH    = +g('wallH').value   || 300;
   S.dist     = +g('dist').value    || 405;
@@ -141,6 +140,10 @@ function drawShiftCurve() {
 function refresh() {
   rd();
 
+  // Auto-fit drawing width to encompass throw distance (+ person if shown)
+  const personEnd = S.personOn && S.personDist > 0 ? S.personDist : 0;
+  S.viewW = Math.max(Math.ceil(S.dist * 1.25 + 80), personEnd > 0 ? Math.ceil(personEnd * 1.4) : 0, 280);
+
   // Apply shift curve limits at current throw ratio (updates maxUp/maxDn)
   if (store.activePreset && store.activePreset.shiftType === 'optical') {
     const lims = getShiftLimits();
@@ -210,6 +213,7 @@ function refresh() {
     g('dropV').value = r.drop.toFixed(1);
   }
 
+  if (g('zoomRow').style.display !== 'none') g('zoomVal').textContent = S.ratio.toFixed(2) + ':1';
   draw(r);
   renderRes(r);
   drawShiftCurve();
@@ -324,6 +328,7 @@ function applyPreset(p) {
     lb.classList.toggle('on', store.lkState.ratio); lb.classList.remove('pl');
     g('zoomRow').style.display = 'flex';
     const zs = g('zoomSlider'); zs.min = p.rMin; zs.max = p.rMax; zs.step = 0.01; zs.value = p.rMin;
+    g('zoomVal').textContent = p.rMin.toFixed(2) + ':1';
   }
   g('lkBody').classList.add('pl');
 
@@ -368,7 +373,6 @@ buildRoomSel();
 
 g('rsel').addEventListener('change', function() {
   const r = store.roomPresets[+this.value]; if (!r) return;
-  g('viewW').value  = r.viewW || 500;
   g('ceilH').value  = r.ceilH;
   g('wallH').value  = r.wallH;
   g('dist').value   = r.dist;
@@ -382,7 +386,6 @@ g('rsave').addEventListener('click', () => {
   const name = g('rname').value.trim() || 'Room ' + (store.roomPresets.length + 1);
   store.roomPresets.push({
     name,
-    viewW:   +g('viewW').value,
     ceilH:   +g('ceilH').value,
     wallH:   +g('wallH').value,
     dist:    +g('dist').value,
@@ -480,11 +483,11 @@ g('imgH').addEventListener('input', function() { tri('height'); refresh(); });
 g('dist').addEventListener('input', function() {
   if (!this.readOnly) { tri('dist'); refresh(); }
 });
-g('viewW').addEventListener('input', refresh);
-
 g('zoomSlider').addEventListener('input', function() {
   if (g('ratio').readOnly) return;
-  g('ratio').value = parseFloat(this.value).toFixed(2);
+  const v = parseFloat(this.value).toFixed(2);
+  g('ratio').value = v;
+  g('zoomVal').textContent = v + ':1';
   tri('ratio'); refresh();
 });
 

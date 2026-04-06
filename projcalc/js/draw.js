@@ -44,19 +44,6 @@ function rr(x, y, w, h, r) {
   ctx.closePath();
 }
 
-// Vertical dimension line with label
-function dimV(x, y1, y2, lbl, col, d, side) {
-  if (Math.abs(y2 - y1) < 3) return;
-  const tk = 3*d;
-  ctx.strokeStyle = col; ctx.lineWidth = 0.6*d;
-  ctx.beginPath(); ctx.moveTo(x, y1); ctx.lineTo(x, y2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(x-tk, y1); ctx.lineTo(x+tk, y1); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(x-tk, y2); ctx.lineTo(x+tk, y2); ctx.stroke();
-  ctx.fillStyle = col; ctx.font = `${8*d}px var(--font-mono)`;
-  if (side === 'r') { ctx.textAlign = 'left';  ctx.fillText(lbl, x+5*d,  (y1+y2)/2+3*d); }
-  else              { ctx.textAlign = 'right'; ctx.fillText(lbl, x-5*d, (y1+y2)/2+3*d); }
-}
-
 export function draw(r) {
   const dpr = window.devicePixelRatio || 1;
   const W = Math.round(cv.clientWidth * dpr), H = Math.round(cv.clientHeight * dpr);
@@ -68,7 +55,7 @@ export function draw(r) {
   ctx.fillStyle = c.bg; ctx.fillRect(0, 0, W, H);
 
   const WW = 16*dpr;
-  const PL = 90*dpr + WW, PR = 110*dpr, PT = 24*dpr, PB = 34*dpr;
+  const PL = 52*dpr + WW, PR = 28*dpr, PT = 18*dpr, PB = 16*dpr;
   const dW = W - PL - PR, dH = H - PT - PB;
 
   const roomW = S.viewW;
@@ -155,24 +142,7 @@ export function draw(r) {
   ctx.beginPath(); ctx.moveTo(wX, aTY); ctx.lineTo(lX, aTY); ctx.stroke();
   ctx.setLineDash([]);
   ctx.beginPath(); ctx.moveTo(wX, aTY); ctx.lineTo(lX, lY); ctx.stroke();
-  const annotX = lX - 16*dpr, annotY = (lY+aTY)/2;
-  ctx.fillStyle = sCol; ctx.font = `${8*dpr}px var(--font-mono)`; ctx.textAlign = 'right';
-  ctx.fillText(
-    `${(r.lH-r.effTop) >= 0 ? '+' : ''}${(r.lH-r.effTop).toFixed(0)}cm`,
-    annotX, annotY+3*dpr
-  );
 
-  // Left dimension lines
-  if (Math.abs(wTop - aTY) > 4*dpr) {
-    const gapCol = r.wallGap > 0 ? c.wallDim : '#dc2626';
-    dimV(
-      PL-WW-46*dpr,
-      Math.min(wTop, aTY), Math.max(wTop, aTY),
-      `${r.wallGap > 0 ? '+' : ''}${Math.abs(r.wallGap).toFixed(1)}cm`,
-      gapCol, dpr, 'l'
-    );
-  }
-  dimV(PL-WW-68*dpr, aTY, aBY, `${r.mediaH.toFixed(1)}cm`, c.dim, dpr, 'l');
 
   // Person / shadow check
   if (S.personOn && S.personDist > 0 && S.personDist < S.dist) {
@@ -209,16 +179,4 @@ export function draw(r) {
   ctx.fillStyle = c.lens;
   ctx.beginPath(); ctx.arc(lX, lY, 4*dpr, 0, Math.PI*2); ctx.fill();
 
-  // Right dimension lines (lens height + drop)
-  const dX1 = lX + 16*dpr, dX2 = lX + 50*dpr;
-  dimV(dX1, sy(0),       lY,         `${r.lH.toFixed(1)} cm`,   c.dim,  dpr, 'r');
-  dimV(dX2, sy(S.ceilH), lY,         `${r.drop.toFixed(1)} cm`, c.dimB, dpr, 'r');
-  ctx.strokeStyle = c.dim; ctx.lineWidth = 0.5*dpr; ctx.setLineDash([2*dpr, 3*dpr]);
-  ctx.beginPath(); ctx.moveTo(lX+6*dpr, lY);         ctx.lineTo(dX1-3*dpr, lY);         ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(lX+6*dpr, sy(S.ceilH)); ctx.lineTo(dX2-3*dpr, sy(S.ceilH)); ctx.stroke();
-  ctx.setLineDash([]);
-
-  // Throw distance label
-  ctx.fillStyle = c.lbl; ctx.font = `${8.5*dpr}px var(--font-mono)`; ctx.textAlign = 'center';
-  ctx.fillText(`◄ ${S.dist.toFixed(0)} cm throw ►`, sx(S.dist/2), H-PB+18*dpr);
 }

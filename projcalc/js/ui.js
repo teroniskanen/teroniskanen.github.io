@@ -1,4 +1,4 @@
-import { g, store } from './state.js';
+import { g, S, store } from './state.js';
 import { ASPECT_NAMES } from './data.js';
 
 // Lock input fields visually (preset-locked fields get warning style)
@@ -43,6 +43,7 @@ export function renderRes(r) {
     `</div>`;
 
   let h = '';
+  h += card('Throw distance', `${S.dist.toFixed(0)} cm`, '');
   h += card('Media Area', `${r.mediaW.toFixed(1)} × ${r.mediaH.toFixed(1)} cm`, '');
 
   if (r.isLetterboxed || r.isPillared) {
@@ -57,6 +58,8 @@ export function renderRes(r) {
     r.shiftOk ? 'In range' : 'Out of range'
   );
   h += card('Media Bottom', `${r.effBot.toFixed(1)} cm`, r.effBot < 0 ? 'warn' : '');
+  const sightClear = r.lH - r.effTop;
+  h += card('Lens above top', `${sightClear >= 0 ? '+' : ''}${sightClear.toFixed(1)} cm`, sightClear < 0 ? 'warn' : '');
 
   const wg = r.wallGap;
   h += card(
