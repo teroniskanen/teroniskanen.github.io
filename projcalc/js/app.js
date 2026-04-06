@@ -407,7 +407,19 @@ g('rdel').addEventListener('click', () => {
 
 // ─── Mount mode (ceiling / pedestal) ─────────────────────────────────────────
 document.querySelectorAll('input[name="mount"]').forEach(el => el.addEventListener('change', function() {
-  store.floorMode = (this.value === 'floor');
+  const newFloor = (this.value === 'floor');
+  if (newFloor !== store.floorMode) {
+    // Translate the drop/pedestal value so lens stays at the same physical height
+    rd();
+    const lH_current = store.floorMode
+      ? S.drop + S.bodyH       // floor→ceiling: was pedestal mode
+      : S.ceilH - S.drop;      // ceiling→floor: was ceiling mode
+    const newDrop = newFloor
+      ? lH_current - S.bodyH   // new pedestal height
+      : S.ceilH - lH_current;  // new ceiling drop
+    g('dropV').value = Math.max(0, newDrop).toFixed(1);
+  }
+  store.floorMode = newFloor;
   updateDropModeLabel();
   refresh();
 }));

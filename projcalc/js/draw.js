@@ -141,12 +141,22 @@ export function draw(r) {
   ctx.beginPath(); ctx.moveTo(lX, lY); ctx.lineTo(wX, aTY); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(lX, lY); ctx.lineTo(wX, aBY); ctx.stroke();
 
-  // Sight line
-  const sCol = r.aboveSight ? c.sight : c.sightBad;
-  ctx.strokeStyle = sCol; ctx.lineWidth = 1.2*dpr; ctx.setLineDash([4*dpr, 4*dpr]);
-  ctx.beginPath(); ctx.moveTo(wX, aTY); ctx.lineTo(lX, aTY); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.beginPath(); ctx.moveTo(wX, aTY); ctx.lineTo(lX, lY); ctx.stroke();
+  // Sight line (ceiling mode: lens must be above image top; floor mode: lens below image bottom)
+  if (!store.floorMode) {
+    const sCol = r.aboveSight ? c.sight : c.sightBad;
+    ctx.strokeStyle = sCol; ctx.lineWidth = 1.2*dpr; ctx.setLineDash([4*dpr, 4*dpr]);
+    ctx.beginPath(); ctx.moveTo(wX, aTY); ctx.lineTo(lX, aTY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(wX, aTY); ctx.lineTo(lX, lY); ctx.stroke();
+  } else {
+    // Floor mode: draw sight line from image bottom to lens
+    const sBY = sy(r.effBot);
+    const sCol = r.aboveSight ? c.sight : c.sightBad;
+    ctx.strokeStyle = sCol; ctx.lineWidth = 1.2*dpr; ctx.setLineDash([4*dpr, 4*dpr]);
+    ctx.beginPath(); ctx.moveTo(wX, sBY); ctx.lineTo(lX, sBY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(wX, sBY); ctx.lineTo(lX, lY); ctx.stroke();
+  }
 
 
   // Person / shadow check

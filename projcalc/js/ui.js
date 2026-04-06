@@ -67,8 +67,14 @@ export function renderRes(r) {
     r.shiftOk ? 'In range' : 'Out of range'
   );
   h += card('Media Bottom', `${r.effBot.toFixed(1)} cm`, r.effBot < 0 ? 'warn' : '');
-  const sightClear = r.lH - r.effTop;
-  h += card('Lens above top', `${sightClear >= 0 ? '+' : ''}${sightClear.toFixed(1)} cm`, sightClear < 0 ? 'warn' : '');
+  if (store.floorMode) {
+    // Floor mode: lens should be below image bottom (projector clears audience sightline from below)
+    const belowBot = r.effBot - r.lH;
+    h += card('Lens below bottom', `${belowBot >= 0 ? '+' : ''}${belowBot.toFixed(1)} cm`, belowBot < 0 ? 'warn' : '');
+  } else {
+    const sightClear = r.lH - r.effTop;
+    h += card('Lens above top', `${sightClear >= 0 ? '+' : ''}${sightClear.toFixed(1)} cm`, sightClear < 0 ? 'warn' : '');
+  }
 
   const wg = r.wallGap;
   h += card(

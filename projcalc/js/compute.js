@@ -64,7 +64,9 @@ export function compute() {
 
   const ksN        = Math.abs(S.tiltDeg);
   const ksOk       = ksN <= S.maxKS;
-  const aboveSight = lH > effTop;
+  // Ceiling mode: check projector is above image top (audience sightline)
+  // Floor mode:   check projector is below image bottom (it's below the screen, no sightline issue)
+  const aboveSight = floorMode ? lH < effBot : lH > effTop;
   const wallGap    = S.wallH - effTop;
 
   let shadowH = null, personClears = false;
