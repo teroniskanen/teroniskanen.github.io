@@ -45,11 +45,6 @@ export const PRESETS = [
   {id:'l1050_lm', name:'Epson EB-L1050U + ELPLM08',  aspectVal:'1.6',        rMin:1.44,rMax:2.32,sUp:67, sDn:67, vOffset:0,   fixed:false, ks:30, bodyH:14,   dMin:93,  dMax:1830, shiftType:'optical', digitalZoom:false, shiftCurve:null},
 ];
 
-export const DEFAULT_ROOMS = [
-  {name:'Stage 5m',  viewW:600, ceilH:500, wallH:300, dist:600, posType:'bottom', targetH:80},
-  {name:'Classroom', viewW:500, ceilH:300, wallH:300, dist:500, posType:'bottom', targetH:90},
-  {name:'Conference',viewW:400, ceilH:280, wallH:280, dist:350, posType:'bottom', targetH:70},
-];
 
 export const LSVG = `<svg width="12" height="12" viewBox="0 0 10 11" fill="none"><rect x="1" y="5" width="8" height="6" rx="1.2" stroke="currentColor" stroke-width="1.3"/><path d="M3 5V3.5a2 2 0 0 1 4 0V5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`;
 export const USVG = `<svg width="12" height="12" viewBox="0 0 10 11" fill="none"><rect x="1" y="5" width="8" height="6" rx="1.2" stroke="currentColor" stroke-width="1.3"/><path d="M3 5V3.5a2 2 0 0 1 4 0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`;

@@ -193,7 +193,7 @@ function refresh() {
     if (reqNativeW > 0) {
       const rFixed = g('ratio').readOnly || store.lkState.ratio;
       if (!rFixed) {
-        S.ratio = S.dist / reqNativeW;
+        S.ratio = clampRatio(S.dist / reqNativeW);
         g('ratio').value = S.ratio.toFixed(2);
         if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = g('ratio').value;
       } else if (!store.lkState.dist) {
@@ -236,6 +236,13 @@ function refresh() {
   drawShiftCurve();
 }
 
+// Clamp a computed ratio to the active preset's zoom range (no-op when no preset or fixed ratio)
+function clampRatio(r) {
+  const p = store.activePreset;
+  if (!p || p.fixed) return r;
+  return Math.min(p.rMax, Math.max(p.rMin, r));
+}
+
 // ─── Geometry triangle solver ─────────────────────────────────────────────────
 function tri(changed) {
   rd();
@@ -264,7 +271,7 @@ function tri(changed) {
     if (!dFixed) {
       g('dist').value = (S.ratio * reqNativeW).toFixed(1);
     } else if (!rFixed) {
-      g('ratio').value = (S.dist / reqNativeW).toFixed(2);
+      g('ratio').value = clampRatio(S.dist / reqNativeW).toFixed(2);
       if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = g('ratio').value;
     }
   } else if (changed === 'height') {
@@ -276,7 +283,7 @@ function tri(changed) {
     if (!dFixed) {
       g('dist').value = (S.ratio * reqNativeW).toFixed(1);
     } else if (!rFixed) {
-      g('ratio').value = (S.dist / reqNativeW).toFixed(2);
+      g('ratio').value = clampRatio(S.dist / reqNativeW).toFixed(2);
       if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = g('ratio').value;
     }
   } else if (changed === 'dist') {
@@ -284,7 +291,7 @@ function tri(changed) {
       // dist changed, width locked → update ratio
       if (!rFixed) {
         const reqNativeW = S.aspect >= nativeAspect ? S.imgW : S.imgW * (nativeAspect / S.aspect);
-        g('ratio').value = (S.dist / reqNativeW).toFixed(2);
+        g('ratio').value = clampRatio(S.dist / reqNativeW).toFixed(2);
         if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = g('ratio').value;
       }
     } else if (rFixed) {
@@ -296,7 +303,7 @@ function tri(changed) {
     } else if (S.imgW > 0) {
       // dist changed, nothing locked → update ratio (keep width as reference)
       const reqNativeW = S.aspect >= nativeAspect ? S.imgW : S.imgW * (nativeAspect / S.aspect);
-      g('ratio').value = (S.dist / reqNativeW).toFixed(2);
+      g('ratio').value = clampRatio(S.dist / reqNativeW).toFixed(2);
       if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = g('ratio').value;
     }
   } else if (changed === 'aspect') {
@@ -409,26 +416,6 @@ function loadSetup(r) {
   updateDropModeLabel(); refresh();
 }
 
-function currentSetup() {
-  return {
-    presetId:   store.activePreset ? store.activePreset.id : null,
-    ceilH:      +g('ceilH').value,
-    wallH:      +g('wallH').value,
-    dist:       +g('dist').value,
-    aspect:     +g('aspect').value,
-    ratio:      +g('ratio').value,
-    posType:    document.querySelector('input[name="pt"]:checked').value,
-    targetH:    +g('targetH').value,
-    shiftPct:   +g('sPct').value,
-    tiltDeg:    +g('tiltDeg').value,
-    floorMode:  store.floorMode,
-    drop:       +g('dropV').value,
-    dropDriver: store.dropDriver,
-    bodyH:      +g('bodyH').value,
-    maxKS:      +g('maxKS').value,
-  };
-}
-
 g('rsel').addEventListener('change', function() {
   const r = store.roomPresets[+this.value]; if (!r) return;
   loadSetup(r);
@@ -461,46 +448,9 @@ g('rsave').addEventListener('click', () => {
 
 g('rdel').addEventListener('click', () => {
   const val = g('rsel').value;
-  if (!val) return;   // BUG FIX: empty string → 0, would silently delete first preset
+  if (!val) return;
   const i = +val;
   if (!isNaN(i) && i >= 0) { store.roomPresets.splice(i, 1); buildRoomSel(); }
-});
-
-// Export all saved setups as a JSON file
-g('exportSetups').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify(store.roomPresets, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'projcalc-setups.json';
-  a.click();
-  URL.revokeObjectURL(a.href);
-});
-
-// Import setups from a JSON file (merges into existing list)
-g('importFile').addEventListener('change', function() {
-  const file = this.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const data = JSON.parse(e.target.result);
-      if (Array.isArray(data)) { store.roomPresets.push(...data); buildRoomSel(); }
-      else throw new Error();
-    } catch { alert('Invalid setup file.'); }
-  };
-  reader.readAsText(file);
-  this.value = '';
-});
-g('importSetups').addEventListener('click', () => g('importFile').click());
-
-// Copy shareable URL encoding the current setup into the hash
-g('shareUrl').addEventListener('click', () => {
-  const encoded = btoa(JSON.stringify(currentSetup()));
-  const url = location.origin + location.pathname + '#s=' + encoded;
-  navigator.clipboard.writeText(url).then(() => {
-    const btn = g('shareUrl'), orig = btn.textContent;
-    btn.textContent = 'Copied!';
-    setTimeout(() => btn.textContent = orig, 1500);
-  });
 });
 
 // ─── Mount mode (ceiling / pedestal) ─────────────────────────────────────────
@@ -649,6 +599,16 @@ g('themeBtn').addEventListener('click', () => {
   refresh();
 });
 
+// ─── Print support ───────────────────────────────────────────────────────────
+g('printBtn').addEventListener('click', () => window.print());
+const printImg = g('printImg');
+window.addEventListener('beforeprint', () => {
+  printImg.src = g('cv').toDataURL('image/png');
+});
+window.addEventListener('afterprint', () => {
+  printImg.src = '';
+});
+
 // ─── Resize observer + dark mode ─────────────────────────────────────────────
 let resizeTimer;
 const ro = new ResizeObserver(() => {
@@ -663,12 +623,4 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refresh);
   const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
   g('themeBtn').textContent = isDark ? '☽' : '☀';
 }
-// Load a shared setup from URL hash if present (#s=base64)
-if (location.hash.startsWith('#s=')) {
-  try {
-    loadSetup(JSON.parse(atob(location.hash.slice(3))));
-    history.replaceState(null, '', location.pathname); // clean up URL after load
-  } catch { setTimeout(refresh, 100); }
-} else {
-  setTimeout(refresh, 100);
-}
+setTimeout(refresh, 100);

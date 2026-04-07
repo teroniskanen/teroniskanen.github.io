@@ -196,6 +196,66 @@
     .rc { flex: 1 1 120px; }
     #zoomSlider { width: 55px !important; }
   }
+
+  .printbtn { position:absolute; top:8px; right:42px; z-index:10; width:28px; height:28px; border:1px solid var(--color-border-tertiary); border-radius:var(--border-radius-sm); background:var(--color-background-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--color-text-tertiary); font-size:13px; transition:all var(--transition-speed); }
+  .printbtn:hover { background:var(--color-background-primary); color:var(--color-text-primary); }
+  #printImg { display:none; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+
+  /* ── Print styles ────────────────────────────────────────────── */
+  @media print {
+    @page { size: A4 landscape; margin: 8mm; }
+
+    body { width: auto; height: auto; overflow: visible; }
+    .g   { height: auto; min-height: 0; }
+
+    /* Sidebar – narrow, all overflow visible */
+    .lp {
+      width: 220px; flex-shrink: 0; overflow: visible;
+      padding: 4px 6px; font-size: 10px;
+      background: transparent; border-right: 1px solid #ccc;
+    }
+    .sec { font-size: 8px; margin-top: 6px; }
+    .f { height: auto; margin-bottom: 2px; }
+    .f label { font-size: 10px; }
+
+    /* Style inputs/selects as plain read values */
+    input[type=number], input[type=text], select {
+      border: none !important; background: transparent !important;
+      -webkit-appearance: none; appearance: none;
+      font-size: 10px !important; width: auto !important;
+      padding: 0 !important; color: inherit !important;
+      box-shadow: none !important; height: auto !important;
+    }
+    input[type=range], input[type=checkbox] { display: none !important; }
+    input[type=radio] { display: none !important; }
+    .rr { height: auto; gap: 3px; margin-bottom: 3px; }
+    .rr label { border: none; font-size: 10px; padding: 0; height: auto; display: inline; }
+    .rr input:checked + label { font-weight: 700; background: transparent; color: inherit; }
+
+    /* Hide interactive chrome */
+    .lkbtn, .rp-btns, #rname, #rsel, #zoomRow, #shiftCurveWrap,
+    .pbox, .whlk-row, .themebtn, .printbtn,
+    #arInfo, #dropModeRow, .tog ~ .f:last-of-type { display: none !important; }
+
+    /* Right panel – fill remaining width, fixed height */
+    .rp { flex: 1; min-width: 0; height: auto; background: transparent; position: relative; display: flex; flex-direction: column; }
+    .dia { flex: 1; position: relative; min-height: 0; height: 430px; }
+
+    /* Swap canvas for captured image */
+    #cv { display: none !important; }
+    #printImg { display: block !important; }
+
+    /* Results bar */
+    .res {
+      max-height: none; overflow: visible; padding: 6px;
+      border-top: 1px solid #ccc; gap: 4px; flex-wrap: wrap;
+      background: transparent;
+    }
+    .rc { flex: 1 1 110px; padding: 4px 6px; background: #f4f4f5 !important; }
+    .rl { font-size: 8px; }
+    .rv { font-size: 11px; }
+    .ba { font-size: 7px; }
+  }
 </style>
 </head>
 <body>
@@ -212,11 +272,7 @@
   <div class="rp-btns">
     <button id="rsave">Save</button>
     <button id="rdel">Del</button>
-    <button id="exportSetups">Export</button>
-    <button id="importSetups">Import</button>
-    <button id="shareUrl">Share URL</button>
   </div>
-  <input type="file" id="importFile" accept=".json" style="display:none">
 
   <div class="sec">Room</div>
   <div class="f"><label>Ceiling height</label><input type="number" id="ceilH" value="500" step="5" min="50" max="3000"><span class="u">cm</span></div>
@@ -310,7 +366,8 @@
 
  <div class="rp">
   <button class="themebtn" id="themeBtn" title="Toggle light/dark mode">☀</button>
-  <div class="dia"><canvas id="cv"></canvas></div>
+  <button class="printbtn" id="printBtn" title="Print / Save as PDF">⎙</button>
+  <div class="dia"><canvas id="cv"></canvas><img id="printImg" alt="diagram"></div>
   <div class="res" id="res"></div>
  </div>
 </div>

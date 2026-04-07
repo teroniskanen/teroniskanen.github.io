@@ -1,5 +1,3 @@
-import { DEFAULT_ROOMS } from './data.js';
-
 // --- DOM helper ---
 export const g = id => document.getElementById(id);
 
@@ -22,7 +20,7 @@ export const store = {
 
 try {
   const sr = localStorage.getItem('proj_rooms');
-  store.roomPresets = sr ? JSON.parse(sr) : [...DEFAULT_ROOMS];
+  store.roomPresets = sr ? JSON.parse(sr) : [];
 } catch(e) {
-  store.roomPresets = [...DEFAULT_ROOMS];
+  store.roomPresets = [];
 }

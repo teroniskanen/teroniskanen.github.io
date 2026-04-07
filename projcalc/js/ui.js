@@ -11,7 +11,7 @@ export const pLock = (ids, on) => ids.forEach(id => {
 // Rebuild room select dropdown and persist to localStorage
 export function buildRoomSel() {
   const rs = g('rsel');
-  rs.innerHTML = '<option value="">— select room —</option>';
+  rs.innerHTML = '<option value="">— select —</option>';
   store.roomPresets.forEach((r, i) => {
     const o = document.createElement('option');
     o.value = i; o.textContent = r.name; rs.appendChild(o);
