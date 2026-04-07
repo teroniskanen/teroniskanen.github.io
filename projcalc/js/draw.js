@@ -59,6 +59,7 @@ export function draw(r) {
   const c = C();
   ctx.fillStyle = c.bg; ctx.fillRect(0, 0, W, H);
 
+  const fSz = (cv.clientWidth < 480 ? 16 : 13) * dpr;
   const WW = 16*dpr;
   const PL = 74*dpr + WW, PR = 28*dpr, PT = 18*dpr, PB = 24*dpr;
   const dW = W - PL - PR, dH = H - PT - PB;
@@ -89,7 +90,7 @@ export function draw(r) {
   ctx.fillRect(PL-WW, sy(S.ceilH)-2*dpr, W-(PL-WW), 2*dpr);
 
   // Height labels
-  ctx.fillStyle = c.lbl; ctx.font = `${13*dpr}px var(--font-mono)`; ctx.textAlign = 'right';
+  ctx.fillStyle = c.lbl; ctx.font = `${fSz}px var(--font-mono)`; ctx.textAlign = 'right';
   ctx.fillText('0 cm',               PL-WW-3*dpr, sy(0)+3*dpr);
   ctx.fillText(`${S.ceilH.toFixed(0)} cm`, PL-WW-3*dpr, sy(S.ceilH)+3*dpr);
 
@@ -99,10 +100,10 @@ export function draw(r) {
   ctx.fillStyle = c.wallF; ctx.fillRect(PL-WW, wTop, WW, wBot-wTop);
   ctx.shadowColor = 'transparent';
   ctx.strokeStyle = c.wallS; ctx.lineWidth = dpr; ctx.strokeRect(PL-WW, wTop, WW, wBot-wTop);
-  ctx.fillStyle = c.lbl; ctx.textAlign = 'right'; ctx.font = `${13*dpr}px var(--font-mono)`;
+  ctx.fillStyle = c.lbl; ctx.textAlign = 'right'; ctx.font = `${fSz}px var(--font-mono)`;
   ctx.fillText(`${S.wallH.toFixed(0)} cm`, PL-WW-3*dpr, wTop+5*dpr);
 
-  const iSW = 8*dpr;
+  const iSW = Math.round(Math.min(8, cv.clientWidth * 0.015)) * dpr;
 
   // Black light (native panel — only when letterboxed or pillared)
   if (r.isLetterboxed || r.isPillared) {
@@ -172,7 +173,7 @@ export function draw(r) {
     ctx.beginPath(); ctx.moveTo(lX, lY); ctx.lineTo(pX, pTopY); ctx.stroke();
     ctx.setLineDash([]);
     ctx.beginPath(); ctx.moveTo(pX, pTopY); ctx.lineTo(wX, shWY); ctx.stroke();
-    ctx.fillStyle = c.person; ctx.font = `${12*dpr}px var(--font-mono)`;
+    ctx.fillStyle = c.person; ctx.font = `${fSz}px var(--font-mono)`;
     ctx.fillText(`${PERSON_H}cm`, pX+5*dpr, pTopY+3*dpr);
   }
 
@@ -234,7 +235,7 @@ export function draw(r) {
   ctx.beginPath(); ctx.arc(lX, lY, 4*dpr, 0, Math.PI*2); ctx.fill();
 
   // ─── Measurement annotations ───────────────────────────────────────────────
-  const aF   = 13*dpr;
+  const aF   = fSz;
   const fmt  = v => (v / 100).toFixed(2) + 'm';
   const dimX = wX - WW;  // wall left edge
 

@@ -65,11 +65,19 @@ export function renderRes(r) {
   const shiftLimitStr = store.activePreset
     ? `+${S.maxUp.toFixed(0)}%/−${S.maxDn.toFixed(0)}%`
     : `${Math.abs(Math.round(r.userShiftM / (r.nativeH || 1) * 100))}%`;
-  h += card('Shift (user)',
+  h += card('Shift V (user)',
     `${r.userShiftM >= 0 ? '+' : ''}${(r.userShiftM * 10).toFixed(0)} mm / ${r.shiftOk ? '' : '⚠ '}${shiftLimitStr}`,
     r.shiftOk ? 'ok' : 'warn',
     r.shiftOk ? 'In range' : 'Out of range'
   );
+  if (S.maxH > 0 || Math.abs(S.hShiftPct) > 0) {
+    const hLimitStr = S.maxH > 0 ? `±${S.maxH.toFixed(0)}%` : '—';
+    h += card('Shift H (user)',
+      `${S.hShiftPct >= 0 ? '+' : ''}${S.hShiftPct.toFixed(1)}% / ${r.hShiftOk ? '' : '⚠ '}${hLimitStr}`,
+      r.hShiftOk ? (r.combinedShiftOk ? 'ok' : 'warn') : 'warn',
+      r.hShiftOk ? (r.combinedShiftOk ? 'In range' : 'Combined V+H exceeds spec') : 'Out of range'
+    );
+  }
   h += card('Media Bottom', `${r.effBot.toFixed(1)} cm`, r.effBot < 0 ? 'warn' : '');
   if (store.floorMode) {
     // Floor mode: lens should be below image bottom (projector clears audience sightline from below)

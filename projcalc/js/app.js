@@ -23,9 +23,11 @@ function rd() {
   S.ratio    = +g('ratio').value   || 1.35;
   S.imgW     = +g('imgW').value    || 148;
   S.imgH     = +g('imgH').value    || 0;
-  S.shiftPct = +g('sPct').value    || 0;
-  S.maxUp    = +g('maxUp').value;
-  S.maxDn    = +g('maxDn').value;
+  S.shiftPct  = +g('sPct').value    || 0;
+  S.maxUp     = +g('maxUp').value;
+  S.maxDn     = +g('maxDn').value;
+  S.hShiftPct = +g('hPct').value   || 0;
+  S.maxH      = +g('maxH').value;
   S.bodyH    = +g('bodyH').value   || 13.6;
   S.targetH  = +g('targetH').value || 0;
   S.posType  = document.querySelector('input[name="pt"]:checked').value;
@@ -159,7 +161,7 @@ function refresh() {
 
   // Auto-fit drawing width to encompass throw distance (+ person if shown)
   const personEnd = S.personOn && S.personDist > 0 ? S.personDist : 0;
-  S.viewW = Math.max(Math.ceil(S.dist * 1.25 + 80), personEnd > 0 ? Math.ceil(personEnd * 1.4) : 0, 280);
+  S.viewW = Math.max(Math.ceil(S.dist * 1.1 + 40), personEnd > 0 ? Math.ceil(personEnd * 1.4) : 0, 280);
 
   // Apply shift limits for all presets (handles zoom curves + ceiling-mount inversion for fixed-shift presets too)
   if (store.activePreset) {
@@ -195,6 +197,12 @@ function refresh() {
     g('sPct').readOnly = false; g('sMm').readOnly = false;
     g('sPct').classList.remove('ro'); g('sMm').classList.remove('ro');
   }
+  if (S.maxH === 0) {
+    S.hShiftPct = 0; g('hPct').value = 0;
+    g('hPct').readOnly = true; g('hPct').classList.add('ro');
+  } else {
+    g('hPct').readOnly = false; g('hPct').classList.remove('ro');
+  }
 
   // If media width is locked, back-calculate ratio (or dist if ratio is fixed) to maintain locked width
   if (store.lkState.imgW && S.imgW > 0) {
@@ -207,11 +215,6 @@ function refresh() {
         S.ratio = clampRatio(rawRatio);
         g('ratio').value = S.ratio.toFixed(2);
         if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = g('ratio').value;
-        // If ratio was clamped (zoom boundary), snap dist so locked width is preserved
-        if (S.ratio !== rawRatio && !store.lkState.dist) {
-          S.dist = S.ratio * reqNativeW;
-          g('dist').value = S.dist.toFixed(1);
-        }
       } else if (!store.lkState.dist) {
         S.dist = S.ratio * reqNativeW;
         g('dist').value = S.dist.toFixed(1);
@@ -252,11 +255,9 @@ function refresh() {
   drawShiftCurve();
 }
 
-// Clamp a computed ratio to the active preset's zoom range (no-op when no preset or fixed ratio)
+// No clamping — user is allowed to push ratio outside preset spec range; ratioOk flag is informational only
 function clampRatio(r) {
-  const p = store.activePreset;
-  if (!p || p.fixed) return r;
-  return Math.min(p.rMax, Math.max(p.rMin, r));
+  return r;
 }
 
 // ─── Geometry triangle solver ─────────────────────────────────────────────────
@@ -311,10 +312,6 @@ function tri(changed) {
         const newRatio   = clampRatio(rawRatio);
         g('ratio').value = newRatio.toFixed(2);
         if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = g('ratio').value;
-        if (newRatio !== rawRatio) {
-          S.dist = newRatio * reqNativeW;
-          g('dist').value = S.dist.toFixed(1);
-        }
       }
     } else if (rFixed) {
       const nativeW = S.dist / S.ratio;
@@ -342,7 +339,7 @@ function clearPreset() {
   store.activePreset = null;
   psel.value = '';
   g('pbox').classList.remove('on');
-  pLock(['ratio','maxUp','maxDn','bodyH','maxKS'], false);
+  pLock(['ratio','maxUp','maxDn','maxH','bodyH','maxKS'], false);
   const lb = g('lkRatio');
   lb.classList.remove('pl'); lb.innerHTML = store.lkState.ratio ? LSVG : USVG;
   lb.classList.toggle('on', store.lkState.ratio);
@@ -359,9 +356,10 @@ function applyPreset(p) {
   g('ratio').value   = p.rMin.toFixed(2);
   g('maxUp').value   = p.sUp;
   g('maxDn').value   = p.sDn;
+  g('maxH').value    = p.hMax ?? 0;
   g('bodyH').value   = p.bodyH.toFixed(1);
   g('maxKS').value   = p.ks;
-  pLock(['maxUp','maxDn','bodyH','maxKS'], true);
+  pLock(['maxUp','maxDn','maxH','bodyH','maxKS'], true);
 
   const lb = g('lkRatio');
   if (p.fixed) {
@@ -426,14 +424,18 @@ function loadSetup(r) {
   g('aspect').value  = r.aspect  ?? g('aspect').value;
   if (!proj || !proj.fixed) g('ratio').value = r.ratio ?? g('ratio').value;
   g('targetH').value = r.targetH;
-  g('sPct').value    = r.shiftPct ?? 0;
-  g('tiltDeg').value = r.tiltDeg  ?? 0;
+  g('sPct').value    = r.shiftPct  ?? 0;
+  g('hPct').value    = r.hShiftPct ?? 0;
+  g('tiltDeg').value = r.tiltDeg   ?? 0;
   g('dropV').value   = r.drop;
   if (!proj) {
     g('bodyH').value = r.bodyH ?? g('bodyH').value;
     g('maxKS').value = r.maxKS ?? g('maxKS').value;
     g('maxUp').value = r.maxUp ?? g('maxUp').value;
     g('maxDn').value = r.maxDn ?? g('maxDn').value;
+    g('maxH').value  = r.maxH  ?? g('maxH').value;
+  } else {
+    g('maxH').value  = r.maxH  ?? (proj.hMax ?? 0);
   }
   document.querySelectorAll('input[name="pt"]').forEach(el => el.checked = (el.value === r.posType));
   g('posLbl').textContent = { bottom:'Media bottom height', center:'Center height', top:'Top edge height' }[r.posType];
@@ -461,6 +463,7 @@ g('rsave').addEventListener('click', () => {
     posType:    document.querySelector('input[name="pt"]:checked').value,
     targetH:    +g('targetH').value,
     shiftPct:   +g('sPct').value,
+    hShiftPct:  +g('hPct').value,
     tiltDeg:    +g('tiltDeg').value,
     floorMode:  store.floorMode,
     drop:       +g('dropV').value,
@@ -469,6 +472,7 @@ g('rsave').addEventListener('click', () => {
     maxKS:      +g('maxKS').value,
     maxUp:      +g('maxUp').value,
     maxDn:      +g('maxDn').value,
+    maxH:       +g('maxH').value,
   });
   buildRoomSel();
   g('rsel').value = store.roomPresets.length - 1;
@@ -618,7 +622,7 @@ g('sMm').addEventListener('input', function() {
 g('aspect').addEventListener('change', function() { tri('aspect'); refresh(); });
 
 // ─── Other inputs ─────────────────────────────────────────────────────────────
-['ceilH','wallH','maxUp','maxDn','bodyH','tiltDeg','maxKS','personDist'].forEach(id => {
+['ceilH','wallH','maxUp','maxDn','maxH','hPct','bodyH','tiltDeg','maxKS','personDist'].forEach(id => {
   const el = g(id); if (el) el.addEventListener('input', refresh);
 });
 g('personOn').addEventListener('change', refresh);

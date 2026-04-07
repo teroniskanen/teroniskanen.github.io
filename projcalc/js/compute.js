@@ -61,6 +61,12 @@ export function compute() {
   const rod = floorMode ? 0 : drop - S.bodyH;
   const EPS = 0.01;
   const shiftOk = S.shiftPct >= -S.maxDn - EPS && S.shiftPct <= S.maxUp + EPS;
+  const hShiftOk = S.maxH > 0 ? Math.abs(S.hShiftPct) <= S.maxH + EPS : true;
+  // Combined V+H shift: elliptical envelope (v/vMax)² + (h/hMax)² ≤ 1
+  const vMax = S.shiftPct >= 0 ? S.maxUp : S.maxDn;
+  const combinedShiftOk = (S.maxH > 0 && vMax > 0)
+    ? (S.shiftPct / vMax) ** 2 + (S.hShiftPct / S.maxH) ** 2 <= 1 + EPS
+    : shiftOk && hShiftOk;
   const lensOk  = lH > -EPS && lH < S.ceilH + EPS;
   // Floor: body base (drop) must be at or above floor. Ceiling: rod must be ≥ 0 (body fits between ceiling and lens).
   const bodyOk  = floorMode ? drop >= -EPS : rod >= -EPS;
@@ -114,7 +120,7 @@ export function compute() {
   return {
     mediaW, mediaH, nativeW, nativeH, shiftM, userShiftM,
     cH, lH, drop, rod,
-    shiftOk, lensOk, bodyOk,
+    shiftOk, hShiftOk, combinedShiftOk, lensOk, bodyOk,
     tCH, hasTilt, ksN, ksOk,
     effTop, effBot, effNatTop, effNatBot,
     aboveSight, wallGap,
