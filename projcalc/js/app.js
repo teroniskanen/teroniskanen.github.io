@@ -170,6 +170,16 @@ function refresh() {
     g('maxDn').value = lims.dn.toFixed(1);
   }
 
+  // Clamp shift to current spec limits (e.g. zoom-out shrinks the allowed range)
+  if (S.shiftPct > S.maxUp) {
+    S.shiftPct = S.maxUp;
+    g('sPct').value = S.shiftPct.toFixed(2);
+  }
+  if (S.shiftPct < -S.maxDn) {
+    S.shiftPct = -S.maxDn;
+    g('sPct').value = S.shiftPct.toFixed(2);
+  }
+
   // Clamp tilt to keystone limit
   const tiltEl = g('tiltDeg');
   tiltEl.max = S.maxKS; tiltEl.min = -S.maxKS;
@@ -510,12 +520,17 @@ function autoSolvePosition() {
   const shiftM_used  = (shiftPct / 100) * nativeH;
   const shiftMm      = Math.round(shiftM_used * 10);
 
-  // Remaining offset after shift → cover with tilt
-  // dist·tan(tilt) = shiftM_used - delta  →  tilt = atan((shiftM_used - delta) / dist)
-  const remaining = delta - shiftM_used;
+  // Remaining offset after shift → cover with tilt using exact inverse of compute.js forward model.
+  // Forward: baseAngle=atan2(shiftM_total,dist); tCH = lH + dist*tan(baseAngle - mirrorFactor*tr)
+  // Inverse: mirrorFactor*tr = baseAngle - atan2(cH_goal - lH, dist)
+  const actualShiftM  = naturalOffsetM + shiftM_used;
+  const baseAngle     = Math.atan2(actualShiftM, S.dist);
+  const reqAngle      = Math.atan2(cH_goal - lH, S.dist);
+  const angleDelta    = baseAngle - reqAngle;
+  const mirrorFactor  = (store.activePreset && store.activePreset.ustMirror) ? 2 : 1;
   let tiltDeg = 0;
-  if (Math.abs(remaining) > 0.1 && S.dist > 0) {
-    tiltDeg = Math.atan((shiftM_used - delta) / S.dist) * 180 / Math.PI;
+  if (Math.abs(angleDelta) > 0.0001) {
+    tiltDeg = (angleDelta / mirrorFactor) * (180 / Math.PI);
     tiltDeg = Math.max(-maxKS, Math.min(maxKS, tiltDeg));
   }
 

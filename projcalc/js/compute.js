@@ -43,14 +43,16 @@ export function compute() {
     lH = floorMode ? drop + S.bodyH : S.ceilH - drop;
     cH = lH + shiftM;
   } else {
-    // targetCH = desired image centre (from UI target); invert combined model to find lH.
-    // tCH = lH + shiftM - dist·tan(tr) = targetCH  →  lH = targetCH - shiftM + dist·tan(tr)
-    // cH is then recomputed as the untilted centre (lH + shiftM), keeping it consistent
-    // with the dropDriver path and allowing the diagram to show keystone vs native separately.
+    // Exact inverse of the forward tCH model.
+    // Forward: baseAngle = atan2(shiftM, dist); angleDelta = mirror?2*tr:tr; tCH = lH + dist*tan(baseAngle - angleDelta)
+    // Inverse: lH = targetCH - dist*tan(baseAngle - angleDelta)  (baseAngle independent of lH)
     const targetCH = S.posType === 'bottom' ? S.targetH + mediaH / 2
                    : S.posType === 'top'    ? S.targetH - mediaH / 2
                    :                          S.targetH;
-    lH   = targetCH - shiftM + S.dist * Math.tan(tr);
+    const angleDeltaInv = (activePreset && activePreset.ustMirror) ? 2 * tr : tr;
+    const baseAngleInv  = Math.atan2(shiftM, S.dist);
+    const newAngleInv   = baseAngleInv - angleDeltaInv;
+    lH   = targetCH - S.dist * Math.tan(newAngleInv);
     cH   = lH + shiftM;
     drop = floorMode ? lH - S.bodyH : S.ceilH - lH;
   }
