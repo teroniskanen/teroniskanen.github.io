@@ -43,22 +43,36 @@ export function compute() {
     lH = floorMode ? drop + S.bodyH : S.ceilH - drop;
     cH = lH + shiftM;
   } else {
-    // cH = target image centre; invert combined model so image lands exactly there:
-    // tCH = lH + shiftM - dist·tan(tr) = cH  →  lH = cH - shiftM + dist·tan(tr)
-    cH = S.posType === 'bottom' ? S.targetH + mediaH / 2
-       : S.posType === 'top'    ? S.targetH - mediaH / 2
-       :                          S.targetH;
-    lH   = cH - shiftM + S.dist * Math.tan(tr);
+    // targetCH = desired image centre (from UI target); invert combined model to find lH.
+    // tCH = lH + shiftM - dist·tan(tr) = targetCH  →  lH = targetCH - shiftM + dist·tan(tr)
+    // cH is then recomputed as the untilted centre (lH + shiftM), keeping it consistent
+    // with the dropDriver path and allowing the diagram to show keystone vs native separately.
+    const targetCH = S.posType === 'bottom' ? S.targetH + mediaH / 2
+                   : S.posType === 'top'    ? S.targetH - mediaH / 2
+                   :                          S.targetH;
+    lH   = targetCH - shiftM + S.dist * Math.tan(tr);
+    cH   = lH + shiftM;
     drop = floorMode ? lH - S.bodyH : S.ceilH - lH;
   }
 
   // rod = extension rod above body (ceiling mount only)
   const rod = floorMode ? 0 : drop - S.bodyH;
-  const shiftOk = S.shiftPct >= -S.maxDn && S.shiftPct <= S.maxUp;
-  const lensOk  = lH > 0 && lH < S.ceilH;
+  const EPS = 0.01;
+  const shiftOk = S.shiftPct >= -S.maxDn - EPS && S.shiftPct <= S.maxUp + EPS;
+  const lensOk  = lH > -EPS && lH < S.ceilH + EPS;
+  // Floor: body base (drop) must be at or above floor. Ceiling: rod must be ≥ 0 (body fits between ceiling and lens).
+  const bodyOk  = floorMode ? drop >= -EPS : rod >= -EPS;
 
-  // Combined model: shift and tilt both contribute to effective image centre
-  const tCH = lH + shiftM - S.dist * Math.tan(tr);
+  // Base optical angle from the lens to the un-tilted center
+  const baseAngle = Math.atan2(cH - lH, S.dist);
+
+  // Apply mirror penalty (doubles the tilt angle effect)
+  const angleDelta = (activePreset && activePreset.ustMirror) ? 2 * tr : tr;
+
+  // Calculate final target using exact trigonometry
+  // (Subtracting angleDelta preserves your existing convention where +tilt moves image down)
+  const newAngle = baseAngle - angleDelta;
+  const tCH = lH + S.dist * Math.tan(newAngle);
 
   const imgTop    = cH + mediaH  / 2;
   const imgBot    = cH - mediaH  / 2;
@@ -75,14 +89,16 @@ export function compute() {
   const ksOk       = ksN <= S.maxKS;
   // Ceiling mode: check projector is above image top (audience sightline)
   // Floor mode:   check projector is below image bottom (it's below the screen, no sightline issue)
-  const aboveSight = floorMode ? lH < effBot : lH > effTop;
+  const aboveSight = floorMode ? lH < effNatBot : lH > effNatTop;
   const wallGap    = S.wallH - effTop;
 
   let shadowH = null, personClears = false;
   if (S.personOn && S.personDist > 0 && S.personDist < S.dist) {
     const t  = S.dist / (S.dist - S.personDist);
     shadowH  = lH + (PERSON_H - lH) * t;
-    personClears = shadowH < effBot || shadowH > effTop;
+    // The shadow extends from the floor up to shadowH.
+    // It only clears the screen if it never reaches the bottom edge.
+    personClears = shadowH < effNatBot;
   }
 
   const ratioOk = activePreset
@@ -96,7 +112,7 @@ export function compute() {
   return {
     mediaW, mediaH, nativeW, nativeH, shiftM, userShiftM,
     cH, lH, drop, rod,
-    shiftOk, lensOk,
+    shiftOk, lensOk, bodyOk,
     tCH, hasTilt, ksN, ksOk,
     effTop, effBot, effNatTop, effNatBot,
     aboveSight, wallGap,

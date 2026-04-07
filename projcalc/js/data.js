@@ -12,7 +12,7 @@
 //                 measured from the centred position).
 //              In ceiling mount the sign is automatically inverted by the app.
 //              Manufacturer conversions:
-//                Optoma "Offset X%"    →  vOffset = X          (direct: lens→centre / H × 100)
+//                Optoma "Offset X%"    →  vOffset = X / 2      (Optoma's X% is of half-height; ÷2 → % of full height)
 //                Epson  "Offset X:1"   →  vOffset = (X−1)/(2×(X+1)) × 100
 //                                         e.g. 10:1 → 9/22×100 ≈ 41
 //                NEC    optical diagram  →  read "lower/upper edge of screen at 0%V = lens centre"
@@ -24,13 +24,13 @@ export const PRESETS = [
   // two known points — 70" diag → 3.5" gap, 130" diag → 7.1" gap (slope = 0.06 in/diag-in).
   // Converting gap to vOffset%: (gap / image_height + 0.5) × 100 yields 60.2% at 70" → 61.1% at 130".
   // Variation <1 pp across full zoom range → fixed vOffset:61 is adequate (sub-cm error).
-  {id:'eb800f',   name:'Epson EB-800F',              aspectVal:'1.77777778', rMin:.27, rMax:.37, sUp:0,  sDn:0,  vOffset:61,  fixed:false, ks:30, bodyH:10,   dMin:60,  dMax:350,  shiftType:'none',    digitalZoom:false, shiftCurve:null},
-  {id:'ehls100',  name:'Epson EH-LS100',             aspectVal:'1.77777778', rMin:.27, rMax:.37, sUp:0,  sDn:0,  vOffset:61,  fixed:false, ks:30, bodyH:10,   dMin:45,  dMax:350,  shiftType:'none',    digitalZoom:false, shiftCurve:null},
-  {id:'gt1080e',  name:'Optoma GT1080e',             aspectVal:'1.77777778', rMin:.49, rMax:.49, sUp:0,  sDn:0,  vOffset:116, fixed:true,  ks:40, bodyH:9,    dMin:74,  dMax:762,  shiftType:'none',    digitalZoom:false, shiftCurve:null},
-  {id:'zh450st',  name:'Optoma ZH450ST',             aspectVal:'1.77777778', rMin:.50, rMax:.50, sUp:0,  sDn:0,  vOffset:116, fixed:true,  ks:40, bodyH:9,    dMin:65,  dMax:762,  shiftType:'none',    digitalZoom:false, shiftCurve:null},
+  {id:'eb800f',   name:'Epson EB-800F',              aspectVal:'1.77777778', rMin:.27, rMax:.37, sUp:0,  sDn:0,  vOffset:61,  fixed:false, ks:3,  bodyH:10,   dMin:60,  dMax:350,  shiftType:'none',    digitalZoom:false, shiftCurve:null, ustMirror:true},
+  {id:'ehls100',  name:'Epson EH-LS100',             aspectVal:'1.77777778', rMin:.27, rMax:.37, sUp:0,  sDn:0,  vOffset:61,  fixed:false, ks:3,  bodyH:10,   dMin:45,  dMax:350,  shiftType:'none',    digitalZoom:false, shiftCurve:null, ustMirror:true},
+  {id:'gt1080e',  name:'Optoma GT1080e',             aspectVal:'1.77777778', rMin:.49, rMax:.49, sUp:0,  sDn:0,  vOffset:58,  fixed:true,  ks:40, bodyH:9,    dMin:74,  dMax:762,  shiftType:'none',    digitalZoom:false, shiftCurve:null},
+  {id:'zh450st',  name:'Optoma ZH450ST',             aspectVal:'1.77777778', rMin:.50, rMax:.50, sUp:0,  sDn:0,  vOffset:58,  fixed:true,  ks:40, bodyH:9,    dMin:65,  dMax:762,  shiftType:'none',    digitalZoom:false, shiftCurve:null},
   // Standard throw — optical shift; spec gives ±% from centred (image centre at lens), so vOffset:0
   {id:'l1050_lu', name:'Epson EB-L1050U + ELPLU03S', aspectVal:'1.6',        rMin:.65, rMax:.78, sUp:67, sDn:67, vOffset:0,   fixed:false, ks:30, bodyH:14,   dMin:93,  dMax:1320, shiftType:'optical', digitalZoom:false, shiftCurve:null},
-  {id:'ml1050st', name:'Optoma ML1050ST+',           aspectVal:'1.6',        rMin:.80, rMax:.80, sUp:0,  sDn:0,  vOffset:100, fixed:true,  ks:40, bodyH:9,    dMin:50,  dMax:400,  shiftType:'none',    digitalZoom:false, shiftCurve:null},
+  {id:'ml1050st', name:'Optoma ML1050ST+',           aspectVal:'1.6',        rMin:.80, rMax:.80, sUp:0,  sDn:0,  vOffset:50,  fixed:true,  ks:40, bodyH:9,    dMin:50,  dMax:400,  shiftType:'none',    digitalZoom:false, shiftCurve:null},
   {id:'l1050_lw', name:'Epson EB-L1050U + ELPLW05',  aspectVal:'1.6',        rMin:1.04,rMax:1.46,sUp:67, sDn:67, vOffset:0,   fixed:false, ks:30, bodyH:14,   dMin:93,  dMax:1830, shiftType:'optical', digitalZoom:false, shiftCurve:null},
   // NEC NP-P525UL: asymmetric shift — +62/-0 (floor) flips to +0/-62 (ceiling) automatically
   // NEC NP-P525UL: manual pg.142 — "Lower edge of screen with 0%V = Lens center" → vOffset:50.

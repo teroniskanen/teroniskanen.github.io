@@ -50,11 +50,11 @@ Definition: `(distance from lens centre to image centre) / image height × 100`,
 | Value | Meaning |
 |-------|---------|
 | `0`   | Image centred on lens axis. Correct for optical-shift projectors where the spec gives ±% from centred. |
-| `100` | Image centre = 1× image height above lens (e.g. Optoma ML1050ST+ 100% offset). Bottom of image is at `lH + 0.5×H`. |
-| `116` | Image centre = 1.16× image height above lens (e.g. Optoma GT1080e / ZH450ST 116% offset). |
+| `50`  | Image centre = 0.5× image height above lens (e.g. Optoma ML1050ST+ spec "100% offset", NEC lower-edge-at-lens). Bottom of image at lens height. |
+| `58`  | Image centre = 0.58× image height above lens (e.g. Optoma GT1080e / ZH450ST spec "116% offset"). |
 
 **Manufacturer conversions:**
-- **Optoma** "Offset X%" → `vOffset = X` (direct 1:1; their % already equals lens→centre / H × 100)
+- **Optoma** "Offset X%" → `vOffset = X / 2` (Optoma's X% is of half-height; divide by 2 to get % of full height)
 - **Epson** "Offset X:1" → `vOffset = (X−1) / (2×(X+1)) × 100`  e.g. 10:1 → 9/22×100 ≈ 41
 - **NEC** optical diagram → read "lower/upper edge of screen at 0% V = lens centre":
   - lower edge at lens → `vOffset = 50`

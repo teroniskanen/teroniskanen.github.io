@@ -18,10 +18,10 @@ PRESETS.forEach(p => {
 function rd() {
   S.ceilH    = +g('ceilH').value   || 500;
   S.wallH    = +g('wallH').value   || 300;
-  S.dist     = +g('dist').value    || 405;
+  S.dist     = +g('dist').value    || 200;
   S.aspect   = +g('aspect').value;
   S.ratio    = +g('ratio').value   || 1.35;
-  S.imgW     = +g('imgW').value    || 300;
+  S.imgW     = +g('imgW').value    || 148;
   S.imgH     = +g('imgH').value    || 0;
   S.shiftPct = +g('sPct').value    || 0;
   S.maxUp    = +g('maxUp').value;
