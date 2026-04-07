@@ -74,6 +74,27 @@ function getShiftLimits() {
   return store.floorMode ? { up, dn } : { up: dn, dn: up };
 }
 
+// Available vertical range given current horizontal shift (elliptical boundary)
+function getDynamicVLimits() {
+  const hMax = S.maxH;
+  if (!hMax) return { up: S.maxUp, dn: S.maxDn };
+  const hNorm = Math.abs(S.hShiftPct) / hMax;
+  if (hNorm >= 1) return { up: 0, dn: 0 };
+  const f = Math.sqrt(1 - hNorm * hNorm);
+  return { up: S.maxUp * f, dn: S.maxDn * f };
+}
+
+// Available horizontal range given current vertical shift (elliptical boundary)
+function getDynamicHLimit() {
+  const hMax = S.maxH;
+  if (!hMax) return 0;
+  const vMaxDir = S.shiftPct >= 0 ? S.maxUp : S.maxDn;
+  if (!vMaxDir) return hMax;
+  const vNorm = Math.abs(S.shiftPct) / vMaxDir;
+  if (vNorm >= 1) return 0;
+  return hMax * Math.sqrt(1 - vNorm * vNorm);
+}
+
 // Draw/update the lens shift curve SVG in the sidebar
 function drawShiftCurve() {
   const p    = store.activePreset;
@@ -180,6 +201,17 @@ function refresh() {
   if (S.shiftPct < -S.maxDn) {
     S.shiftPct = -S.maxDn;
     g('sPct').value = S.shiftPct.toFixed(2);
+  }
+
+  // Elliptical cross-clamping: enforce 2D lens shift envelope.
+  // Clamp V first (using current H), then clamp H using the updated V.
+  if (S.maxH > 0) {
+    const dV = getDynamicVLimits();
+    if (S.shiftPct > dV.up)  { S.shiftPct  =  dV.up; g('sPct').value = S.shiftPct.toFixed(2); }
+    if (S.shiftPct < -dV.dn) { S.shiftPct  = -dV.dn; g('sPct').value = S.shiftPct.toFixed(2); }
+    const dynH = getDynamicHLimit();
+    if (S.hShiftPct >  dynH) { S.hShiftPct =  dynH;  g('hPct').value = S.hShiftPct.toFixed(2); }
+    if (S.hShiftPct < -dynH) { S.hShiftPct = -dynH;  g('hPct').value = S.hShiftPct.toFixed(2); }
   }
 
   // Clamp tilt to keystone limit
