@@ -89,7 +89,7 @@ export function draw(r) {
   ctx.fillRect(PL-WW, sy(S.ceilH)-2*dpr, W-(PL-WW), 2*dpr);
 
   // Height labels
-  ctx.fillStyle = c.lbl; ctx.font = `${10*dpr}px var(--font-mono)`; ctx.textAlign = 'right';
+  ctx.fillStyle = c.lbl; ctx.font = `${13*dpr}px var(--font-mono)`; ctx.textAlign = 'right';
   ctx.fillText('0 cm',               PL-WW-3*dpr, sy(0)+3*dpr);
   ctx.fillText(`${S.ceilH.toFixed(0)} cm`, PL-WW-3*dpr, sy(S.ceilH)+3*dpr);
 
@@ -99,7 +99,7 @@ export function draw(r) {
   ctx.fillStyle = c.wallF; ctx.fillRect(PL-WW, wTop, WW, wBot-wTop);
   ctx.shadowColor = 'transparent';
   ctx.strokeStyle = c.wallS; ctx.lineWidth = dpr; ctx.strokeRect(PL-WW, wTop, WW, wBot-wTop);
-  ctx.fillStyle = c.lbl; ctx.textAlign = 'right'; ctx.font = `${10*dpr}px var(--font-mono)`;
+  ctx.fillStyle = c.lbl; ctx.textAlign = 'right'; ctx.font = `${13*dpr}px var(--font-mono)`;
   ctx.fillText(`${S.wallH.toFixed(0)} cm`, PL-WW-3*dpr, wTop+5*dpr);
 
   const iSW = 8*dpr;
@@ -172,7 +172,7 @@ export function draw(r) {
     ctx.beginPath(); ctx.moveTo(lX, lY); ctx.lineTo(pX, pTopY); ctx.stroke();
     ctx.setLineDash([]);
     ctx.beginPath(); ctx.moveTo(pX, pTopY); ctx.lineTo(wX, shWY); ctx.stroke();
-    ctx.fillStyle = c.person; ctx.font = `${9*dpr}px var(--font-mono)`;
+    ctx.fillStyle = c.person; ctx.font = `${12*dpr}px var(--font-mono)`;
     ctx.fillText(`${PERSON_H}cm`, pX+5*dpr, pTopY+3*dpr);
   }
 
@@ -234,7 +234,7 @@ export function draw(r) {
   ctx.beginPath(); ctx.arc(lX, lY, 4*dpr, 0, Math.PI*2); ctx.fill();
 
   // ─── Measurement annotations ───────────────────────────────────────────────
-  const aF   = 10*dpr;
+  const aF   = 13*dpr;
   const fmt  = v => (v / 100).toFixed(2) + 'm';
   const dimX = wX - WW;  // wall left edge
 
