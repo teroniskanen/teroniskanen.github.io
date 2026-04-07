@@ -61,7 +61,7 @@ export function draw(r) {
 
   const fSz = (cv.clientWidth < 480 ? 16 : 13) * dpr;
   const WW = 16*dpr;
-  const PL = 54*dpr + WW, PR = 12*dpr, PT = 18*dpr, PB = 24*dpr;
+  const PL = 54*dpr + WW, PR = 50*dpr, PT = 18*dpr, PB = 24*dpr;
   const dW = W - PL - PR, dH = H - PT - PB;
 
   const roomW = S.viewW;
@@ -291,6 +291,33 @@ export function draw(r) {
     });
     ctx.fillStyle = c.dim; ctx.textAlign = 'center';
     ctx.fillText(fmt(S.dist), mx, y + aF + 1*dpr);
+  }
+
+  // Vertical dimension annotations in right margin: floor↔lens and lens↔ceiling
+  {
+    const rx = W - PR + 10*dpr;  // x of the vertical tick line
+    ctx.strokeStyle = c.dimB; ctx.lineWidth = 0.7*dpr;
+    ctx.fillStyle = c.dim; ctx.font = `${aF}px var(--font-mono)`; ctx.textAlign = 'left';
+
+    // Floor to lens
+    if (lY < sy(0) - 4*dpr) {
+      const y0 = sy(0), y1 = lY;
+      ctx.beginPath(); ctx.moveTo(rx, y0); ctx.lineTo(rx, y1); ctx.stroke();
+      [y0, y1].forEach(y => {
+        ctx.beginPath(); ctx.moveTo(rx - 4*dpr, y); ctx.lineTo(rx + 4*dpr, y); ctx.stroke();
+      });
+      ctx.fillText(fmt(r.lH), rx + 6*dpr, (y0 + y1) / 2 + 3.5*dpr);
+    }
+
+    // Lens to ceiling
+    if (sy(S.ceilH) < lY - 4*dpr) {
+      const y0 = sy(S.ceilH), y1 = lY;
+      ctx.beginPath(); ctx.moveTo(rx, y0); ctx.lineTo(rx, y1); ctx.stroke();
+      [y0, y1].forEach(y => {
+        ctx.beginPath(); ctx.moveTo(rx - 4*dpr, y); ctx.lineTo(rx + 4*dpr, y); ctx.stroke();
+      });
+      ctx.fillText(fmt(S.ceilH - r.lH), rx + 6*dpr, (y0 + y1) / 2 + 3.5*dpr);
+    }
   }
 
 }
