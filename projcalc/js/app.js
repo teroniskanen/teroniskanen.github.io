@@ -523,6 +523,40 @@ g('rdel').addEventListener('click', () => {
   if (!isNaN(i) && i >= 0) { store.roomPresets.splice(i, 1); buildRoomSel(); }
 });
 
+function currentSetup() {
+  return {
+    presetId:   store.activePreset ? store.activePreset.id : null,
+    ceilH:      +g('ceilH').value,
+    wallH:      +g('wallH').value,
+    dist:       +g('dist').value,
+    aspect:     +g('aspect').value,
+    ratio:      +g('ratio').value,
+    posType:    document.querySelector('input[name="pt"]:checked').value,
+    targetH:    +g('targetH').value,
+    shiftPct:   +g('sPct').value,
+    hShiftPct:  +g('hPct').value,
+    tiltDeg:    +g('tiltDeg').value,
+    floorMode:  store.floorMode,
+    drop:       +g('dropV').value,
+    dropDriver: store.dropDriver,
+    bodyH:      +g('bodyH').value,
+    maxKS:      +g('maxKS').value,
+    maxUp:      parseFloat(g('maxUp').dataset.raw) || 0,
+    maxDn:      parseFloat(g('maxDn').dataset.raw) || 0,
+    maxH:       parseFloat(g('maxH').dataset.raw)  || 0,
+  };
+}
+
+g('shareUrl').addEventListener('click', () => {
+  const encoded = btoa(JSON.stringify(currentSetup()));
+  const url = location.origin + location.pathname + '#s=' + encoded;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = g('shareUrl'), orig = btn.textContent;
+    btn.textContent = '✓ Copied';
+    setTimeout(() => btn.textContent = orig, 1800);
+  }).catch(() => prompt('Copy this URL:', url));
+});
+
 // ─── Mount mode (ceiling / pedestal) ─────────────────────────────────────────
 document.querySelectorAll('input[name="mount"]').forEach(el => el.addEventListener('change', function() {
   const newFloor = (this.value === 'floor');
@@ -701,4 +735,11 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refresh);
   const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
   g('themeBtn').textContent = isDark ? '☽' : '☀';
 }
-setTimeout(refresh, 100);
+if (location.hash.startsWith('#s=')) {
+  try {
+    loadSetup(JSON.parse(atob(location.hash.slice(3))));
+    history.replaceState(null, '', location.pathname);
+  } catch { setTimeout(refresh, 100); }
+} else {
+  setTimeout(refresh, 100);
+}
