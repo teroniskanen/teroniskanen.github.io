@@ -61,7 +61,7 @@ export function draw(r) {
 
   const fSz = (cv.clientWidth < 480 ? 16 : 13) * dpr;
   const WW = 16*dpr;
-  const PL = WW, PR = 12*dpr, PT = 18*dpr, PB = 24*dpr;
+  const PL = 54*dpr + WW, PR = 12*dpr, PT = 18*dpr, PB = 24*dpr;
   const dW = W - PL - PR, dH = H - PT - PB;
 
   const roomW = S.viewW;
@@ -92,15 +92,16 @@ export function draw(r) {
   // Wall
   const wTop = sy(S.wallH), wBot = sy(0);
   ctx.shadowColor = 'rgba(0,0,0,0.15)'; ctx.shadowBlur = 8*dpr; ctx.shadowOffsetX = 3*dpr;
-  ctx.fillStyle = c.wallF; ctx.fillRect(0, wTop, WW, wBot-wTop);
+  ctx.fillStyle = c.wallF; ctx.fillRect(PL-WW, wTop, WW, wBot-wTop);
   ctx.shadowColor = 'transparent';
-  ctx.strokeStyle = c.wallS; ctx.lineWidth = dpr; ctx.strokeRect(0, wTop, WW, wBot-wTop);
+  ctx.strokeStyle = c.wallS; ctx.lineWidth = dpr; ctx.strokeRect(PL-WW, wTop, WW, wBot-wTop);
 
-  // Height labels — inside drawing, left-aligned just right of wall
-  ctx.fillStyle = c.lbl; ctx.font = `${fSz}px var(--font-mono)`; ctx.textAlign = 'left';
-  ctx.fillText('0',               WW+3*dpr, sy(0)-3*dpr);
-  ctx.fillText(`${S.ceilH.toFixed(0)} cm`, WW+3*dpr, sy(S.ceilH)+fSz);
-  ctx.fillText(`${S.wallH.toFixed(0)} cm`, WW+3*dpr, wTop+fSz);
+  // Height labels — left of wall, right-aligned
+  const hfmt = v => (v / 100).toFixed(1) + 'm';
+  ctx.fillStyle = c.lbl; ctx.font = `${fSz}px var(--font-mono)`; ctx.textAlign = 'right';
+  ctx.fillText(hfmt(0),      PL-WW-3*dpr, sy(0)+3*dpr);
+  ctx.fillText(hfmt(S.ceilH), PL-WW-3*dpr, sy(S.ceilH)+3*dpr);
+  ctx.fillText(hfmt(S.wallH), PL-WW-3*dpr, wTop+fSz);
 
   const iSW = Math.round(Math.min(8, cv.clientWidth * 0.015)) * dpr;
 
@@ -235,8 +236,8 @@ export function draw(r) {
 
   // ─── Measurement annotations ───────────────────────────────────────────────
   const aF   = fSz;
-  const fmt  = v => (v / 100).toFixed(2) + 'm';
-  const dimX = wX + iSW + 2*dpr;  // just right of image strip
+  const fmt  = v => (v / 100).toFixed(1) + 'm';
+  const dimX = wX - WW;  // wall left edge
 
   ctx.font = `${aF}px var(--font-mono)`;
   ctx.lineWidth = 0.7*dpr;
@@ -245,25 +246,25 @@ export function draw(r) {
   {
     const y = sy(r.effBot);
     ctx.strokeStyle = c.dimB;
-    ctx.beginPath(); ctx.moveTo(dimX, y); ctx.lineTo(dimX + 7*dpr, y); ctx.stroke();
-    ctx.fillStyle = c.dim; ctx.textAlign = 'left';
-    ctx.fillText(fmt(r.effBot), dimX + 9*dpr, y + 3.5*dpr);
+    ctx.beginPath(); ctx.moveTo(dimX, y); ctx.lineTo(dimX - 7*dpr, y); ctx.stroke();
+    ctx.fillStyle = c.dim; ctx.textAlign = 'right';
+    ctx.fillText(fmt(r.effBot), dimX - 9*dpr, y + 3.5*dpr);
   }
 
   // Image top height from floor
   {
     const y = sy(r.effTop);
     ctx.strokeStyle = c.dimB;
-    ctx.beginPath(); ctx.moveTo(dimX, y); ctx.lineTo(dimX + 7*dpr, y); ctx.stroke();
-    ctx.fillStyle = c.dim; ctx.textAlign = 'left';
-    ctx.fillText(fmt(r.effTop), dimX + 9*dpr, y + 3.5*dpr);
+    ctx.beginPath(); ctx.moveTo(dimX, y); ctx.lineTo(dimX - 7*dpr, y); ctx.stroke();
+    ctx.fillStyle = c.dim; ctx.textAlign = 'right';
+    ctx.fillText(fmt(r.effTop), dimX - 9*dpr, y + 3.5*dpr);
   }
 
   // Wall gap: label between image top and wall top (only if gap is visible)
   if (r.wallGap > 2 && sy(r.effTop) - sy(S.wallH) > 14*dpr) {
     const midY = (sy(r.effTop) + sy(S.wallH)) / 2;
-    ctx.fillStyle = c.wallDim; ctx.textAlign = 'left';
-    ctx.fillText('↕ ' + fmt(r.wallGap), dimX + 9*dpr, midY + 3.5*dpr);
+    ctx.fillStyle = c.wallDim; ctx.textAlign = 'right';
+    ctx.fillText('↕ ' + fmt(r.wallGap), dimX - 9*dpr, midY + 3.5*dpr);
   }
 
   // Lens height on the dashed reference line
