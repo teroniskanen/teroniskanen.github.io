@@ -61,7 +61,7 @@ export function draw(r) {
 
   const fSz = (cv.clientWidth < 480 ? 16 : 13) * dpr;
   const WW = 16*dpr;
-  const PL = 74*dpr + WW, PR = 12*dpr, PT = 18*dpr, PB = 24*dpr;
+  const PL = WW, PR = 12*dpr, PT = 18*dpr, PB = 24*dpr;
   const dW = W - PL - PR, dH = H - PT - PB;
 
   const roomW = S.viewW;
@@ -76,32 +76,31 @@ export function draw(r) {
     ctx.beginPath(); ctx.moveTo(sx(x), PT); ctx.lineTo(sx(x), H-PB); ctx.stroke();
   }
   for (let y = 0; y <= scH; y += 50) {
-    ctx.beginPath(); ctx.moveTo(PL-WW, sy(y)); ctx.lineTo(W, sy(y)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, sy(y)); ctx.lineTo(W, sy(y)); ctx.stroke();
   }
 
   // Floor gradient
   const floorGrad = ctx.createLinearGradient(0, sy(0), 0, H);
   floorGrad.addColorStop(0, c.floor); floorGrad.addColorStop(1, c.floorFade);
   ctx.fillStyle = floorGrad;
-  ctx.fillRect(PL-WW, sy(0), W-(PL-WW), H-sy(0));
+  ctx.fillRect(0, sy(0), W, H-sy(0));
 
   // Ceiling line
   ctx.fillStyle = c.floor;
-  ctx.fillRect(PL-WW, sy(S.ceilH)-2*dpr, W-(PL-WW), 2*dpr);
-
-  // Height labels
-  ctx.fillStyle = c.lbl; ctx.font = `${fSz}px var(--font-mono)`; ctx.textAlign = 'right';
-  ctx.fillText('0 cm',               PL-WW-3*dpr, sy(0)+3*dpr);
-  ctx.fillText(`${S.ceilH.toFixed(0)} cm`, PL-WW-3*dpr, sy(S.ceilH)+3*dpr);
+  ctx.fillRect(0, sy(S.ceilH)-2*dpr, W, 2*dpr);
 
   // Wall
   const wTop = sy(S.wallH), wBot = sy(0);
   ctx.shadowColor = 'rgba(0,0,0,0.15)'; ctx.shadowBlur = 8*dpr; ctx.shadowOffsetX = 3*dpr;
-  ctx.fillStyle = c.wallF; ctx.fillRect(PL-WW, wTop, WW, wBot-wTop);
+  ctx.fillStyle = c.wallF; ctx.fillRect(0, wTop, WW, wBot-wTop);
   ctx.shadowColor = 'transparent';
-  ctx.strokeStyle = c.wallS; ctx.lineWidth = dpr; ctx.strokeRect(PL-WW, wTop, WW, wBot-wTop);
-  ctx.fillStyle = c.lbl; ctx.textAlign = 'right'; ctx.font = `${fSz}px var(--font-mono)`;
-  ctx.fillText(`${S.wallH.toFixed(0)} cm`, PL-WW-3*dpr, wTop+5*dpr);
+  ctx.strokeStyle = c.wallS; ctx.lineWidth = dpr; ctx.strokeRect(0, wTop, WW, wBot-wTop);
+
+  // Height labels — inside drawing, left-aligned just right of wall
+  ctx.fillStyle = c.lbl; ctx.font = `${fSz}px var(--font-mono)`; ctx.textAlign = 'left';
+  ctx.fillText('0',               WW+3*dpr, sy(0)-3*dpr);
+  ctx.fillText(`${S.ceilH.toFixed(0)} cm`, WW+3*dpr, sy(S.ceilH)+fSz);
+  ctx.fillText(`${S.wallH.toFixed(0)} cm`, WW+3*dpr, wTop+fSz);
 
   const iSW = Math.round(Math.min(8, cv.clientWidth * 0.015)) * dpr;
 
@@ -237,7 +236,7 @@ export function draw(r) {
   // ─── Measurement annotations ───────────────────────────────────────────────
   const aF   = fSz;
   const fmt  = v => (v / 100).toFixed(2) + 'm';
-  const dimX = wX - WW;  // wall left edge
+  const dimX = wX + iSW + 2*dpr;  // just right of image strip
 
   ctx.font = `${aF}px var(--font-mono)`;
   ctx.lineWidth = 0.7*dpr;
@@ -246,25 +245,25 @@ export function draw(r) {
   {
     const y = sy(r.effBot);
     ctx.strokeStyle = c.dimB;
-    ctx.beginPath(); ctx.moveTo(dimX, y); ctx.lineTo(dimX - 7*dpr, y); ctx.stroke();
-    ctx.fillStyle = c.dim; ctx.textAlign = 'right';
-    ctx.fillText(fmt(r.effBot), dimX - 9*dpr, y + 3.5*dpr);
+    ctx.beginPath(); ctx.moveTo(dimX, y); ctx.lineTo(dimX + 7*dpr, y); ctx.stroke();
+    ctx.fillStyle = c.dim; ctx.textAlign = 'left';
+    ctx.fillText(fmt(r.effBot), dimX + 9*dpr, y + 3.5*dpr);
   }
 
   // Image top height from floor
   {
     const y = sy(r.effTop);
     ctx.strokeStyle = c.dimB;
-    ctx.beginPath(); ctx.moveTo(dimX, y); ctx.lineTo(dimX - 7*dpr, y); ctx.stroke();
-    ctx.fillStyle = c.dim; ctx.textAlign = 'right';
-    ctx.fillText(fmt(r.effTop), dimX - 9*dpr, y + 3.5*dpr);
+    ctx.beginPath(); ctx.moveTo(dimX, y); ctx.lineTo(dimX + 7*dpr, y); ctx.stroke();
+    ctx.fillStyle = c.dim; ctx.textAlign = 'left';
+    ctx.fillText(fmt(r.effTop), dimX + 9*dpr, y + 3.5*dpr);
   }
 
   // Wall gap: label between image top and wall top (only if gap is visible)
   if (r.wallGap > 2 && sy(r.effTop) - sy(S.wallH) > 14*dpr) {
     const midY = (sy(r.effTop) + sy(S.wallH)) / 2;
-    ctx.fillStyle = c.wallDim; ctx.textAlign = 'right';
-    ctx.fillText('↕ ' + fmt(r.wallGap), dimX - 9*dpr, midY + 3.5*dpr);
+    ctx.fillStyle = c.wallDim; ctx.textAlign = 'left';
+    ctx.fillText('↕ ' + fmt(r.wallGap), dimX + 9*dpr, midY + 3.5*dpr);
   }
 
   // Lens height on the dashed reference line
