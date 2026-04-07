@@ -203,9 +203,15 @@ function refresh() {
     if (reqNativeW > 0) {
       const rFixed = g('ratio').readOnly || store.lkState.ratio;
       if (!rFixed) {
-        S.ratio = clampRatio(S.dist / reqNativeW);
+        const rawRatio = S.dist / reqNativeW;
+        S.ratio = clampRatio(rawRatio);
         g('ratio').value = S.ratio.toFixed(2);
         if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = g('ratio').value;
+        // If ratio was clamped (zoom boundary), snap dist so locked width is preserved
+        if (S.ratio !== rawRatio && !store.lkState.dist) {
+          S.dist = S.ratio * reqNativeW;
+          g('dist').value = S.dist.toFixed(1);
+        }
       } else if (!store.lkState.dist) {
         S.dist = S.ratio * reqNativeW;
         g('dist').value = S.dist.toFixed(1);
@@ -298,11 +304,17 @@ function tri(changed) {
     }
   } else if (changed === 'dist') {
     if (wFixed) {
-      // dist changed, width locked → update ratio
+      // dist changed, width locked → update ratio; if ratio hits zoom boundary, snap dist back
       if (!rFixed) {
         const reqNativeW = S.aspect >= nativeAspect ? S.imgW : S.imgW * (nativeAspect / S.aspect);
-        g('ratio').value = clampRatio(S.dist / reqNativeW).toFixed(2);
+        const rawRatio   = S.dist / reqNativeW;
+        const newRatio   = clampRatio(rawRatio);
+        g('ratio').value = newRatio.toFixed(2);
         if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = g('ratio').value;
+        if (newRatio !== rawRatio) {
+          S.dist = newRatio * reqNativeW;
+          g('dist').value = S.dist.toFixed(1);
+        }
       }
     } else if (rFixed) {
       const nativeW = S.dist / S.ratio;
