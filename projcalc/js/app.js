@@ -161,7 +161,7 @@ function refresh() {
 
   // Auto-fit drawing width to encompass throw distance (+ person if shown)
   const personEnd = S.personOn && S.personDist > 0 ? S.personDist : 0;
-  S.viewW = Math.max(Math.ceil(S.dist * 1.05 + 20), personEnd > 0 ? Math.ceil(personEnd * 1.4) : 0, 280);
+  S.viewW = Math.max(Math.ceil(S.dist + 10), personEnd > 0 ? Math.ceil(personEnd * 1.1) : 0, 280);
 
   // Apply shift limits for all presets (handles zoom curves + ceiling-mount inversion for fixed-shift presets too)
   if (store.activePreset) {
