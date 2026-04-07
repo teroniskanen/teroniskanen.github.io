@@ -160,15 +160,14 @@ export function draw(r) {
 
 
   // Person / shadow check
-  if (S.personOn && S.personDist > 0 && S.personDist < S.dist) {
+  if (S.personOn && r.shadowH !== null) {
     const pX    = sx(S.personDist);
     const pBotY = sy(0), pTopY = sy(PERSON_H), pW = 6*dpr;
     ctx.fillStyle = c.person;
     ctx.fillRect(pX-pW/2, pTopY+6*dpr, pW, pBotY-pTopY-6*dpr);
     ctx.beginPath(); ctx.arc(pX, pTopY+4*dpr, 4*dpr, 0, Math.PI*2); ctx.fill();
 
-    const t    = S.dist / (S.dist - S.personDist);
-    const shWY = lY + (sy(PERSON_H) - lY) * t;
+    const shWY = sy(r.shadowH);
     ctx.strokeStyle = c.shadowC; ctx.lineWidth = dpr; ctx.setLineDash([3*dpr, 2*dpr]);
     ctx.beginPath(); ctx.moveTo(lX, lY); ctx.lineTo(pX, pTopY); ctx.stroke();
     ctx.setLineDash([]);
@@ -192,34 +191,43 @@ export function draw(r) {
   ctx.stroke(); ctx.setLineDash([]);
 
   // Projector mount (rod + body)
-  const bH = Math.max(S.bodyH*(dH/scH), 10*dpr), bW = 24*dpr;
+  // bW scales proportionally with bH so the box doesn't squish when zooming out
+  const bH      = Math.max(S.bodyH*(dH/scH), 10*dpr);
+  const bW      = Math.max(bH * 1.6, 14*dpr);
+  const tiltRad = S.tiltDeg * Math.PI / 180;
+
   if (store.floorMode) {
-    // Pedestal block from floor up to S.drop
-    const pedTop  = sy(S.drop);
-    const pedBot  = sy(0);
-    const pedH    = pedBot - pedTop;
+    // Pedestal block from floor up to S.drop (stays vertical — it's fixed to the floor)
+    const pedTop = sy(S.drop), pedBot = sy(0), pedH = pedBot - pedTop;
     if (pedH > 1) {
       ctx.fillStyle = c.rod;
       ctx.fillRect(lX - bW*0.4, pedTop, bW*0.8, pedH);
     }
-    // Body sits on pedestal — lens is at top
-    const bBot = lY + bH;
+    // Body rotates around the lens pivot
+    ctx.save();
+    ctx.translate(lX, lY);
+    ctx.rotate(tiltRad);
     ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 6*dpr; ctx.shadowOffsetY = -3*dpr;
     ctx.fillStyle = c.proj; ctx.strokeStyle = c.projS; ctx.lineWidth = 1.2*dpr;
-    rr(lX-bW/2, lY, bW, bH, 3*dpr); ctx.fill(); ctx.stroke();
-    // Legs (4 short lines at bottom)
+    rr(-bW/2, 0, bW, bH, 3*dpr); ctx.fill(); ctx.stroke();
+    ctx.shadowColor = 'transparent';
     const legW = 4*dpr, legH = 5*dpr;
     ctx.fillStyle = c.projS;
-    ctx.fillRect(lX - bW/2 + 2*dpr, bBot - 1*dpr, legW, legH);
-    ctx.fillRect(lX + bW/2 - legW - 2*dpr, bBot - 1*dpr, legW, legH);
+    ctx.fillRect(-bW/2 + 2*dpr, bH - 1*dpr, legW, legH);
+    ctx.fillRect( bW/2 - legW - 2*dpr, bH - 1*dpr, legW, legH);
+    ctx.restore();
   } else {
-    // Ceiling mount — body above lens
+    // Ceiling mount — rod stays vertical, body rotates around lens pivot
     const bTop = lY - bH;
     ctx.fillStyle = c.rod;
     ctx.fillRect(lX-1.5*dpr, sy(S.ceilH), 3*dpr, bTop-sy(S.ceilH));
+    ctx.save();
+    ctx.translate(lX, lY);
+    ctx.rotate(tiltRad);
     ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 6*dpr; ctx.shadowOffsetY = 3*dpr;
     ctx.fillStyle = c.proj; ctx.strokeStyle = c.projS; ctx.lineWidth = 1.2*dpr;
-    rr(lX-bW/2, bTop, bW, bH, 3*dpr); ctx.fill(); ctx.stroke();
+    rr(-bW/2, -bH, bW, bH, 3*dpr); ctx.fill(); ctx.stroke();
+    ctx.restore();
   }
   ctx.shadowColor = 'transparent';
   ctx.fillStyle = c.lens;
