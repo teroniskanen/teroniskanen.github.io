@@ -206,13 +206,17 @@
   <select class="psel" id="psel"></select>
   <div class="pbox" id="pbox"><div class="pi-t" id="pi-t"></div><span class="pi-c" id="pi-c">Clear</span></div>
 
-  <div class="sec">Room preset</div>
+  <div class="sec">Setup preset</div>
   <select class="psel" id="rsel"></select>
   <input type="text" id="rname" class="rname-inp" placeholder="Save as..." maxlength="24">
   <div class="rp-btns">
     <button id="rsave">Save</button>
     <button id="rdel">Del</button>
+    <button id="exportSetups">Export</button>
+    <button id="importSetups">Import</button>
+    <button id="shareUrl">Share URL</button>
   </div>
+  <input type="file" id="importFile" accept=".json" style="display:none">
 
   <div class="sec">Room</div>
   <div class="f"><label>Ceiling height</label><input type="number" id="ceilH" value="500" step="5" min="50" max="3000"><span class="u">cm</span></div>

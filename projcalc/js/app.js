@@ -385,29 +385,74 @@ function toggleLock(key) {
   g(id).addEventListener('click', () => toggleLock(key));
 });
 
-// ─── Room presets ─────────────────────────────────────────────────────────────
+// ─── Setup presets ────────────────────────────────────────────────────────────
 buildRoomSel();
+
+function loadSetup(r) {
+  const proj = r.presetId ? PRESETS.find(p => p.id === r.presetId) : null;
+  applyPreset(proj);
+  g('ceilH').value   = r.ceilH;
+  g('wallH').value   = r.wallH;
+  g('dist').value    = r.dist;
+  g('aspect').value  = r.aspect  ?? g('aspect').value;
+  if (!proj || !proj.fixed) g('ratio').value = r.ratio ?? g('ratio').value;
+  g('targetH').value = r.targetH;
+  g('sPct').value    = r.shiftPct ?? 0;
+  g('tiltDeg').value = r.tiltDeg  ?? 0;
+  g('dropV').value   = r.drop;
+  if (!proj) { g('bodyH').value = r.bodyH ?? g('bodyH').value; g('maxKS').value = r.maxKS ?? g('maxKS').value; }
+  document.querySelectorAll('input[name="pt"]').forEach(el => el.checked = (el.value === r.posType));
+  g('posLbl').textContent = { bottom:'Media bottom height', center:'Center height', top:'Top edge height' }[r.posType];
+  document.querySelectorAll('input[name="mount"]').forEach(el => el.checked = (el.value === (r.floorMode ? 'floor' : 'ceiling')));
+  store.floorMode  = r.floorMode  ?? store.floorMode;
+  store.dropDriver = r.dropDriver ?? false;
+  updateDropModeLabel(); refresh();
+}
+
+function currentSetup() {
+  return {
+    presetId:   store.activePreset ? store.activePreset.id : null,
+    ceilH:      +g('ceilH').value,
+    wallH:      +g('wallH').value,
+    dist:       +g('dist').value,
+    aspect:     +g('aspect').value,
+    ratio:      +g('ratio').value,
+    posType:    document.querySelector('input[name="pt"]:checked').value,
+    targetH:    +g('targetH').value,
+    shiftPct:   +g('sPct').value,
+    tiltDeg:    +g('tiltDeg').value,
+    floorMode:  store.floorMode,
+    drop:       +g('dropV').value,
+    dropDriver: store.dropDriver,
+    bodyH:      +g('bodyH').value,
+    maxKS:      +g('maxKS').value,
+  };
+}
 
 g('rsel').addEventListener('change', function() {
   const r = store.roomPresets[+this.value]; if (!r) return;
-  g('ceilH').value  = r.ceilH;
-  g('wallH').value  = r.wallH;
-  g('dist').value   = r.dist;
-  g('targetH').value = r.targetH;
-  document.querySelectorAll('input[name="pt"]').forEach(el => el.checked = (el.value === r.posType));
-  g('posLbl').textContent = { bottom:'Media bottom height', center:'Center height', top:'Top edge height' }[r.posType];
-  store.dropDriver = false; updateDropModeLabel(); refresh();
+  loadSetup(r);
 });
 
 g('rsave').addEventListener('click', () => {
-  const name = g('rname').value.trim() || 'Room ' + (store.roomPresets.length + 1);
+  const name = g('rname').value.trim() || 'Setup ' + (store.roomPresets.length + 1);
   store.roomPresets.push({
     name,
-    ceilH:   +g('ceilH').value,
-    wallH:   +g('wallH').value,
-    dist:    +g('dist').value,
-    posType: document.querySelector('input[name="pt"]:checked').value,
-    targetH: +g('targetH').value,
+    presetId:   store.activePreset ? store.activePreset.id : null,
+    ceilH:      +g('ceilH').value,
+    wallH:      +g('wallH').value,
+    dist:       +g('dist').value,
+    aspect:     +g('aspect').value,
+    ratio:      +g('ratio').value,
+    posType:    document.querySelector('input[name="pt"]:checked').value,
+    targetH:    +g('targetH').value,
+    shiftPct:   +g('sPct').value,
+    tiltDeg:    +g('tiltDeg').value,
+    floorMode:  store.floorMode,
+    drop:       +g('dropV').value,
+    dropDriver: store.dropDriver,
+    bodyH:      +g('bodyH').value,
+    maxKS:      +g('maxKS').value,
   });
   buildRoomSel();
   g('rsel').value = store.roomPresets.length - 1;
@@ -419,6 +464,43 @@ g('rdel').addEventListener('click', () => {
   if (!val) return;   // BUG FIX: empty string → 0, would silently delete first preset
   const i = +val;
   if (!isNaN(i) && i >= 0) { store.roomPresets.splice(i, 1); buildRoomSel(); }
+});
+
+// Export all saved setups as a JSON file
+g('exportSetups').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(store.roomPresets, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'projcalc-setups.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+// Import setups from a JSON file (merges into existing list)
+g('importFile').addEventListener('change', function() {
+  const file = this.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (Array.isArray(data)) { store.roomPresets.push(...data); buildRoomSel(); }
+      else throw new Error();
+    } catch { alert('Invalid setup file.'); }
+  };
+  reader.readAsText(file);
+  this.value = '';
+});
+g('importSetups').addEventListener('click', () => g('importFile').click());
+
+// Copy shareable URL encoding the current setup into the hash
+g('shareUrl').addEventListener('click', () => {
+  const encoded = btoa(JSON.stringify(currentSetup()));
+  const url = location.origin + location.pathname + '#s=' + encoded;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = g('shareUrl'), orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
 });
 
 // ─── Mount mode (ceiling / pedestal) ─────────────────────────────────────────
@@ -581,4 +663,12 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refresh);
   const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
   g('themeBtn').textContent = isDark ? '☽' : '☀';
 }
-setTimeout(refresh, 100);
+// Load a shared setup from URL hash if present (#s=base64)
+if (location.hash.startsWith('#s=')) {
+  try {
+    loadSetup(JSON.parse(atob(location.hash.slice(3))));
+    history.replaceState(null, '', location.pathname); // clean up URL after load
+  } catch { setTimeout(refresh, 100); }
+} else {
+  setTimeout(refresh, 100);
+}
