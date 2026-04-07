@@ -60,7 +60,7 @@ export function draw(r) {
   ctx.fillStyle = c.bg; ctx.fillRect(0, 0, W, H);
 
   const WW = 16*dpr;
-  const PL = 52*dpr + WW, PR = 28*dpr, PT = 18*dpr, PB = 16*dpr;
+  const PL = 74*dpr + WW, PR = 28*dpr, PT = 18*dpr, PB = 24*dpr;
   const dW = W - PL - PR, dH = H - PT - PB;
 
   const roomW = S.viewW;
@@ -89,7 +89,7 @@ export function draw(r) {
   ctx.fillRect(PL-WW, sy(S.ceilH)-2*dpr, W-(PL-WW), 2*dpr);
 
   // Height labels
-  ctx.fillStyle = c.lbl; ctx.font = `${8*dpr}px var(--font-mono)`; ctx.textAlign = 'right';
+  ctx.fillStyle = c.lbl; ctx.font = `${10*dpr}px var(--font-mono)`; ctx.textAlign = 'right';
   ctx.fillText('0 cm',               PL-WW-3*dpr, sy(0)+3*dpr);
   ctx.fillText(`${S.ceilH.toFixed(0)} cm`, PL-WW-3*dpr, sy(S.ceilH)+3*dpr);
 
@@ -99,7 +99,7 @@ export function draw(r) {
   ctx.fillStyle = c.wallF; ctx.fillRect(PL-WW, wTop, WW, wBot-wTop);
   ctx.shadowColor = 'transparent';
   ctx.strokeStyle = c.wallS; ctx.lineWidth = dpr; ctx.strokeRect(PL-WW, wTop, WW, wBot-wTop);
-  ctx.fillStyle = c.lbl; ctx.textAlign = 'right'; ctx.font = `${8*dpr}px var(--font-mono)`;
+  ctx.fillStyle = c.lbl; ctx.textAlign = 'right'; ctx.font = `${10*dpr}px var(--font-mono)`;
   ctx.fillText(`${S.wallH.toFixed(0)} cm`, PL-WW-3*dpr, wTop+5*dpr);
 
   const iSW = 8*dpr;
@@ -172,7 +172,7 @@ export function draw(r) {
     ctx.beginPath(); ctx.moveTo(lX, lY); ctx.lineTo(pX, pTopY); ctx.stroke();
     ctx.setLineDash([]);
     ctx.beginPath(); ctx.moveTo(pX, pTopY); ctx.lineTo(wX, shWY); ctx.stroke();
-    ctx.fillStyle = c.person; ctx.font = `${7.5*dpr}px var(--font-mono)`;
+    ctx.fillStyle = c.person; ctx.font = `${9*dpr}px var(--font-mono)`;
     ctx.fillText(`${PERSON_H}cm`, pX+5*dpr, pTopY+3*dpr);
   }
 
@@ -232,5 +232,64 @@ export function draw(r) {
   ctx.shadowColor = 'transparent';
   ctx.fillStyle = c.lens;
   ctx.beginPath(); ctx.arc(lX, lY, 4*dpr, 0, Math.PI*2); ctx.fill();
+
+  // ─── Measurement annotations ───────────────────────────────────────────────
+  const aF   = 10*dpr;
+  const fmt  = v => (v / 100).toFixed(2) + 'm';
+  const dimX = wX - WW;  // wall left edge
+
+  ctx.font = `${aF}px var(--font-mono)`;
+  ctx.lineWidth = 0.7*dpr;
+
+  // Image bottom height from floor
+  {
+    const y = sy(r.effBot);
+    ctx.strokeStyle = c.dimB;
+    ctx.beginPath(); ctx.moveTo(dimX, y); ctx.lineTo(dimX - 7*dpr, y); ctx.stroke();
+    ctx.fillStyle = c.dim; ctx.textAlign = 'right';
+    ctx.fillText(fmt(r.effBot), dimX - 9*dpr, y + 3.5*dpr);
+  }
+
+  // Image top height from floor
+  {
+    const y = sy(r.effTop);
+    ctx.strokeStyle = c.dimB;
+    ctx.beginPath(); ctx.moveTo(dimX, y); ctx.lineTo(dimX - 7*dpr, y); ctx.stroke();
+    ctx.fillStyle = c.dim; ctx.textAlign = 'right';
+    ctx.fillText(fmt(r.effTop), dimX - 9*dpr, y + 3.5*dpr);
+  }
+
+  // Wall gap: label between image top and wall top (only if gap is visible)
+  if (r.wallGap > 2 && sy(r.effTop) - sy(S.wallH) > 14*dpr) {
+    const midY = (sy(r.effTop) + sy(S.wallH)) / 2;
+    ctx.fillStyle = c.wallDim; ctx.textAlign = 'right';
+    ctx.fillText('↕ ' + fmt(r.wallGap), dimX - 9*dpr, midY + 3.5*dpr);
+  }
+
+  // Lens height on the dashed reference line
+  ctx.fillStyle = c.lens; ctx.globalAlpha = 0.8; ctx.textAlign = 'left';
+  ctx.fillText(fmt(r.lH), wX + 4*dpr, lY - 3*dpr);
+  ctx.globalAlpha = 1;
+
+  // Keystone angle near projector when tilted
+  if (r.hasTilt) {
+    ctx.fillStyle = r.ksOk ? c.dim : 'rgba(239,68,68,0.9)';
+    ctx.textAlign = 'left';
+    ctx.fillText(r.ksN.toFixed(1) + '°', lX + 8*dpr, lY - 10*dpr);
+  }
+
+  // Throw distance arrow along the bottom margin
+  {
+    const y  = sy(0) + 6*dpr;
+    const mx = (wX + lX) / 2;
+    ctx.strokeStyle = c.dimB;
+    ctx.beginPath(); ctx.moveTo(wX, y); ctx.lineTo(lX, y); ctx.stroke();
+    [[wX, 1], [lX, -1]].forEach(([x, d]) => {
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + d*5*dpr, y - 3*dpr); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + d*5*dpr, y + 3*dpr); ctx.stroke();
+    });
+    ctx.fillStyle = c.dim; ctx.textAlign = 'center';
+    ctx.fillText(fmt(S.dist), mx, y + aF + 1*dpr);
+  }
 
 }
