@@ -161,8 +161,8 @@ function refresh() {
   const personEnd = S.personOn && S.personDist > 0 ? S.personDist : 0;
   S.viewW = Math.max(Math.ceil(S.dist * 1.25 + 80), personEnd > 0 ? Math.ceil(personEnd * 1.4) : 0, 280);
 
-  // Apply shift curve limits at current throw ratio (updates maxUp/maxDn)
-  if (store.activePreset && store.activePreset.shiftType === 'optical') {
+  // Apply shift limits for all presets (handles zoom curves + ceiling-mount inversion for fixed-shift presets too)
+  if (store.activePreset) {
     const lims = getShiftLimits();
     S.maxUp = lims.up;
     S.maxDn = lims.dn;
@@ -417,7 +417,12 @@ function loadSetup(r) {
   g('sPct').value    = r.shiftPct ?? 0;
   g('tiltDeg').value = r.tiltDeg  ?? 0;
   g('dropV').value   = r.drop;
-  if (!proj) { g('bodyH').value = r.bodyH ?? g('bodyH').value; g('maxKS').value = r.maxKS ?? g('maxKS').value; }
+  if (!proj) {
+    g('bodyH').value = r.bodyH ?? g('bodyH').value;
+    g('maxKS').value = r.maxKS ?? g('maxKS').value;
+    g('maxUp').value = r.maxUp ?? g('maxUp').value;
+    g('maxDn').value = r.maxDn ?? g('maxDn').value;
+  }
   document.querySelectorAll('input[name="pt"]').forEach(el => el.checked = (el.value === r.posType));
   g('posLbl').textContent = { bottom:'Media bottom height', center:'Center height', top:'Top edge height' }[r.posType];
   document.querySelectorAll('input[name="mount"]').forEach(el => el.checked = (el.value === (r.floorMode ? 'floor' : 'ceiling')));
@@ -450,6 +455,8 @@ g('rsave').addEventListener('click', () => {
     dropDriver: store.dropDriver,
     bodyH:      +g('bodyH').value,
     maxKS:      +g('maxKS').value,
+    maxUp:      +g('maxUp').value,
+    maxDn:      +g('maxDn').value,
   });
   buildRoomSel();
   g('rsel').value = store.roomPresets.length - 1;
