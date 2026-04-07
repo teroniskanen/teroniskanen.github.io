@@ -61,7 +61,7 @@ export function draw(r) {
 
   const fSz = (cv.clientWidth < 480 ? 16 : 13) * dpr;
   const WW = 16*dpr;
-  const PL = 74*dpr + WW, PR = 28*dpr, PT = 18*dpr, PB = 24*dpr;
+  const PL = 74*dpr + WW, PR = 12*dpr, PT = 18*dpr, PB = 24*dpr;
   const dW = W - PL - PR, dH = H - PT - PB;
 
   const roomW = S.viewW;
