@@ -24,10 +24,10 @@ function rd() {
   S.imgW     = +g('imgW').value    || 148;
   S.imgH     = +g('imgH').value    || 0;
   S.shiftPct  = +g('sPct').value    || 0;
-  S.maxUp     = +g('maxUp').value;
-  S.maxDn     = +g('maxDn').value;
+  S.maxUp  = store.rawMaxUp = parseFloat(g('maxUp').dataset.raw) || +g('maxUp').value || 0;
+  S.maxDn  = store.rawMaxDn = parseFloat(g('maxDn').dataset.raw) || +g('maxDn').value || 0;
   S.hShiftPct = +g('hPct').value   || 0;
-  S.maxH      = +g('maxH').value;
+  S.maxH   = store.rawMaxH  = parseFloat(g('maxH').dataset.raw)  || +g('maxH').value  || 0;
   S.bodyH    = +g('bodyH').value   || 13.6;
   S.targetH  = +g('targetH').value || 0;
   S.posType  = document.querySelector('input[name="pt"]:checked').value;
@@ -76,19 +76,19 @@ function getShiftLimits() {
 
 // Available vertical range given current horizontal shift (elliptical boundary)
 function getDynamicVLimits() {
-  const hMax = S.maxH;
-  if (!hMax) return { up: S.maxUp, dn: S.maxDn };
+  const { rawMaxUp: up0, rawMaxDn: dn0, rawMaxH: hMax } = store;
+  if (!hMax) return { up: up0, dn: dn0 };
   const hNorm = Math.abs(S.hShiftPct) / hMax;
   if (hNorm >= 1) return { up: 0, dn: 0 };
   const f = Math.sqrt(1 - hNorm * hNorm);
-  return { up: S.maxUp * f, dn: S.maxDn * f };
+  return { up: up0 * f, dn: dn0 * f };
 }
 
 // Available horizontal range given current vertical shift (elliptical boundary)
 function getDynamicHLimit() {
-  const hMax = S.maxH;
+  const { rawMaxUp, rawMaxDn, rawMaxH: hMax } = store;
   if (!hMax) return 0;
-  const vMaxDir = S.shiftPct >= 0 ? S.maxUp : S.maxDn;
+  const vMaxDir = S.shiftPct >= 0 ? rawMaxUp : rawMaxDn;
   if (!vMaxDir) return hMax;
   const vNorm = Math.abs(S.shiftPct) / vMaxDir;
   if (vNorm >= 1) return 0;
@@ -187,10 +187,10 @@ function refresh() {
   // Apply shift limits for all presets (handles zoom curves + ceiling-mount inversion for fixed-shift presets too)
   if (store.activePreset) {
     const lims = getShiftLimits();
-    S.maxUp = lims.up;
-    S.maxDn = lims.dn;
-    g('maxUp').value = lims.up.toFixed(1);
-    g('maxDn').value = lims.dn.toFixed(1);
+    S.maxUp = store.rawMaxUp = lims.up;
+    S.maxDn = store.rawMaxDn = lims.dn;
+    g('maxUp').dataset.raw = lims.up;
+    g('maxDn').dataset.raw = lims.dn;
   }
 
   // Clamp shift to current spec limits (e.g. zoom-out shrinks the allowed range)
@@ -205,14 +205,18 @@ function refresh() {
 
   // Elliptical cross-clamping: enforce 2D lens shift envelope.
   // Clamp V first (using current H), then clamp H using the updated V.
-  if (S.maxH > 0) {
-    const dV = getDynamicVLimits();
+  const dV = getDynamicVLimits();
+  const dynH = getDynamicHLimit();
+  if (store.rawMaxH > 0) {
     if (S.shiftPct > dV.up)  { S.shiftPct  =  dV.up; g('sPct').value = S.shiftPct.toFixed(2); }
     if (S.shiftPct < -dV.dn) { S.shiftPct  = -dV.dn; g('sPct').value = S.shiftPct.toFixed(2); }
-    const dynH = getDynamicHLimit();
     if (S.hShiftPct >  dynH) { S.hShiftPct =  dynH;  g('hPct').value = S.hShiftPct.toFixed(2); }
     if (S.hShiftPct < -dynH) { S.hShiftPct = -dynH;  g('hPct').value = S.hShiftPct.toFixed(2); }
   }
+  // Update spec limit fields to show current available limits (not raw spec)
+  g('maxUp').value = dV.up.toFixed(1);
+  g('maxDn').value = dV.dn.toFixed(1);
+  if (store.rawMaxH > 0) g('maxH').value = dynH.toFixed(1);
 
   // Clamp tilt to keystone limit
   const tiltEl = g('tiltDeg');
@@ -386,9 +390,10 @@ function applyPreset(p) {
 
   g('aspect').value  = p.aspectVal;
   g('ratio').value   = p.rMin.toFixed(2);
-  g('maxUp').value   = p.sUp;
-  g('maxDn').value   = p.sDn;
-  g('maxH').value    = p.hMax ?? 0;
+  g('maxUp').value = g('maxUp').dataset.raw = p.sUp;
+  g('maxDn').value = g('maxDn').dataset.raw = p.sDn;
+  g('maxH').value  = g('maxH').dataset.raw  = p.hMax ?? 0;
+  store.rawMaxUp = p.sUp; store.rawMaxDn = p.sDn; store.rawMaxH = p.hMax ?? 0;
   g('bodyH').value   = p.bodyH.toFixed(1);
   g('maxKS').value   = p.ks;
   pLock(['maxUp','maxDn','maxH','bodyH','maxKS'], true);
@@ -463,9 +468,9 @@ function loadSetup(r) {
   if (!proj) {
     g('bodyH').value = r.bodyH ?? g('bodyH').value;
     g('maxKS').value = r.maxKS ?? g('maxKS').value;
-    g('maxUp').value = r.maxUp ?? g('maxUp').value;
-    g('maxDn').value = r.maxDn ?? g('maxDn').value;
-    g('maxH').value  = r.maxH  ?? g('maxH').value;
+    g('maxUp').value = g('maxUp').dataset.raw = r.maxUp ?? g('maxUp').value;
+    g('maxDn').value = g('maxDn').dataset.raw = r.maxDn ?? g('maxDn').value;
+    g('maxH').value  = g('maxH').dataset.raw  = r.maxH  ?? g('maxH').value;
   } else {
     g('maxH').value  = r.maxH  ?? (proj.hMax ?? 0);
   }
@@ -654,7 +659,10 @@ g('sMm').addEventListener('input', function() {
 g('aspect').addEventListener('change', function() { tri('aspect'); refresh(); });
 
 // ─── Other inputs ─────────────────────────────────────────────────────────────
-['ceilH','wallH','maxUp','maxDn','maxH','hPct','bodyH','tiltDeg','maxKS','personDist'].forEach(id => {
+['maxUp','maxDn','maxH'].forEach(id => {
+  const el = g(id); if (el) el.addEventListener('input', function() { this.dataset.raw = this.value; refresh(); });
+});
+['ceilH','wallH','hPct','bodyH','tiltDeg','maxKS','personDist'].forEach(id => {
   const el = g(id); if (el) el.addEventListener('input', refresh);
 });
 g('personOn').addEventListener('change', refresh);

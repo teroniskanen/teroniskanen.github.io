@@ -16,6 +16,7 @@ export const store = {
   floorMode:    false,
   lkState:      { dist:false, ratio:false, body:false, drop:false, ks:false, imgW:false },
   roomPresets:  [],
+  rawMaxUp: 50, rawMaxDn: 50, rawMaxH: 0,
 };
 
 try {
