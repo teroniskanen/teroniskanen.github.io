@@ -310,6 +310,8 @@ function drawBrightnessBar(r) {
   const fLspec = (S.lumens * S.gain) / areaSqFt;
 
   // ── C-coefficients ────────────────────────────────────────────────────────
+  const p = store.activePreset;
+
   // C_mode: color calibration loss — from preset, or 1.0 in manual mode
   const cMode = p?.cMode ?? 1.0;
 
@@ -317,7 +319,6 @@ function drawBrightnessBar(r) {
   // otherwise 1.0 (fixed lenses, UST, or unknown). Formula: C = (F_wide / F_current)²
   // where F_current is linearly interpolated across the zoom range.
   let cZoom = 1.0;
-  const p = store.activePreset;
   if (p && !p.fixed && p.fWide != null && p.fTele != null && p.rMax > p.rMin) {
     const t = Math.max(0, Math.min(1, (S.ratio - p.rMin) / (p.rMax - p.rMin)));
     const fCurrent = p.fWide + t * (p.fTele - p.fWide);
