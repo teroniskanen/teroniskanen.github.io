@@ -308,6 +308,18 @@ function drawBrightnessBar(r) {
   const areaSqFt = (r.mediaW * r.mediaH) / 929.03;
   const fL = (S.lumens > 0 && areaSqFt > 0) ? (S.lumens * S.gain) / areaSqFt : 0;
 
+  // Math breakdown line
+  const mathEl = g('brightMath');
+  if (mathEl) {
+    if (S.lumens > 0 && areaSqFt > 0) {
+      const gainPart = S.gain !== 1 ? ` × ${S.gain.toFixed(1)}G` : '';
+      mathEl.textContent =
+        `${S.lumens} lm${gainPart} ÷ ${areaSqFt.toFixed(2)} ft² = ${fL.toFixed(1)} fL`;
+    } else {
+      mathEl.textContent = '';
+    }
+  }
+
   // Scale: 0–50 fL linear. Zones: red 0–10, green 10–25, yellow 25–50
   const MAX = 50;
   const PL = 2, PR = 2, barY = 16, barH = 12, tickY = barY + barH + 4;
