@@ -369,11 +369,10 @@
   <div class="f"><label>Max keystone limit</label><input type="number" id="maxKS" value="30" step="1" min="0" max="90"><button class="lkbtn" id="lkKS" title="Lock Keystone"></button><span class="u">°</span></div>
 
   <div class="sec">Brightness</div>
-  <div class="f"><label>Projector lumens</label><input type="number" id="lumens" value="3000" step="100" min="0"><span class="u">lm</span></div>
+  <div class="f"><label>Projector lumens</label><input type="number" id="lumens" value="3000" step="100" min="0" class="ro" readonly><span class="u">lm</span></div>
   <div class="f"><label>Screen gain</label><input type="number" id="gain" value="1.0" step="0.1" min="0.1" max="5" style="width:50px"><span class="u">G</span></div>
-  <div id="brightWrap" style="flex-shrink:0;margin-top:5px;margin-bottom:2px;">
+  <div id="brightWrap" style="flex-shrink:0;margin-bottom:2px;">
     <svg id="brightSvg" style="width:100%;height:42px;display:block;border-radius:3px;overflow:visible;"></svg>
-    <div id="brightMath" style="font-size:9px;font-family:monospace;color:var(--color-text-tertiary);margin-top:3px;line-height:1.5;"></div>
   </div>
 
   <div class="sec">Person / shadow check</div>

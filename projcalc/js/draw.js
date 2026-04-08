@@ -59,7 +59,7 @@ export function draw(r) {
   const c = C();
   ctx.fillStyle = c.bg; ctx.fillRect(0, 0, W, H);
 
-  const fSz = (cv.clientWidth < 480 ? 16 : 13) * dpr;
+  const fSz = (cv.clientWidth < 480 ? 32 : 26) * dpr;
   const WW = 16*dpr;
   const PL = 54*dpr + WW, PR = 50*dpr, PT = 18*dpr, PB = 24*dpr;
   const dW = W - PL - PR, dH = H - PT - PB;

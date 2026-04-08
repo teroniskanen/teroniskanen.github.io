@@ -304,10 +304,7 @@ function drawBrightnessBar(r) {
 
   // 1 sq ft = 929.03 cm²
   const areaSqFt = (r.mediaW * r.mediaH) / 929.03;
-  if (!S.lumens || areaSqFt <= 0) { svg.innerHTML = ''; g('brightMath') && (g('brightMath').textContent = ''); return; }
-
-  // ── Spec fL (box value, no corrections) ──────────────────────────────────
-  const fLspec = (S.lumens * S.gain) / areaSqFt;
+  if (!S.lumens || areaSqFt <= 0) { svg.innerHTML = ''; return; }
 
   // ── C-coefficients ────────────────────────────────────────────────────────
   const p = store.activePreset;
@@ -347,13 +344,6 @@ function drawBrightnessBar(r) {
   const lblY = tickY + arrowH + 9; // scale labels below arrow
   const H2 = lblY + 1;
   svg.setAttribute('height', H2);
-
-  // Math line: just the simple spec formula value (no C breakdown)
-  const mathEl = g('brightMath');
-  if (mathEl) {
-    const gainStr = S.gain !== 1.0 ? ` × ${S.gain.toFixed(1)}G` : '';
-    mathEl.textContent = `Box spec: ${S.lumens} lm${gainStr} ÷ ${areaSqFt.toFixed(1)} ft² = ${fLspec.toFixed(1)} fL`;
-  }
 
   svg.innerHTML =
     `<!-- Value above bar -->
@@ -783,7 +773,7 @@ g('aspect').addEventListener('change', function() { tri('aspect'); refresh(); })
 ['maxUp','maxDn','maxH'].forEach(id => {
   const el = g(id); if (el) el.addEventListener('input', function() { this.dataset.raw = this.value; refresh(); });
 });
-['ceilH','wallH','hPct','bodyH','tiltDeg','maxKS','personDist','lumens','gain'].forEach(id => {
+['ceilH','wallH','hPct','bodyH','tiltDeg','maxKS','personDist','gain'].forEach(id => {
   const el = g(id); if (el) el.addEventListener('input', refresh);
 });
 g('personOn').addEventListener('change', refresh);
