@@ -298,8 +298,6 @@ function drawBrightnessBar(r) {
   const svg = g('brightSvg');
   if (!svg) return;
   const W = svg.getBoundingClientRect().width || 260;
-  const H = 54;
-  svg.setAttribute('height', H);
   const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
   const tc = isDark ? '#a1a1aa' : '#71717a';
   const tp = isDark ? '#f4f4f5' : '#18181b';
@@ -339,12 +337,16 @@ function drawBrightnessBar(r) {
 
   // ── Slider ────────────────────────────────────────────────────────────────
   const MAX = 50;
-  const PL = 2, barY = 16, barH = 12, tickY = barY + barH + 4;
+  const PL = 2, barY = 24, barH = 12, tickY = barY + barH + 3;
   const barW = W - PL - 2;
   const xOf  = v => PL + Math.min(1, Math.max(0, v / MAX)) * barW;
   const x10  = xOf(10), x25 = xOf(25);
   const pxE  = xOf(fLeff);
   const eCol = fLeff < 10 ? '#ef4444' : fLeff <= 25 ? '#10b981' : '#f59e0b';
+  const arrowH = 5;
+  const lblY = tickY + arrowH + 9; // scale labels below arrow
+  const H2 = lblY + 1;
+  svg.setAttribute('height', H2);
 
   // Math line: just the simple spec formula value (no C breakdown)
   const mathEl = g('brightMath');
@@ -354,24 +356,21 @@ function drawBrightnessBar(r) {
   }
 
   svg.innerHTML =
-    `<!-- Red zone -->
+    `<!-- Value above bar -->
+     <text x="${pxE}" y="${barY - 4}" font-size="10" fill="${eCol}" font-family="monospace" text-anchor="middle" font-weight="700">${fLeff.toFixed(1)} fL</text>
+     <!-- Red zone -->
      <rect x="${PL}" y="${barY}" width="${x10-PL}" height="${barH}" rx="3" fill="#ef4444" opacity="0.65"/>
      <!-- Green zone -->
      <rect x="${x10}" y="${barY}" width="${x25-x10}" height="${barH}" fill="#10b981" opacity="0.65"/>
      <!-- Yellow zone -->
      <rect x="${x25}" y="${barY}" width="${PL+barW-x25}" height="${barH}" rx="3" fill="#f59e0b" opacity="0.65"/>
-     <!-- Tick 10 -->
-     <line x1="${x10}" y1="${barY-1}" x2="${x10}" y2="${tickY}" stroke="${tc}" stroke-width="1"/>
-     <text x="${x10}" y="${barY-3}" font-size="8" fill="${tc}" font-family="monospace" text-anchor="middle">10</text>
-     <!-- Tick 25 -->
-     <line x1="${x25}" y1="${barY-1}" x2="${x25}" y2="${tickY}" stroke="${tc}" stroke-width="1"/>
-     <text x="${x25}" y="${barY-3}" font-size="8" fill="${tc}" font-family="monospace" text-anchor="middle">25</text>
-     <!-- fL scale label -->
-     <text x="${PL+barW}" y="${barY-3}" font-size="8" fill="${tc}" font-family="monospace" text-anchor="end">fL</text>
-     <!-- Effective pointer (realistic corrected value) -->
+     <!-- Pointer line + arrow -->
      <line x1="${pxE}" y1="${barY}" x2="${pxE}" y2="${tickY}" stroke="${eCol}" stroke-width="2"/>
-     <polygon points="${pxE},${tickY} ${pxE-4},${tickY+5} ${pxE+4},${tickY+5}" fill="${eCol}"/>
-     <text x="${pxE}" y="${H-1}" font-size="10" fill="${eCol}" font-family="monospace" text-anchor="middle" font-weight="700">${fLeff.toFixed(1)} fL</text>`;
+     <polygon points="${pxE},${tickY} ${pxE-4},${tickY+arrowH} ${pxE+4},${tickY+arrowH}" fill="${eCol}"/>
+     <!-- Scale labels below arrow -->
+     <text x="${x10}" y="${lblY}" font-size="8" fill="${tc}" font-family="monospace" text-anchor="middle">10</text>
+     <text x="${x25}" y="${lblY}" font-size="8" fill="${tc}" font-family="monospace" text-anchor="middle">25</text>
+     <text x="${PL+barW}" y="${lblY}" font-size="8" fill="${tc}" font-family="monospace" text-anchor="end">fL</text>`;
 }
 
 // No clamping — user is allowed to push ratio outside preset spec range; ratioOk flag is informational only
