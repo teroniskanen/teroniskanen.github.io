@@ -451,6 +451,7 @@ function applyPreset(p) {
   store.rawMaxUp = p.sUp; store.rawMaxDn = p.sDn; store.rawMaxH = p.hMax ?? 0;
   g('bodyH').value   = p.bodyH.toFixed(1);
   g('maxKS').value   = p.ks;
+  if (p.lumens) g('lumens').value = p.lumens;
   pLock(['maxUp','maxDn','maxH','bodyH','maxKS'], true);
 
   const lb = g('lkRatio');
