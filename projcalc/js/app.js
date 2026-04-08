@@ -316,12 +316,15 @@ function drawBrightnessBar(r) {
   const C_MODE = { dynamic: 1.0, cinema: 0.68, calibrated: 0.50 };
   const cMode = C_MODE[g('lumensMode')?.value] ?? 0.68;
 
-  // C_zoom: lens aperture loss — 0% at wide end, 20% at tele end (linear)
+  // C_zoom: lens aperture loss — physics-based (fWide/fTele)² when F-stop data available,
+  // otherwise 1.0 (fixed lenses, UST, or unknown). Formula: C = (F_wide / F_current)²
+  // where F_current is linearly interpolated across the zoom range.
   let cZoom = 1.0;
   const p = store.activePreset;
-  if (p && !p.fixed && p.rMax > p.rMin) {
+  if (p && !p.fixed && p.fWide != null && p.fTele != null && p.rMax > p.rMin) {
     const t = Math.max(0, Math.min(1, (S.ratio - p.rMin) / (p.rMax - p.rMin)));
-    cZoom = 1.0 - t * 0.20;
+    const fCurrent = p.fWide + t * (p.fTele - p.fWide);
+    cZoom = (p.fWide / fCurrent) ** 2;
   }
 
   // C_key: digital keystone lumen loss (piecewise linear on keystone angle)
