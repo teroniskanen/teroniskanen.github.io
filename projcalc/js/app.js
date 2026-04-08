@@ -298,64 +298,84 @@ function drawBrightnessBar(r) {
   const svg = g('brightSvg');
   if (!svg) return;
   const W = svg.getBoundingClientRect().width || 260;
-  const H = 42;
+  const H = 54;
+  svg.setAttribute('height', H);
   const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
   const tc = isDark ? '#a1a1aa' : '#71717a';
   const tp = isDark ? '#f4f4f5' : '#18181b';
 
-  // fL = (lumens × gain) / screen_area_sqft
   // 1 sq ft = 929.03 cm²
   const areaSqFt = (r.mediaW * r.mediaH) / 929.03;
-  const fL = (S.lumens > 0 && areaSqFt > 0) ? (S.lumens * S.gain) / areaSqFt : 0;
+  if (!S.lumens || areaSqFt <= 0) { svg.innerHTML = ''; g('brightMath') && (g('brightMath').textContent = ''); return; }
 
-  // Math breakdown line
-  const mathEl = g('brightMath');
-  if (mathEl) {
-    if (S.lumens > 0 && areaSqFt > 0) {
-      const gainPart = S.gain !== 1 ? ` × ${S.gain.toFixed(1)}G` : '';
-      mathEl.textContent =
-        `${S.lumens} lm${gainPart} ÷ ${areaSqFt.toFixed(2)} ft² = ${fL.toFixed(1)} fL`;
-    } else {
-      mathEl.textContent = '';
-    }
+  // ── Spec fL (box value, no corrections) ──────────────────────────────────
+  const fLspec = (S.lumens * S.gain) / areaSqFt;
+
+  // ── C-coefficients ────────────────────────────────────────────────────────
+  // C_mode: color calibration loss
+  const C_MODE = { dynamic: 1.0, cinema: 0.68, calibrated: 0.50 };
+  const cMode = C_MODE[g('lumensMode')?.value] ?? 0.68;
+
+  // C_zoom: lens aperture loss — 0% at wide end, 20% at tele end (linear)
+  let cZoom = 1.0;
+  const p = store.activePreset;
+  if (p && !p.fixed && p.rMax > p.rMin) {
+    const t = Math.max(0, Math.min(1, (S.ratio - p.rMin) / (p.rMax - p.rMin)));
+    cZoom = 1.0 - t * 0.20;
   }
 
-  // Scale: 0–50 fL linear. Zones: red 0–10, green 10–25, yellow 25–50
+  // C_key: digital keystone lumen loss (piecewise linear on keystone angle)
+  const ks = r.ksN;
+  const cKey = ks <= 0  ? 1.0
+             : ks <= 15 ? 1.0 - (ks / 15) * 0.10
+             : ks <= 30 ? 0.90 - ((ks - 15) / 15) * 0.15
+             :            Math.max(0.70, 0.75 - (ks - 30) * 0.005);
+
+  // C_angle: gain reduction due to off-axis incidence — cos²(incident angle)
+  // Incident angle = angle between projector central ray and screen normal (horizontal)
+  const incidentRad = Math.abs(Math.atan2(r.lH - r.tCH, S.dist));
+  const cAngle = Math.cos(incidentRad) ** 2;
+
+  // ── Effective fL ──────────────────────────────────────────────────────────
+  const fLeff = (S.lumens * cMode * cZoom * cKey) * (S.gain * cAngle) / areaSqFt;
+
+  // ── Slider ────────────────────────────────────────────────────────────────
   const MAX = 50;
-  const PL = 2, PR = 2, barY = 16, barH = 12, tickY = barY + barH + 4;
-  const barW = W - PL - PR;
+  const PL = 2, barY = 16, barH = 12, tickY = barY + barH + 4;
+  const barW = W - PL - 2;
+  const xOf  = v => PL + Math.min(1, Math.max(0, v / MAX)) * barW;
+  const x10  = xOf(10), x25 = xOf(25);
+  const pxS  = xOf(fLspec);           // spec pointer
+  const pxE  = xOf(fLeff);            // effective pointer
+  const eCol = fLeff < 10 ? '#ef4444' : fLeff <= 25 ? '#10b981' : '#f59e0b';
+  const sCol = isDark ? '#52525b' : '#a1a1aa'; // muted ghost for spec
 
-  const xOf = v => PL + Math.min(1, v / MAX) * barW;
-
-  // Zone widths in px
-  const x10 = xOf(10), x25 = xOf(25);
-
-  // Pointer position (clamped visually at MAX but value shows real fL)
-  const px = Math.min(xOf(fL), PL + barW);
-
-  // Pointer colour: matches the zone it's in
-  const pCol = fL < 10 ? '#ef4444' : fL <= 25 ? '#10b981' : '#f59e0b';
+  // Math line: just the simple spec formula value (no C breakdown)
+  const mathEl = g('brightMath');
+  if (mathEl) {
+    const gainStr = S.gain !== 1.0 ? ` × ${S.gain.toFixed(1)}G` : '';
+    mathEl.textContent = `Box spec: ${S.lumens} lm${gainStr} ÷ ${areaSqFt.toFixed(1)} ft² = ${fLspec.toFixed(1)} fL`;
+  }
 
   svg.innerHTML =
-    `<!-- Red zone 0–10 -->
-     <rect x="${PL}" y="${barY}" width="${x10 - PL}" height="${barH}" rx="3 0 0 3" fill="#ef4444" opacity="0.7"/>
-     <!-- Green zone 10–25 -->
-     <rect x="${x10}" y="${barY}" width="${x25 - x10}" height="${barH}" fill="#10b981" opacity="0.7"/>
-     <!-- Yellow zone 25–50 -->
-     <rect x="${x25}" y="${barY}" width="${PL + barW - x25}" height="${barH}" rx="0 3 3 0" fill="#f59e0b" opacity="0.7"/>
-     <!-- Tick at 10 -->
-     <line x1="${x10}" y1="${barY}" x2="${x10}" y2="${tickY}" stroke="${tc}" stroke-width="1"/>
-     <text x="${x10}" y="${barY - 2}" font-size="8" fill="${tc}" font-family="monospace" text-anchor="middle">10</text>
-     <!-- Tick at 25 -->
-     <line x1="${x25}" y1="${barY}" x2="${x25}" y2="${tickY}" stroke="${tc}" stroke-width="1"/>
-     <text x="${x25}" y="${barY - 2}" font-size="8" fill="${tc}" font-family="monospace" text-anchor="middle">25</text>
-     <!-- fL label at right edge -->
-     <text x="${PL + barW}" y="${barY - 2}" font-size="8" fill="${tc}" font-family="monospace" text-anchor="end">fL</text>
-     <!-- Pointer -->
-     <line x1="${px}" y1="${barY - 1}" x2="${px}" y2="${tickY}" stroke="${pCol}" stroke-width="2"/>
-     <polygon points="${px},${tickY} ${px-4},${tickY+5} ${px+4},${tickY+5}" fill="${pCol}"/>
-     <!-- Value -->
-     <text x="${px}" y="${H - 1}" font-size="10" fill="${pCol}" font-family="monospace" text-anchor="middle" font-weight="700">${fL.toFixed(1)} fL</text>`;
+    `<!-- Red zone -->
+     <rect x="${PL}" y="${barY}" width="${x10-PL}" height="${barH}" rx="3" fill="#ef4444" opacity="0.65"/>
+     <!-- Green zone -->
+     <rect x="${x10}" y="${barY}" width="${x25-x10}" height="${barH}" fill="#10b981" opacity="0.65"/>
+     <!-- Yellow zone -->
+     <rect x="${x25}" y="${barY}" width="${PL+barW-x25}" height="${barH}" rx="3" fill="#f59e0b" opacity="0.65"/>
+     <!-- Tick 10 -->
+     <line x1="${x10}" y1="${barY-1}" x2="${x10}" y2="${tickY}" stroke="${tc}" stroke-width="1"/>
+     <text x="${x10}" y="${barY-3}" font-size="8" fill="${tc}" font-family="monospace" text-anchor="middle">10</text>
+     <!-- Tick 25 -->
+     <line x1="${x25}" y1="${barY-1}" x2="${x25}" y2="${tickY}" stroke="${tc}" stroke-width="1"/>
+     <text x="${x25}" y="${barY-3}" font-size="8" fill="${tc}" font-family="monospace" text-anchor="middle">25</text>
+     <!-- fL scale label -->
+     <text x="${PL+barW}" y="${barY-3}" font-size="8" fill="${tc}" font-family="monospace" text-anchor="end">fL</text>
+     <!-- Effective pointer (realistic corrected value) -->
+     <line x1="${pxE}" y1="${barY}" x2="${pxE}" y2="${tickY}" stroke="${eCol}" stroke-width="2"/>
+     <polygon points="${pxE},${tickY} ${pxE-4},${tickY+5} ${pxE+4},${tickY+5}" fill="${eCol}"/>
+     <text x="${pxE}" y="${H-1}" font-size="10" fill="${eCol}" font-family="monospace" text-anchor="middle" font-weight="700">${fLeff.toFixed(1)} fL</text>`;
 }
 
 // No clamping — user is allowed to push ratio outside preset spec range; ratioOk flag is informational only
@@ -771,6 +791,7 @@ g('aspect').addEventListener('change', function() { tri('aspect'); refresh(); })
 ['ceilH','wallH','hPct','bodyH','tiltDeg','maxKS','personDist','lumens','gain'].forEach(id => {
   const el = g(id); if (el) el.addEventListener('input', refresh);
 });
+g('lumensMode').addEventListener('change', refresh);
 g('personOn').addEventListener('change', refresh);
 
 // ─── Theme toggle ─────────────────────────────────────────────────────────────
