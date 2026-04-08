@@ -331,13 +331,8 @@ function drawBrightnessBar(r) {
              : ks <= 30 ? 0.90 - ((ks - 15) / 15) * 0.15
              :            Math.max(0.70, 0.75 - (ks - 30) * 0.005);
 
-  // C_angle: gain reduction due to off-axis incidence — cos²(incident angle)
-  // Incident angle = angle between projector central ray and screen normal (horizontal)
-  const incidentRad = Math.abs(Math.atan2(r.lH - r.tCH, S.dist));
-  const cAngle = Math.cos(incidentRad) ** 2;
-
   // ── Effective fL ──────────────────────────────────────────────────────────
-  const fLeff = (S.lumens * cMode * cZoom * cKey) * (S.gain * cAngle) / areaSqFt;
+  const fLeff = (S.lumens * cMode * cZoom * cKey * S.gain) / areaSqFt;
 
   // ── Slider ────────────────────────────────────────────────────────────────
   const MAX = 50;
@@ -345,10 +340,8 @@ function drawBrightnessBar(r) {
   const barW = W - PL - 2;
   const xOf  = v => PL + Math.min(1, Math.max(0, v / MAX)) * barW;
   const x10  = xOf(10), x25 = xOf(25);
-  const pxS  = xOf(fLspec);           // spec pointer
-  const pxE  = xOf(fLeff);            // effective pointer
+  const pxE  = xOf(fLeff);
   const eCol = fLeff < 10 ? '#ef4444' : fLeff <= 25 ? '#10b981' : '#f59e0b';
-  const sCol = isDark ? '#52525b' : '#a1a1aa'; // muted ghost for spec
 
   // Math line: just the simple spec formula value (no C breakdown)
   const mathEl = g('brightMath');
