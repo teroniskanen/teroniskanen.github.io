@@ -310,9 +310,8 @@ function drawBrightnessBar(r) {
   const fLspec = (S.lumens * S.gain) / areaSqFt;
 
   // ── C-coefficients ────────────────────────────────────────────────────────
-  // C_mode: color calibration loss
-  const C_MODE = { dynamic: 1.0, cinema: 0.68, calibrated: 0.50 };
-  const cMode = C_MODE[g('lumensMode')?.value] ?? 0.68;
+  // C_mode: color calibration loss — from preset, or 1.0 in manual mode
+  const cMode = p?.cMode ?? 1.0;
 
   // C_zoom: lens aperture loss — physics-based (fWide/fTele)² when F-stop data available,
   // otherwise 1.0 (fixed lenses, UST, or unknown). Formula: C = (F_wide / F_current)²
@@ -786,7 +785,6 @@ g('aspect').addEventListener('change', function() { tri('aspect'); refresh(); })
 ['ceilH','wallH','hPct','bodyH','tiltDeg','maxKS','personDist','lumens','gain'].forEach(id => {
   const el = g(id); if (el) el.addEventListener('input', refresh);
 });
-g('lumensMode').addEventListener('change', refresh);
 g('personOn').addEventListener('change', refresh);
 
 // ─── Theme toggle ─────────────────────────────────────────────────────────────

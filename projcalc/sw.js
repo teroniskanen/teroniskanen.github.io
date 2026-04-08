@@ -1,5 +1,5 @@
 // Increment version string to force cache refresh on update
-const CACHE = 'projcalc-v11';
+const CACHE = 'projcalc-v12';
 
 const ASSETS = [
   '/',
