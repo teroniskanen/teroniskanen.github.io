@@ -1,6 +1,6 @@
 # Projector Installation Calculator
 
-Static PWA — no build step, ES modules, deployed to `teroniskanen.github.io/projcalc/`.
+Static PWA — no build step, ES modules, deployed to `teroniskanen.github.io/projis/`.
 
 ## File responsibilities
 
@@ -83,11 +83,11 @@ Keeps dist/ratio/imgW consistent when one changes. Width change → prefers upda
 ../deploy.sh "commit message"
 ```
 
-or manually: `git add projcalc/ && git commit -m "..." && git push origin main`
+or manually: `git add projis/ && git commit -m "..." && git push origin main`
 
 ## Local dev
 
 ```sh
 cd /Users/tni22049/projis && npx serve .
-# open http://localhost:3000/projcalc/
+# open http://localhost:3000/projis/
 ```

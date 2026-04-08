@@ -2,7 +2,7 @@
   "name": "Projector Installation Calculator",
   "short_name": "ProjCalc",
   "description": "Calculate throw distance, lens shift, drop and keystone for projector installations.",
-  "start_url": "/",
+  "start_url": "/projis/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#ffffff",

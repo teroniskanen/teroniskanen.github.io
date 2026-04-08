@@ -1,17 +1,17 @@
 // Increment version string to force cache refresh on update
-const CACHE = 'projcalc-v13';
+const CACHE = 'projis-v14';
 
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon.svg',
-  '/js/data.js',
-  '/js/state.js',
-  '/js/compute.js',
-  '/js/draw.js',
-  '/js/ui.js',
-  '/js/app.js',
+  '/projis/',
+  '/projis/index.html',
+  '/projis/manifest.json',
+  '/projis/icon.svg',
+  '/projis/js/data.js',
+  '/projis/js/state.js',
+  '/projis/js/compute.js',
+  '/projis/js/draw.js',
+  '/projis/js/ui.js',
+  '/projis/js/app.js',
 ];
 
 // Install: pre-cache all app assets
