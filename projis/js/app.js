@@ -215,10 +215,13 @@ function refresh() {
     if (S.hShiftPct >  dynH) { S.hShiftPct =  dynH;  g('hPct').value = S.hShiftPct.toFixed(2); }
     if (S.hShiftPct < -dynH) { S.hShiftPct = -dynH;  g('hPct').value = S.hShiftPct.toFixed(2); }
   }
-  // Update spec limit fields to show current available limits (not raw spec)
-  g('maxUp').value = dV.up.toFixed(1);
-  g('maxDn').value = dV.dn.toFixed(1);
-  if (store.rawMaxH > 0) g('maxH').value = dynH.toFixed(1);
+  // Show raw spec in limit fields (ceiling-flipped for preset, user-entered for manual).
+  // Dynamic limits are enforced by the clamping above and shown in the result cards.
+  if (store.activePreset) {
+    g('maxUp').value = parseFloat(g('maxUp').dataset.raw).toFixed(0);
+    g('maxDn').value = parseFloat(g('maxDn').dataset.raw).toFixed(0);
+    if (store.rawMaxH > 0) g('maxH').value = parseFloat(g('maxH').dataset.raw).toFixed(0);
+  }
 
   // Clamp tilt to keystone limit
   const tiltEl = g('tiltDeg');
