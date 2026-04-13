@@ -25,7 +25,7 @@ function rd() {
   S.imgH     = +g('imgH').value    || 0;
   S.shiftPct  = +g('sPct').value    || 0;
   S.maxUp  = store.rawMaxUp = parseFloat(g('maxUp').dataset.raw) || +g('maxUp').value || 0;
-  S.maxDn  = store.rawMaxDn = parseFloat(g('maxDn').dataset.raw) || +g('maxDn').value || 0;
+  S.maxDn  = store.rawMaxDn = S.maxUp;  // single ± field — V is symmetric in manual mode
   S.hShiftPct = +g('hPct').value   || 0;
   S.maxH   = store.rawMaxH  = parseFloat(g('maxH').dataset.raw)  || +g('maxH').value  || 0;
   S.bodyH    = +g('bodyH').value   || 13.6;
@@ -216,10 +216,10 @@ function refresh() {
     if (S.hShiftPct < -dynH) { S.hShiftPct = -dynH;  g('hPct').value = S.hShiftPct.toFixed(2); }
   }
   // Show raw spec in limit fields (ceiling-flipped for preset, user-entered for manual).
-  // Dynamic limits are enforced by the clamping above and shown in the result cards.
+  // For preset: show max(up,dn) so asymmetric presets (e.g. NEC ceiling flip) always show
+  // the non-zero limit. Dynamic limits are enforced by clamping above.
   if (store.activePreset) {
-    g('maxUp').value = parseFloat(g('maxUp').dataset.raw).toFixed(0);
-    g('maxDn').value = parseFloat(g('maxDn').dataset.raw).toFixed(0);
+    g('maxUp').value = Math.max(store.rawMaxUp, store.rawMaxDn).toFixed(0);
     if (store.rawMaxH > 0) g('maxH').value = parseFloat(g('maxH').dataset.raw).toFixed(0);
   }
 
@@ -774,7 +774,11 @@ g('aspect').addEventListener('change', function() { tri('aspect'); refresh(); })
 
 // ─── Other inputs ─────────────────────────────────────────────────────────────
 ['maxUp','maxDn','maxH'].forEach(id => {
-  const el = g(id); if (el) el.addEventListener('input', function() { this.dataset.raw = this.value; refresh(); });
+  const el = g(id); if (el) el.addEventListener('input', function() {
+    this.dataset.raw = this.value;
+    if (this.id === 'maxUp') { g('maxDn').dataset.raw = g('maxDn').value = this.value; }
+    refresh();
+  });
 });
 ['ceilH','wallH','hPct','bodyH','tiltDeg','maxKS','personDist','gain'].forEach(id => {
   const el = g(id); if (el) el.addEventListener('input', refresh);
