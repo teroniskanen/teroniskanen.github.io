@@ -492,6 +492,7 @@ function applyPreset(p) {
   const nName = ASPECT_NAMES[p.aspectVal] || p.aspectVal;
   g('pi-t').textContent = `Nat ${nName} · Throw ${p.fixed ? p.rMin+':1 fix' : p.rMin+'-'+p.rMax+':1'} · Shift ±${p.sUp}%`;
   g('pbox').classList.add('on');
+  psel.value = p.id;
 
   tri('ratio'); refresh();
 }
@@ -535,7 +536,14 @@ function loadSetup(r) {
   g('wallH').value   = r.wallH;
   g('dist').value    = r.dist;
   g('aspect').value  = r.aspect  ?? g('aspect').value;
-  if (!proj || !proj.fixed) g('ratio').value = r.ratio ?? g('ratio').value;
+  if (!proj || !proj.fixed) {
+    g('ratio').value = r.ratio ?? g('ratio').value;
+    if (proj && g('zoomRow').style.display !== 'none') {
+      const rv = parseFloat(g('ratio').value);
+      g('zoomSlider').value = rv;
+      g('zoomVal').textContent = rv.toFixed(2) + ':1';
+    }
+  }
   g('targetH').value = r.targetH;
   g('sPct').value    = r.shiftPct  ?? 0;
   g('hPct').value    = r.hShiftPct ?? 0;
