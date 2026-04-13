@@ -6,7 +6,10 @@ export function compute() {
   // In manual mode nativeAspect === S.aspect, so isPillared/isLetterboxed are always false
   const nativeAspect = activePreset ? parseFloat(activePreset.aspectVal) : S.aspect;
 
-  // Throw distance + ratio define the absolute native panel bounds
+  // Throw distance + ratio define the absolute native panel bounds.
+  // S.dist is the horizontal (floor-plane) distance from lens to screen — this is what
+  // manufacturers use for throw-ratio specs, and it's correct for lens-shift setups
+  // where the optical axis stays horizontal regardless of lens height.
   const nativeW = S.dist / S.ratio;
   const nativeH = nativeW / nativeAspect;
 
@@ -117,6 +120,9 @@ export function compute() {
     ? S.dist >= activePreset.dMin && S.dist <= activePreset.dMax
     : true;
 
+  // Straight-line distance from lens to effective image centre (Pythagorean)
+  const lensToScreen = Math.sqrt(S.dist * S.dist + (lH - tCH) * (lH - tCH));
+
   return {
     mediaW, mediaH, nativeW, nativeH, shiftM, userShiftM,
     cH, lH, drop, rod,
@@ -126,5 +132,6 @@ export function compute() {
     aboveSight, wallGap,
     shadowH, personClears,
     ratioOk, isLetterboxed, isPillared, nativeAspect, distOk,
+    lensToScreen,
   };
 }

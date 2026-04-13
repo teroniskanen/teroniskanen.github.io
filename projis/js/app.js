@@ -5,7 +5,7 @@ import { draw } from './draw.js';
 import { pLock, buildRoomSel, updateDropModeLabel, renderRes } from './ui.js';
 
 // ─── Initialise lock button icons ────────────────────────────────────────────
-['lkDist','lkRatio','lkBody','lkDrop','lkKS','lkImgW'].forEach(id => g(id).innerHTML = USVG);
+['lkDist','lkRatio','lkDrop','lkImgW'].forEach(id => g(id).innerHTML = USVG);
 
 // ─── Build projector preset dropdown ─────────────────────────────────────────
 const psel = g('psel');
@@ -178,6 +178,9 @@ function drawShiftCurve() {
     `<text x="${PL}" y="${PT + 8}" font-size="8" fill="${dotCol}" font-family="monospace">${(S.shiftPct >= 0 ? '+' : '') + S.shiftPct.toFixed(1)}%</text>`;
 }
 
+// Cache last computed height difference for slant↔dist reverse calculation
+let _lastHeightDiff = 0;
+
 // ─── Main refresh ─────────────────────────────────────────────────────────────
 function refresh() {
   rd();
@@ -269,6 +272,9 @@ function refresh() {
   g('imgW').value = r.mediaW.toFixed(1);
   g('imgH').value = r.mediaH.toFixed(1);
   g('sMm').value  = Math.round((S.shiftPct / 100) * r.nativeH * 10);
+  g('hDistFloor').value = S.dist.toFixed(0);
+  g('slantDist').value  = r.lensToScreen.toFixed(1);
+  _lastHeightDiff = r.lH - r.tCH;
 
   // AR info banner — only when a preset is active and causes letterbox/pillar
   const arInfo = g('arInfo');
@@ -454,7 +460,6 @@ function clearPreset() {
   const lb = g('lkRatio');
   lb.classList.remove('pl'); lb.innerHTML = store.lkState.ratio ? LSVG : USVG;
   lb.classList.toggle('on', store.lkState.ratio);
-  g('lkBody').classList.remove('pl');
   g('zoomRow').style.display = 'none';
   g('shiftCurveWrap').style.display = 'none';
 }
@@ -487,8 +492,6 @@ function applyPreset(p) {
     const zs = g('zoomSlider'); zs.min = p.rMin; zs.max = p.rMax; zs.step = 0.01; zs.value = p.rMin;
     g('zoomVal').textContent = p.rMin.toFixed(2) + ':1';
   }
-  g('lkBody').classList.add('pl');
-
   const nName = ASPECT_NAMES[p.aspectVal] || p.aspectVal;
   g('pi-t').textContent = `Nat ${nName} · Throw ${p.fixed ? p.rMin+':1 fix' : p.rMin+'-'+p.rMax+':1'} · Shift ±${p.sUp}%`;
   g('pbox').classList.add('on');
@@ -505,10 +508,9 @@ g('pi-c').addEventListener('click', () => { clearPreset(); refresh(); });
 // ─── Lock buttons ─────────────────────────────────────────────────────────────
 function toggleLock(key) {
   if (key === 'ratio' && store.activePreset && store.activePreset.fixed) return;
-  if (key === 'body'  && store.activePreset) return;
   store.lkState[key] = !store.lkState[key];
-  const ids    = { dist:'lkDist', ratio:'lkRatio', body:'lkBody', drop:'lkDrop', ks:'lkKS', imgW:'lkImgW' };
-  const inpIds = { dist:'dist',   ratio:'ratio',   body:'bodyH',  ks:'maxKS',    imgW:'imgW' };
+  const ids    = { dist:'lkDist', ratio:'lkRatio', drop:'lkDrop', imgW:'lkImgW' };
+  const inpIds = { dist:'dist',   ratio:'ratio',   imgW:'imgW' };
   const btn    = g(ids[key]);
   btn.classList.toggle('on', store.lkState[key]);
   btn.innerHTML = store.lkState[key] ? LSVG : USVG;
@@ -521,8 +523,8 @@ function toggleLock(key) {
   }
 }
 
-['lkDist','lkRatio','lkBody','lkDrop','lkKS','lkImgW'].forEach(id => {
-  const key = { lkDist:'dist', lkRatio:'ratio', lkBody:'body', lkDrop:'drop', lkKS:'ks', lkImgW:'imgW' }[id];
+['lkDist','lkRatio','lkDrop','lkImgW'].forEach(id => {
+  const key = { lkDist:'dist', lkRatio:'ratio', lkDrop:'drop', lkImgW:'imgW' }[id];
   g(id).addEventListener('click', () => toggleLock(key));
 });
 
@@ -753,6 +755,21 @@ g('imgW').addEventListener('input', function() { tri('width'); refresh(); });
 g('imgH').addEventListener('input', function() { tri('height'); refresh(); });
 g('dist').addEventListener('input', function() {
   if (!this.readOnly) { tri('dist'); refresh(); }
+});
+g('hDistFloor').addEventListener('input', function() {
+  if (g('dist').readOnly) return;  // respect throw-distance lock
+  g('dist').value = this.value;
+  tri('dist'); refresh();
+});
+g('slantDist').addEventListener('input', function() {
+  if (g('dist').readOnly) return;
+  const slant = +this.value;
+  if (slant <= 0) return;
+  const distSq = slant * slant - _lastHeightDiff * _lastHeightDiff;
+  if (distSq <= 0) return;
+  const newDist = Math.sqrt(distSq);
+  g('dist').value = newDist.toFixed(1);
+  tri('dist'); refresh();
 });
 g('zoomSlider').addEventListener('input', function() {
   if (g('ratio').readOnly) return;

@@ -15,7 +15,7 @@ export const store = {
   activePreset: null,
   dropDriver:   false,
   floorMode:    false,
-  lkState:      { dist:false, ratio:false, body:false, drop:false, ks:false, imgW:false },
+  lkState:      { dist:false, ratio:false, drop:false, imgW:false },
   roomPresets:  [],
   rawMaxUp: 50, rawMaxDn: 50, rawMaxH: 0,
 };

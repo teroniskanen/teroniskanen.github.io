@@ -52,7 +52,8 @@ export function renderRes(r) {
     `</div>`;
 
   let h = '';
-  h += card('Throw distance', `${S.dist.toFixed(0)} cm`, '');
+  h += card('Throw distance (H)', `${S.dist.toFixed(0)} cm`, '');
+  h += card('Lens → screen center', `${r.lensToScreen.toFixed(1)} cm`, '');
   h += card('Media Area', `${r.mediaW.toFixed(1)} × ${r.mediaH.toFixed(1)} cm`, '');
 
   if (r.isLetterboxed || r.isPillared) {
