@@ -198,36 +198,36 @@ export function draw(r) {
   const tiltRad = S.tiltDeg * Math.PI / 180;
 
   if (store.floorMode) {
-    // Pedestal block from floor up to S.drop (stays vertical — it's fixed to the floor)
+    // Pedestal block from floor up to S.drop — centred under the body (lens is left edge)
     const pedTop = sy(S.drop), pedBot = sy(0), pedH = pedBot - pedTop;
     if (pedH > 1) {
       ctx.fillStyle = c.rod;
-      ctx.fillRect(lX - bW*0.4, pedTop, bW*0.8, pedH);
+      ctx.fillRect(lX + bW*0.1, pedTop, bW*0.8, pedH);
     }
-    // Body rotates around the lens pivot
+    // Body rotates around the lens pivot; lens is the left edge of the body
     ctx.save();
     ctx.translate(lX, lY);
-    ctx.rotate(tiltRad);
+    ctx.rotate(-tiltRad);
     ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 6*dpr; ctx.shadowOffsetY = -3*dpr;
     ctx.fillStyle = c.proj; ctx.strokeStyle = c.projS; ctx.lineWidth = 1.2*dpr;
-    rr(-bW/2, 0, bW, bH, 3*dpr); ctx.fill(); ctx.stroke();
+    rr(0, 0, bW, bH, 3*dpr); ctx.fill(); ctx.stroke();
     ctx.shadowColor = 'transparent';
     const legW = 4*dpr, legH = 5*dpr;
     ctx.fillStyle = c.projS;
-    ctx.fillRect(-bW/2 + 2*dpr, bH - 1*dpr, legW, legH);
-    ctx.fillRect( bW/2 - legW - 2*dpr, bH - 1*dpr, legW, legH);
+    ctx.fillRect(2*dpr, bH - 1*dpr, legW, legH);
+    ctx.fillRect(bW - legW - 2*dpr, bH - 1*dpr, legW, legH);
     ctx.restore();
   } else {
-    // Ceiling mount — rod stays vertical, body rotates around lens pivot
+    // Ceiling mount — rod stays vertical, body rotates around lens pivot (lens is left edge)
     const bTop = lY - bH;
     ctx.fillStyle = c.rod;
-    ctx.fillRect(lX-1.5*dpr, sy(S.ceilH), 3*dpr, bTop-sy(S.ceilH));
+    ctx.fillRect(lX + bW/2 - 1.5*dpr, sy(S.ceilH), 3*dpr, bTop - sy(S.ceilH));
     ctx.save();
     ctx.translate(lX, lY);
-    ctx.rotate(tiltRad);
+    ctx.rotate(-tiltRad);
     ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 6*dpr; ctx.shadowOffsetY = 3*dpr;
     ctx.fillStyle = c.proj; ctx.strokeStyle = c.projS; ctx.lineWidth = 1.2*dpr;
-    rr(-bW/2, -bH, bW, bH, 3*dpr); ctx.fill(); ctx.stroke();
+    rr(0, -bH, bW, bH, 3*dpr); ctx.fill(); ctx.stroke();
     ctx.restore();
   }
   ctx.shadowColor = 'transparent';
