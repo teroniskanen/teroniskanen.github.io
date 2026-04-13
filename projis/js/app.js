@@ -1,7 +1,7 @@
 import { g, S, store } from './state.js';
 import { PRESETS, LSVG, USVG, ASPECT_NAMES } from './data.js';
 import { compute } from './compute.js';
-import { draw } from './draw.js';
+import { draw, drawForPrint } from './draw.js';
 import { pLock, buildRoomSel, updateDropModeLabel, renderRes } from './ui.js';
 
 // ─── Initialise lock button icons ────────────────────────────────────────────
@@ -180,6 +180,8 @@ function drawShiftCurve() {
 
 // Cache last computed height difference for slant↔dist reverse calculation
 let _lastHeightDiff = 0;
+// Cache last compute result for print capture
+let lastR = null;
 
 // ─── Main refresh ─────────────────────────────────────────────────────────────
 function refresh() {
@@ -266,7 +268,7 @@ function refresh() {
     }
   }
 
-  const r = compute();
+  const r = lastR = compute();
 
   // Keep image dimensions in sync with physical calc
   g('imgW').value = r.mediaW.toFixed(1);
@@ -818,7 +820,7 @@ g('themeBtn').addEventListener('click', () => {
 g('printBtn').addEventListener('click', () => window.print());
 const printImg = g('printImg');
 window.addEventListener('beforeprint', () => {
-  printImg.src = g('cv').toDataURL('image/png');
+  if (lastR) printImg.src = drawForPrint(lastR);
 });
 window.addEventListener('afterprint', () => {
   printImg.src = '';

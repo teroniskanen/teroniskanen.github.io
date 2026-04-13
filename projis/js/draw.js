@@ -10,10 +10,10 @@ const dk  = () => {
   return matchMedia('(prefers-color-scheme: dark)').matches;
 };
 
-function C() {
-  const d = dk();
+function C(light) {
+  const d = light ? false : dk();
   return {
-    bg:        d ? '#18181b'               : '#ffffff',
+    bg:        '#ffffff',
     grid:      d ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.03)',
     floor:     d ? '#27272a'               : '#e4e4e7',
     floorFade: d ? '#18181b'               : '#ffffff',
@@ -39,27 +39,32 @@ function C() {
   };
 }
 
-// Rounded rectangle path helper
-function rr(x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
-  ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
-  ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
-  ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
-  ctx.closePath();
+// Rounded rectangle path helper (uses passed context)
+function rr(x, y, w, h, r, xctx) {
+  xctx.beginPath();
+  xctx.moveTo(x+r, y); xctx.lineTo(x+w-r, y); xctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  xctx.lineTo(x+w, y+h-r); xctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  xctx.lineTo(x+r, y+h); xctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  xctx.lineTo(x, y+r); xctx.quadraticCurveTo(x, y, x+r, y);
+  xctx.closePath();
 }
 
-export function draw(r) {
-  const dpr = window.devicePixelRatio || 1;
-  const W = Math.round(cv.clientWidth * dpr), H = Math.round(cv.clientHeight * dpr);
-  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
-  if (W < 10 || H < 10) return;
+// ─── Core drawing logic ──────────────────────────────────────────────────────
+// xctx: canvas 2D context  dpr: pixel ratio  W,H: canvas buffer size
+// isPrint: use light-mode colours + print-appropriate font size
+function _draw(r, xctx, dpr, W, H, isPrint) {
+  xctx.clearRect(0, 0, W, H);
+  const c = C(isPrint);
+  xctx.fillStyle = c.bg; xctx.fillRect(0, 0, W, H);
 
-  ctx.clearRect(0, 0, W, H);
-  const c = C();
-  ctx.fillStyle = c.bg; ctx.fillRect(0, 0, W, H);
+  // Font size: scales with canvas width so labels stay proportional at every size.
+  // Print: 12pt at 96 dpi = 16 CSS px; at dpr=2 → 32 canvas px on an 840px-wide canvas.
+  // Screen: same formula — ~12pt equivalent across window sizes.
+  const cssW  = W / dpr;                                // logical canvas width
+  const fSz   = isPrint
+    ? Math.round(16 * dpr)                              // 12pt at 96 dpi
+    : Math.max(10, Math.round(cssW / 52.5)) * dpr;      // ~12pt at 840px, scales proportionally
 
-  const fSz = (cv.clientWidth < 480 ? 64 : 52) * dpr;
   const WW = 16*dpr;
   const PL = 54*dpr + WW, PR = 50*dpr, PT = 18*dpr, PB = 24*dpr;
   const dW = W - PL - PR, dH = H - PT - PB;
@@ -71,252 +76,263 @@ export function draw(r) {
   const wX = PL, lX = sx(S.dist), lY = sy(r.lH);
 
   // Grid
-  ctx.strokeStyle = c.grid; ctx.lineWidth = dpr;
+  xctx.strokeStyle = c.grid; xctx.lineWidth = dpr;
   for (let x = 0; x <= Math.max(roomW, S.dist+100); x += 100) {
-    ctx.beginPath(); ctx.moveTo(sx(x), PT); ctx.lineTo(sx(x), H-PB); ctx.stroke();
+    xctx.beginPath(); xctx.moveTo(sx(x), PT); xctx.lineTo(sx(x), H-PB); xctx.stroke();
   }
   for (let y = 0; y <= scH; y += 50) {
-    ctx.beginPath(); ctx.moveTo(0, sy(y)); ctx.lineTo(W, sy(y)); ctx.stroke();
+    xctx.beginPath(); xctx.moveTo(0, sy(y)); xctx.lineTo(W, sy(y)); xctx.stroke();
   }
 
   // Floor gradient
-  const floorGrad = ctx.createLinearGradient(0, sy(0), 0, H);
+  const floorGrad = xctx.createLinearGradient(0, sy(0), 0, H);
   floorGrad.addColorStop(0, c.floor); floorGrad.addColorStop(1, c.floorFade);
-  ctx.fillStyle = floorGrad;
-  ctx.fillRect(0, sy(0), W, H-sy(0));
+  xctx.fillStyle = floorGrad;
+  xctx.fillRect(0, sy(0), W, H-sy(0));
 
   // Ceiling line
-  ctx.fillStyle = c.floor;
-  ctx.fillRect(0, sy(S.ceilH)-2*dpr, W, 2*dpr);
+  xctx.fillStyle = c.floor;
+  xctx.fillRect(0, sy(S.ceilH)-2*dpr, W, 2*dpr);
 
   // Wall
   const wTop = sy(S.wallH), wBot = sy(0);
-  ctx.shadowColor = 'rgba(0,0,0,0.15)'; ctx.shadowBlur = 8*dpr; ctx.shadowOffsetX = 3*dpr;
-  ctx.fillStyle = c.wallF; ctx.fillRect(PL-WW, wTop, WW, wBot-wTop);
-  ctx.shadowColor = 'transparent';
-  ctx.strokeStyle = c.wallS; ctx.lineWidth = dpr; ctx.strokeRect(PL-WW, wTop, WW, wBot-wTop);
+  xctx.shadowColor = 'rgba(0,0,0,0.15)'; xctx.shadowBlur = 8*dpr; xctx.shadowOffsetX = 3*dpr;
+  xctx.fillStyle = c.wallF; xctx.fillRect(PL-WW, wTop, WW, wBot-wTop);
+  xctx.shadowColor = 'transparent';
+  xctx.strokeStyle = c.wallS; xctx.lineWidth = dpr; xctx.strokeRect(PL-WW, wTop, WW, wBot-wTop);
 
   // Height labels — left of wall, right-aligned
   const hfmt = v => (v / 100).toFixed(1) + 'm';
-  ctx.fillStyle = c.lbl; ctx.font = `${fSz}px var(--font-mono)`; ctx.textAlign = 'right';
-  ctx.fillText(hfmt(0),      PL-WW-3*dpr, sy(0)+3*dpr);
-  ctx.fillText(hfmt(S.ceilH), PL-WW-3*dpr, sy(S.ceilH)+3*dpr);
-  ctx.fillText(hfmt(S.wallH), PL-WW-3*dpr, wTop+fSz);
+  xctx.fillStyle = c.lbl; xctx.font = `${fSz}px var(--font-mono)`; xctx.textAlign = 'right';
+  xctx.fillText(hfmt(0),       PL-WW-3*dpr, sy(0)+3*dpr);
+  xctx.fillText(hfmt(S.ceilH), PL-WW-3*dpr, sy(S.ceilH)+3*dpr);
+  xctx.fillText(hfmt(S.wallH), PL-WW-3*dpr, wTop+fSz);
 
-  const iSW = Math.round(Math.min(8, cv.clientWidth * 0.015)) * dpr;
+  const iSW = Math.round(Math.min(8, (W/dpr) * 0.015)) * dpr;
 
   // Black light (native panel — only when letterboxed or pillared)
   if (r.isLetterboxed || r.isPillared) {
-    ctx.fillStyle = c.beamNat;
-    ctx.beginPath();
-    ctx.moveTo(lX, lY); ctx.lineTo(wX, sy(r.effNatTop)); ctx.lineTo(wX, sy(r.effNatBot));
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = c.imgNatS; ctx.lineWidth = dpr; ctx.setLineDash([3*dpr, 3*dpr]);
-    ctx.strokeRect(wX, sy(r.effNatTop), iSW, sy(r.effNatBot)-sy(r.effNatTop));
-    ctx.beginPath(); ctx.moveTo(lX, lY); ctx.lineTo(wX, sy(r.effNatTop)); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(lX, lY); ctx.lineTo(wX, sy(r.effNatBot)); ctx.stroke();
-    ctx.setLineDash([]);
+    xctx.fillStyle = c.beamNat;
+    xctx.beginPath();
+    xctx.moveTo(lX, lY); xctx.lineTo(wX, sy(r.effNatTop)); xctx.lineTo(wX, sy(r.effNatBot));
+    xctx.closePath(); xctx.fill();
+    xctx.strokeStyle = c.imgNatS; xctx.lineWidth = dpr; xctx.setLineDash([3*dpr, 3*dpr]);
+    xctx.strokeRect(wX, sy(r.effNatTop), iSW, sy(r.effNatBot)-sy(r.effNatTop));
+    xctx.beginPath(); xctx.moveTo(lX, lY); xctx.lineTo(wX, sy(r.effNatTop)); xctx.stroke();
+    xctx.beginPath(); xctx.moveTo(lX, lY); xctx.lineTo(wX, sy(r.effNatBot)); xctx.stroke();
+    xctx.setLineDash([]);
   }
 
   // Active media beam
   const aTY = sy(r.effTop), aBY = sy(r.effBot);
   const bad = r.effTop > S.wallH || r.effBot < 0;
 
-  ctx.globalCompositeOperation = dk() ? 'screen' : 'multiply';
-  const beamGrad = ctx.createLinearGradient(lX, lY, wX, (aTY+aBY)/2);
+  xctx.globalCompositeOperation = (!isPrint && dk()) ? 'screen' : 'multiply';
+  const beamGrad = xctx.createLinearGradient(lX, lY, wX, (aTY+aBY)/2);
   beamGrad.addColorStop(0, bad ? 'rgba(239,68,68,0.15)' : c.beamMedia);
   beamGrad.addColorStop(1, bad ? 'rgba(239,68,68,0.05)' : c.beamNat);
-  ctx.fillStyle = beamGrad;
-  ctx.beginPath(); ctx.moveTo(lX, lY); ctx.lineTo(wX, aTY); ctx.lineTo(wX, aBY);
-  ctx.closePath(); ctx.fill();
-  ctx.globalCompositeOperation = 'source-over';
+  xctx.fillStyle = beamGrad;
+  xctx.beginPath(); xctx.moveTo(lX, lY); xctx.lineTo(wX, aTY); xctx.lineTo(wX, aBY);
+  xctx.closePath(); xctx.fill();
+  xctx.globalCompositeOperation = 'source-over';
 
   // Wall glow
-  const wallGlow = ctx.createLinearGradient(wX, 0, wX+iSW*1.5, 0);
+  const wallGlow = xctx.createLinearGradient(wX, 0, wX+iSW*1.5, 0);
   wallGlow.addColorStop(0, bad ? 'rgba(239,68,68,0.5)' : c.beamMedia);
   wallGlow.addColorStop(1, 'transparent');
-  ctx.fillStyle = wallGlow; ctx.fillRect(wX, aTY, iSW*1.5, aBY-aTY);
+  xctx.fillStyle = wallGlow; xctx.fillRect(wX, aTY, iSW*1.5, aBY-aTY);
 
-  ctx.strokeStyle = bad ? '#dc2626' : c.imgMediaS; ctx.lineWidth = 1.2*dpr;
-  ctx.strokeRect(wX, aTY, iSW, aBY-aTY);
-  ctx.beginPath(); ctx.moveTo(lX, lY); ctx.lineTo(wX, aTY); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(lX, lY); ctx.lineTo(wX, aBY); ctx.stroke();
+  xctx.strokeStyle = bad ? '#dc2626' : c.imgMediaS; xctx.lineWidth = 1.2*dpr;
+  xctx.strokeRect(wX, aTY, iSW, aBY-aTY);
+  xctx.beginPath(); xctx.moveTo(lX, lY); xctx.lineTo(wX, aTY); xctx.stroke();
+  xctx.beginPath(); xctx.moveTo(lX, lY); xctx.lineTo(wX, aBY); xctx.stroke();
 
   // Sight line (ceiling mode: lens must be above image top; floor mode: lens below image bottom)
   if (!store.floorMode) {
     const sCol = r.aboveSight ? c.sight : c.sightBad;
-    ctx.strokeStyle = sCol; ctx.lineWidth = 1.2*dpr; ctx.setLineDash([4*dpr, 4*dpr]);
-    ctx.beginPath(); ctx.moveTo(wX, aTY); ctx.lineTo(lX, aTY); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.beginPath(); ctx.moveTo(wX, aTY); ctx.lineTo(lX, lY); ctx.stroke();
+    xctx.strokeStyle = sCol; xctx.lineWidth = 1.2*dpr; xctx.setLineDash([4*dpr, 4*dpr]);
+    xctx.beginPath(); xctx.moveTo(wX, aTY); xctx.lineTo(lX, aTY); xctx.stroke();
+    xctx.setLineDash([]);
+    xctx.beginPath(); xctx.moveTo(wX, aTY); xctx.lineTo(lX, lY); xctx.stroke();
   } else {
-    // Floor mode: draw sight line from image bottom to lens
     const sBY = sy(r.effBot);
     const sCol = r.aboveSight ? c.sight : c.sightBad;
-    ctx.strokeStyle = sCol; ctx.lineWidth = 1.2*dpr; ctx.setLineDash([4*dpr, 4*dpr]);
-    ctx.beginPath(); ctx.moveTo(wX, sBY); ctx.lineTo(lX, sBY); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.beginPath(); ctx.moveTo(wX, sBY); ctx.lineTo(lX, lY); ctx.stroke();
+    xctx.strokeStyle = sCol; xctx.lineWidth = 1.2*dpr; xctx.setLineDash([4*dpr, 4*dpr]);
+    xctx.beginPath(); xctx.moveTo(wX, sBY); xctx.lineTo(lX, sBY); xctx.stroke();
+    xctx.setLineDash([]);
+    xctx.beginPath(); xctx.moveTo(wX, sBY); xctx.lineTo(lX, lY); xctx.stroke();
   }
-
 
   // Person / shadow check
   if (S.personOn && r.shadowH !== null) {
     const pX    = sx(S.personDist);
     const pBotY = sy(0), pTopY = sy(PERSON_H), pW = 6*dpr;
-    ctx.fillStyle = c.person;
-    ctx.fillRect(pX-pW/2, pTopY+6*dpr, pW, pBotY-pTopY-6*dpr);
-    ctx.beginPath(); ctx.arc(pX, pTopY+4*dpr, 4*dpr, 0, Math.PI*2); ctx.fill();
+    xctx.fillStyle = c.person;
+    xctx.fillRect(pX-pW/2, pTopY+6*dpr, pW, pBotY-pTopY-6*dpr);
+    xctx.beginPath(); xctx.arc(pX, pTopY+4*dpr, 4*dpr, 0, Math.PI*2); xctx.fill();
 
     const shWY = sy(r.shadowH);
-    ctx.strokeStyle = c.shadowC; ctx.lineWidth = dpr; ctx.setLineDash([3*dpr, 2*dpr]);
-    ctx.beginPath(); ctx.moveTo(lX, lY); ctx.lineTo(pX, pTopY); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.beginPath(); ctx.moveTo(pX, pTopY); ctx.lineTo(wX, shWY); ctx.stroke();
-    ctx.fillStyle = c.person; ctx.font = `${fSz}px var(--font-mono)`;
-    ctx.fillText(`${PERSON_H}cm`, pX+5*dpr, pTopY+3*dpr);
+    xctx.strokeStyle = c.shadowC; xctx.lineWidth = dpr; xctx.setLineDash([3*dpr, 2*dpr]);
+    xctx.beginPath(); xctx.moveTo(lX, lY); xctx.lineTo(pX, pTopY); xctx.stroke();
+    xctx.setLineDash([]);
+    xctx.beginPath(); xctx.moveTo(pX, pTopY); xctx.lineTo(wX, shWY); xctx.stroke();
+    xctx.fillStyle = c.person; xctx.font = `${fSz}px var(--font-mono)`;
+    xctx.fillText(`${PERSON_H}cm`, pX+5*dpr, pTopY+3*dpr);
   }
 
-  // Lens-level reference line: horizontal at lens height from wall to projector.
-  // Where it crosses the image rectangle shows whether the lens is at top / centre / bottom
-  // of the image — makes the built-in vOffset (vertical offset) immediately visible.
-  ctx.strokeStyle = c.lens; ctx.lineWidth = 0.7*dpr; ctx.globalAlpha = 0.45;
-  ctx.setLineDash([2*dpr, 4*dpr]);
-  ctx.beginPath(); ctx.moveTo(wX, lY); ctx.lineTo(lX, lY); ctx.stroke();
-  ctx.globalAlpha = 1; ctx.setLineDash([]);
+  // Lens-level reference line
+  xctx.strokeStyle = c.lens; xctx.lineWidth = 0.7*dpr; xctx.globalAlpha = 0.45;
+  xctx.setLineDash([2*dpr, 4*dpr]);
+  xctx.beginPath(); xctx.moveTo(wX, lY); xctx.lineTo(lX, lY); xctx.stroke();
+  xctx.globalAlpha = 1; xctx.setLineDash([]);
 
   // Optical axis
-  ctx.strokeStyle = c.axis; ctx.lineWidth = 0.8*dpr; ctx.setLineDash([4*dpr, 4*dpr]);
-  ctx.beginPath();
-  ctx.moveTo(lX, lY); ctx.lineTo(wX, sy(r.tCH));
-  ctx.stroke(); ctx.setLineDash([]);
+  xctx.strokeStyle = c.axis; xctx.lineWidth = 0.8*dpr; xctx.setLineDash([4*dpr, 4*dpr]);
+  xctx.beginPath();
+  xctx.moveTo(lX, lY); xctx.lineTo(wX, sy(r.tCH));
+  xctx.stroke(); xctx.setLineDash([]);
 
   // Projector mount (rod + body)
-  // bW scales proportionally with bH so the box doesn't squish when zooming out
   const bH      = Math.max(S.bodyH*(dH/scH), 10*dpr);
   const bW      = Math.max(bH * 1.6, 14*dpr);
   const tiltRad = S.tiltDeg * Math.PI / 180;
 
   if (store.floorMode) {
-    // Pedestal from floor up to lens pivot point
     const pedBot = sy(0), pedH = pedBot - lY;
     if (pedH > 1) {
-      ctx.fillStyle = c.rod;
-      ctx.fillRect(lX + bW*0.1, lY, bW*0.8, pedH);
+      xctx.fillStyle = c.rod;
+      xctx.fillRect(lX + bW*0.1, lY, bW*0.8, pedH);
     }
-    // Body rotates around lens pivot; lens at centre of left edge
-    ctx.save();
-    ctx.translate(lX, lY);
-    ctx.rotate(-tiltRad);
-    ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 6*dpr; ctx.shadowOffsetY = -3*dpr;
-    ctx.fillStyle = c.proj; ctx.strokeStyle = c.projS; ctx.lineWidth = 1.2*dpr;
-    rr(0, -bH/2, bW, bH, 3*dpr); ctx.fill(); ctx.stroke();
-    ctx.shadowColor = 'transparent';
+    xctx.save();
+    xctx.translate(lX, lY);
+    xctx.rotate(-tiltRad);
+    xctx.shadowColor = 'rgba(0,0,0,0.2)'; xctx.shadowBlur = 6*dpr; xctx.shadowOffsetY = -3*dpr;
+    xctx.fillStyle = c.proj; xctx.strokeStyle = c.projS; xctx.lineWidth = 1.2*dpr;
+    rr(0, -bH/2, bW, bH, 3*dpr, xctx); xctx.fill(); xctx.stroke();
+    xctx.shadowColor = 'transparent';
     const legW = 4*dpr, legH = 5*dpr;
-    ctx.fillStyle = c.projS;
-    ctx.fillRect(2*dpr, bH/2 - 1*dpr, legW, legH);
-    ctx.fillRect(bW - legW - 2*dpr, bH/2 - 1*dpr, legW, legH);
-    ctx.restore();
+    xctx.fillStyle = c.projS;
+    xctx.fillRect(2*dpr, bH/2 - 1*dpr, legW, legH);
+    xctx.fillRect(bW - legW - 2*dpr, bH/2 - 1*dpr, legW, legH);
+    xctx.restore();
   } else {
-    // Ceiling mount — rod from ceiling down to lens pivot point
-    ctx.fillStyle = c.rod;
-    ctx.fillRect(lX + bW/2 - 1.5*dpr, sy(S.ceilH), 3*dpr, lY - sy(S.ceilH));
-    ctx.save();
-    ctx.translate(lX, lY);
-    ctx.rotate(-tiltRad);
-    ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 6*dpr; ctx.shadowOffsetY = 3*dpr;
-    ctx.fillStyle = c.proj; ctx.strokeStyle = c.projS; ctx.lineWidth = 1.2*dpr;
-    rr(0, -bH/2, bW, bH, 3*dpr); ctx.fill(); ctx.stroke();
-    ctx.restore();
+    xctx.fillStyle = c.rod;
+    xctx.fillRect(lX + bW/2 - 1.5*dpr, sy(S.ceilH), 3*dpr, lY - sy(S.ceilH));
+    xctx.save();
+    xctx.translate(lX, lY);
+    xctx.rotate(-tiltRad);
+    xctx.shadowColor = 'rgba(0,0,0,0.2)'; xctx.shadowBlur = 6*dpr; xctx.shadowOffsetY = 3*dpr;
+    xctx.fillStyle = c.proj; xctx.strokeStyle = c.projS; xctx.lineWidth = 1.2*dpr;
+    rr(0, -bH/2, bW, bH, 3*dpr, xctx); xctx.fill(); xctx.stroke();
+    xctx.restore();
   }
-  ctx.shadowColor = 'transparent';
-  ctx.fillStyle = c.lens;
-  ctx.beginPath(); ctx.arc(lX, lY, 4*dpr, 0, Math.PI*2); ctx.fill();
+  xctx.shadowColor = 'transparent';
+  xctx.fillStyle = c.lens;
+  xctx.beginPath(); xctx.arc(lX, lY, 4*dpr, 0, Math.PI*2); xctx.fill();
 
   // ─── Measurement annotations ───────────────────────────────────────────────
   const aF   = fSz;
   const fmt  = v => (v / 100).toFixed(1) + 'm';
-  const dimX = wX - WW;  // wall left edge
+  const dimX = wX - WW;
 
-  ctx.font = `${aF}px var(--font-mono)`;
-  ctx.lineWidth = 0.7*dpr;
+  xctx.font = `${aF}px var(--font-mono)`;
+  xctx.lineWidth = 0.7*dpr;
 
   // Image bottom height from floor
   {
     const y = sy(r.effBot);
-    ctx.strokeStyle = c.dimB;
-    ctx.beginPath(); ctx.moveTo(dimX, y); ctx.lineTo(dimX - 7*dpr, y); ctx.stroke();
-    ctx.fillStyle = c.dim; ctx.textAlign = 'right';
-    ctx.fillText(fmt(r.effBot), dimX - 9*dpr, y + 3.5*dpr);
+    xctx.strokeStyle = c.dimB;
+    xctx.beginPath(); xctx.moveTo(dimX, y); xctx.lineTo(dimX - 7*dpr, y); xctx.stroke();
+    xctx.fillStyle = c.dim; xctx.textAlign = 'right';
+    xctx.fillText(fmt(r.effBot), dimX - 9*dpr, y + 3.5*dpr);
   }
 
   // Image top height from floor
   {
     const y = sy(r.effTop);
-    ctx.strokeStyle = c.dimB;
-    ctx.beginPath(); ctx.moveTo(dimX, y); ctx.lineTo(dimX - 7*dpr, y); ctx.stroke();
-    ctx.fillStyle = c.dim; ctx.textAlign = 'right';
-    ctx.fillText(fmt(r.effTop), dimX - 9*dpr, y + 3.5*dpr);
+    xctx.strokeStyle = c.dimB;
+    xctx.beginPath(); xctx.moveTo(dimX, y); xctx.lineTo(dimX - 7*dpr, y); xctx.stroke();
+    xctx.fillStyle = c.dim; xctx.textAlign = 'right';
+    xctx.fillText(fmt(r.effTop), dimX - 9*dpr, y + 3.5*dpr);
   }
 
-  // Wall gap: label between image top and wall top (only if gap is visible)
+  // Wall gap label
   if (r.wallGap > 2 && sy(r.effTop) - sy(S.wallH) > 14*dpr) {
     const midY = (sy(r.effTop) + sy(S.wallH)) / 2;
-    ctx.fillStyle = c.wallDim; ctx.textAlign = 'right';
-    ctx.fillText('↕ ' + fmt(r.wallGap), dimX - 9*dpr, midY + 3.5*dpr);
+    xctx.fillStyle = c.wallDim; xctx.textAlign = 'right';
+    xctx.fillText('↕ ' + fmt(r.wallGap), dimX - 9*dpr, midY + 3.5*dpr);
   }
 
   // Lens height on the dashed reference line
-  ctx.fillStyle = c.lens; ctx.globalAlpha = 0.8; ctx.textAlign = 'left';
-  ctx.fillText(fmt(r.lH), wX + 4*dpr, lY - 3*dpr);
-  ctx.globalAlpha = 1;
+  xctx.fillStyle = c.lens; xctx.globalAlpha = 0.8; xctx.textAlign = 'left';
+  xctx.fillText(fmt(r.lH), wX + 4*dpr, lY - 3*dpr);
+  xctx.globalAlpha = 1;
 
   // Keystone angle near projector when tilted
   if (r.hasTilt) {
-    ctx.fillStyle = r.ksOk ? c.dim : 'rgba(239,68,68,0.9)';
-    ctx.textAlign = 'left';
-    ctx.fillText(r.ksN.toFixed(1) + '°', lX + 8*dpr, lY - 10*dpr);
+    xctx.fillStyle = r.ksOk ? c.dim : 'rgba(239,68,68,0.9)';
+    xctx.textAlign = 'left';
+    xctx.fillText(r.ksN.toFixed(1) + '°', lX + 8*dpr, lY - 10*dpr);
   }
 
   // Throw distance arrow along the bottom margin
   {
     const y  = sy(0) + 6*dpr;
     const mx = (wX + lX) / 2;
-    ctx.strokeStyle = c.dimB;
-    ctx.beginPath(); ctx.moveTo(wX, y); ctx.lineTo(lX, y); ctx.stroke();
+    xctx.strokeStyle = c.dimB;
+    xctx.beginPath(); xctx.moveTo(wX, y); xctx.lineTo(lX, y); xctx.stroke();
     [[wX, 1], [lX, -1]].forEach(([x, d]) => {
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + d*5*dpr, y - 3*dpr); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + d*5*dpr, y + 3*dpr); ctx.stroke();
+      xctx.beginPath(); xctx.moveTo(x, y); xctx.lineTo(x + d*5*dpr, y - 3*dpr); xctx.stroke();
+      xctx.beginPath(); xctx.moveTo(x, y); xctx.lineTo(x + d*5*dpr, y + 3*dpr); xctx.stroke();
     });
-    ctx.fillStyle = c.dim; ctx.textAlign = 'center';
-    ctx.fillText(fmt(S.dist), mx, y + aF + 1*dpr);
+    xctx.fillStyle = c.dim; xctx.textAlign = 'center';
+    xctx.fillText(fmt(S.dist), mx, y + aF + 1*dpr);
   }
 
-  // Vertical dimension annotations in right margin: floor↔lens and lens↔ceiling
+  // Vertical dimension annotations in right margin
   {
-    const rx = W - PR + 10*dpr;  // x of the vertical tick line
-    ctx.strokeStyle = c.dimB; ctx.lineWidth = 0.7*dpr;
-    ctx.fillStyle = c.dim; ctx.font = `${aF}px var(--font-mono)`; ctx.textAlign = 'left';
+    const rx = W - PR + 10*dpr;
+    xctx.strokeStyle = c.dimB; xctx.lineWidth = 0.7*dpr;
+    xctx.fillStyle = c.dim; xctx.font = `${aF}px var(--font-mono)`; xctx.textAlign = 'left';
 
-    // Floor to lens
     if (lY < sy(0) - 4*dpr) {
       const y0 = sy(0), y1 = lY;
-      ctx.beginPath(); ctx.moveTo(rx, y0); ctx.lineTo(rx, y1); ctx.stroke();
+      xctx.beginPath(); xctx.moveTo(rx, y0); xctx.lineTo(rx, y1); xctx.stroke();
       [y0, y1].forEach(y => {
-        ctx.beginPath(); ctx.moveTo(rx - 4*dpr, y); ctx.lineTo(rx + 4*dpr, y); ctx.stroke();
+        xctx.beginPath(); xctx.moveTo(rx - 4*dpr, y); xctx.lineTo(rx + 4*dpr, y); xctx.stroke();
       });
-      ctx.fillText(fmt(r.lH), rx + 6*dpr, (y0 + y1) / 2 + 3.5*dpr);
+      xctx.fillText(fmt(r.lH), rx + 6*dpr, (y0 + y1) / 2 + 3.5*dpr);
     }
 
-    // Lens to ceiling
     if (sy(S.ceilH) < lY - 4*dpr) {
       const y0 = sy(S.ceilH), y1 = lY;
-      ctx.beginPath(); ctx.moveTo(rx, y0); ctx.lineTo(rx, y1); ctx.stroke();
+      xctx.beginPath(); xctx.moveTo(rx, y0); xctx.lineTo(rx, y1); xctx.stroke();
       [y0, y1].forEach(y => {
-        ctx.beginPath(); ctx.moveTo(rx - 4*dpr, y); ctx.lineTo(rx + 4*dpr, y); ctx.stroke();
+        xctx.beginPath(); xctx.moveTo(rx - 4*dpr, y); xctx.lineTo(rx + 4*dpr, y); xctx.stroke();
       });
-      ctx.fillText(fmt(S.ceilH - r.lH), rx + 6*dpr, (y0 + y1) / 2 + 3.5*dpr);
+      xctx.fillText(fmt(S.ceilH - r.lH), rx + 6*dpr, (y0 + y1) / 2 + 3.5*dpr);
     }
   }
+}
 
+// ─── Public API ──────────────────────────────────────────────────────────────
+
+export function draw(r) {
+  const dpr = window.devicePixelRatio || 1;
+  const W = Math.round(cv.clientWidth * dpr), H = Math.round(cv.clientHeight * dpr);
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  if (W < 10 || H < 10) return;
+  _draw(r, ctx, dpr, W, H, false);
+}
+
+// Returns a data URL of the diagram sized for A4 landscape print.
+// Target: 840 × 430 CSS pixels at 2× → 1680 × 860 px buffer, 12pt fonts.
+export function drawForPrint(r) {
+  const dpr = 2;
+  const W = 840 * dpr, H = 430 * dpr;
+  const oc  = document.createElement('canvas');
+  oc.width  = W;
+  oc.height = H;
+  _draw(r, oc.getContext('2d'), dpr, W, H, true);
+  return oc.toDataURL('image/png');
 }
