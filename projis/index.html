@@ -284,17 +284,12 @@
    <button class="lkbtn" id="lkDist" title="Lock Throw Distance"></button><span class="u">cm</span>
   </div>
   <div class="f">
-   <label>H distance (floor)</label>
-   <input type="number" id="hDistFloor" step="5" min="20" max="5000">
-   <span class="u">cm</span>
-  </div>
-  <div class="f">
    <label>Lens → screen (slant)</label>
    <input type="number" id="slantDist" step="5" min="20" max="7000">
    <span class="u">cm</span>
   </div>
 
-  <div class="sec">Image & Media</div>
+  <div class="sec">Media</div>
   <div class="f">
     <label>Media aspect ratio</label>
     <select id="aspect">
@@ -306,7 +301,12 @@
     <span class="u"></span>
   </div>
   <div id="arInfo" class="ar-info" style="display:none;"></div>
-  
+
+  <div class="f"><label>Media width</label><input type="number" id="imgW" value="148" step="1" min="10" max="3000"><span class="u">cm</span></div>
+  <div class="whlk-row"><span class="whlk-lbl">lock W+H</span><button class="lkbtn" id="lkImgW" title="Lock both media dimensions (W and H together)"></button></div>
+  <div class="f"><label>Media height</label><input type="number" id="imgH" step="1" min="10" max="3000"><span class="u">cm</span></div>
+
+  <div class="sec">Media position on wall</div>
   <div class="f">
    <label>Throw ratio</label>
    <input type="number" id="ratio" value="1.35" step="0.01" min="0.05" max="20">
@@ -319,12 +319,6 @@
    </div>
    <input type="range" id="zoomSlider" style="width:100%;display:block;margin:0;padding:0;cursor:pointer;">
   </div>
-
-  <div class="f"><label>Media width</label><input type="number" id="imgW" value="148" step="1" min="10" max="3000"><span class="u">cm</span></div>
-  <div class="whlk-row"><span class="whlk-lbl">lock W+H</span><button class="lkbtn" id="lkImgW" title="Lock both media dimensions (W and H together)"></button></div>
-  <div class="f"><label>Media height</label><input type="number" id="imgH" step="1" min="10" max="3000"><span class="u">cm</span></div>
-
-  <div class="sec">Media position on wall</div>
   <div class="rr">
     <input type="radio" name="pt" id="ptB" value="bottom"><label for="ptB">Bottom</label>
     <input type="radio" name="pt" id="ptC" value="center" checked><label for="ptC">Center</label>

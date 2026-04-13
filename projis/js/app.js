@@ -272,7 +272,6 @@ function refresh() {
   g('imgW').value = r.mediaW.toFixed(1);
   g('imgH').value = r.mediaH.toFixed(1);
   g('sMm').value  = Math.round((S.shiftPct / 100) * r.nativeH * 10);
-  g('hDistFloor').value = S.dist.toFixed(0);
   g('slantDist').value  = r.lensToScreen.toFixed(1);
   _lastHeightDiff = r.lH - r.tCH;
 
@@ -755,11 +754,6 @@ g('imgW').addEventListener('input', function() { tri('width'); refresh(); });
 g('imgH').addEventListener('input', function() { tri('height'); refresh(); });
 g('dist').addEventListener('input', function() {
   if (!this.readOnly) { tri('dist'); refresh(); }
-});
-g('hDistFloor').addEventListener('input', function() {
-  if (g('dist').readOnly) return;  // respect throw-distance lock
-  g('dist').value = this.value;
-  tri('dist'); refresh();
 });
 g('slantDist').addEventListener('input', function() {
   if (g('dist').readOnly) return;
