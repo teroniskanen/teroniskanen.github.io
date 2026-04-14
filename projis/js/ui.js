@@ -62,6 +62,9 @@ export function renderRes(r) {
 
   h += card('Lens height',     `${r.lH.toFixed(1)} cm`,   r.lensOk ? '' : 'warn');
   h += card(store.floorMode ? 'Pedestal height' : 'Drop (ceil→lens)', `${r.drop.toFixed(1)} cm`, '');
+  if (!store.floorMode) {
+    h += card('Extension rod', r.rod > 0 ? `${r.rod.toFixed(1)} cm` : '— (none)', r.rod < 0 ? 'warn' : '');
+  }
   // S.maxUp / S.maxDn are already ceiling-flipped room-direction limits (updated in refresh())
   const shiftLimitStr = store.activePreset
     ? `+${S.maxUp.toFixed(0)}%/−${S.maxDn.toFixed(0)}%`
@@ -79,6 +82,7 @@ export function renderRes(r) {
       r.hShiftOk ? (r.combinedShiftOk ? 'In range' : 'Combined V+H exceeds spec') : 'Out of range'
     );
   }
+  h += card('Media Top',    `${r.effTop.toFixed(1)} cm`, r.effTop > S.wallH ? 'warn' : '');
   h += card('Media Bottom', `${r.effBot.toFixed(1)} cm`, r.effBot < 0 ? 'warn' : '');
   if (store.floorMode) {
     // Floor mode: lens should be below image bottom (projector clears audience sightline from below)
