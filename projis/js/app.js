@@ -817,10 +817,13 @@ g('themeBtn').addEventListener('click', () => {
 });
 
 // ─── Print support ───────────────────────────────────────────────────────────
-g('printBtn').addEventListener('click', () => window.print());
 const printImg = g('printImg');
+g('printBtn').addEventListener('click', () => {
+  if (lastR) printImg.src = drawForPrint(lastR);  // set before print dialog opens
+  window.print();
+});
 window.addEventListener('beforeprint', () => {
-  if (lastR) printImg.src = drawForPrint(lastR);
+  if (lastR) printImg.src = drawForPrint(lastR);  // fallback for Ctrl+P
 });
 window.addEventListener('afterprint', () => {
   printImg.src = '';

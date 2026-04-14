@@ -13,7 +13,7 @@ const dk  = () => {
 function C(light) {
   const d = light ? false : dk();
   return {
-    bg:        '#ffffff',
+    bg:        d ? '#18181b' : '#ffffff',
     grid:      d ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.03)',
     floor:     d ? '#27272a'               : '#e4e4e7',
     floorFade: d ? '#18181b'               : '#ffffff',

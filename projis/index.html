@@ -237,19 +237,19 @@
     .pbox, .whlk-row, .themebtn, .printbtn,
     #arInfo, #dropModeRow, .tog ~ .f:last-of-type { display: none !important; }
 
-    /* Right panel – fill remaining width, fixed height */
-    .rp { flex: 1; min-width: 0; height: auto; background: transparent; position: relative; display: flex; flex-direction: column; }
-    .dia { flex: 1; position: relative; min-height: 0; height: 430px; }
+    /* Right panel – fill remaining width */
+    .rp { flex: 1; min-width: 0; height: auto; background: transparent; position: static; display: flex; flex-direction: column; }
+    .dia { flex: none; position: static; height: auto; min-height: 0; }
 
-    /* Swap canvas for captured image */
+    /* Swap canvas for captured image — static so it flows above .res */
     #cv { display: none !important; }
-    #printImg { display: block !important; }
+    #printImg { display: block !important; position: static !important; width: 100% !important; height: auto !important; object-fit: unset !important; }
 
     /* Results bar */
     .res {
-      max-height: none; overflow: visible; padding: 6px;
+      flex: none; max-height: none; overflow: visible; padding: 6px;
       border-top: 1px solid #ccc; gap: 4px; flex-wrap: wrap;
-      background: transparent;
+      background: transparent; page-break-inside: avoid;
     }
     .rc { flex: 1 1 110px; padding: 4px 6px; background: #f4f4f5 !important; }
     .rl { font-size: 8px; }
