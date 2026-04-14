@@ -63,7 +63,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   const cssW  = W / dpr;                                // logical canvas width
   const fSz   = isPrint
     ? Math.round(16 * dpr)                              // 12pt at 96 dpi
-    : Math.max(10, Math.round(cssW / 52.5)) * dpr;      // ~12pt at 840px, scales proportionally
+    : Math.max(12, Math.round(cssW / 40)) * dpr;         // ~16pt at 840px, scales proportionally
 
   const WW = 16*dpr;
   const PL = 54*dpr + WW, PR = 50*dpr, PT = 18*dpr, PB = 24*dpr;
