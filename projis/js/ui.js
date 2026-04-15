@@ -70,7 +70,7 @@ export function renderRes(r) {
     ? `+${S.maxUp.toFixed(0)}%/−${S.maxDn.toFixed(0)}%`
     : `${Math.abs(Math.round(r.userShiftM / (r.nativeH || 1) * 100))}%`;
   h += card('Shift V (user)',
-    `${r.userShiftM >= 0 ? '+' : ''}${(r.userShiftM * 10).toFixed(0)} mm / ${r.shiftOk ? '' : '⚠ '}${shiftLimitStr}`,
+    `${S.shiftPct >= 0 ? '+' : ''}${S.shiftPct.toFixed(1)}% / ${r.shiftOk ? '' : '⚠ '}${shiftLimitStr}`,
     r.shiftOk ? 'ok' : 'warn',
     r.shiftOk ? 'In range' : 'Out of range'
   );

@@ -108,7 +108,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   xctx.fillText(hfmt(S.ceilH), PL-WW-3*dpr, sy(S.ceilH)+3*dpr);
   xctx.fillText(hfmt(S.wallH), PL-WW-3*dpr, wTop+fSz);
 
-  const iSW = Math.round(Math.min(8, (W/dpr) * 0.015)) * dpr;
+  const iSW = Math.round(Math.min(isPrint ? 4 : 8, (W/dpr) * 0.015)) * dpr;
 
   // Black light (native panel — only when letterboxed or pillared)
   if (r.isLetterboxed || r.isPillared) {
