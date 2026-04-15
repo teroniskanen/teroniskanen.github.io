@@ -58,12 +58,12 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   xctx.fillStyle = c.bg; xctx.fillRect(0, 0, W, H);
 
   // Font size: scales with canvas width so labels stay proportional at every size.
-  // Print: 12pt at 96 dpi = 16 CSS px; at dpr=2 → 32 canvas px on an 840px-wide canvas.
-  // Screen: same formula — ~12pt equivalent across window sizes.
+  // Print: 18pt at 96 dpi = 24 CSS px; at dpr=2 → 48 canvas px on an 840px-wide canvas.
+  // Screen: same formula — ~24pt equivalent across window sizes.
   const cssW  = W / dpr;                                // logical canvas width
   const fSz   = isPrint
-    ? Math.round(16 * dpr)                              // 12pt at 96 dpi
-    : Math.max(12, Math.round(cssW / 40)) * dpr;         // ~16pt at 840px, scales proportionally
+    ? Math.round(24 * dpr)                              // 18pt at 96 dpi
+    : Math.max(18, Math.round(cssW / 27)) * dpr;         // ~24pt at 840px, scales proportionally
 
   const WW = 16*dpr;
   const PL = 54*dpr + WW, PR = 50*dpr, PT = 18*dpr, PB = 24*dpr;
