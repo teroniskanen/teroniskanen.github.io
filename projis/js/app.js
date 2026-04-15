@@ -97,92 +97,17 @@ function getDynamicHLimit() {
   return hMax * Math.sqrt(1 - vNorm * vNorm);
 }
 
-// Draw/update the lens shift gauge in the sidebar.
-// Vertical gauge: track spans max-dn (bottom) to max-up (top) at the current throw ratio.
-// Shows mm values (more practical than %) and the current position dot.
-// Shift % is always relative to NATIVE panel height (p.aspectVal), not the user's media
-// aspect ratio — so changing media AR does not alter the available range. Correct by design.
-function drawShiftCurve() {
-  const p    = store.activePreset;
-  const wrap = g('shiftCurveWrap');
-  if (!p || p.shiftType !== 'optical') { wrap.style.display = 'none'; return; }
-  wrap.style.display = 'block';
-
-  // Update title to show actual ratio
-  const titleEl = wrap.querySelector('div');
-  if (titleEl) titleEl.textContent = `Shift range @ ${S.ratio.toFixed(2)}:1`;
-
-  const svg = g('shiftCurveSvg');
-  const W = Math.max(svg.parentElement ? svg.parentElement.clientWidth : 0, 160);
-  const H = 70;
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  svg.style.width = W + 'px';
-  svg.style.height = H + 'px';
-
-  // Mechanical limits at current ratio, flipped for ceiling mode
-  const getLim = r => {
-    if (p.shiftCurve) { const v = interpolateShiftCurve(p.shiftCurve, r); if (v) return v; }
-    return { up: p.sUp, dn: p.sDn };
-  };
-  const getRoomLim = r => {
-    const m = getLim(r);
-    return store.floorMode ? { up: m.up, dn: m.dn } : { up: m.dn, dn: m.up };
-  };
-  const lim = getRoomLim(S.ratio);
-
-  // mm values: use NATIVE panel height so media AR changes don't affect the range
-  const nativeH = (S.dist / S.ratio) / parseFloat(p.aspectVal);
-  const toMm = pct => Math.round(pct / 100 * nativeH * 10);
-  const upMm  = toMm(lim.up);
-  const dnMm  = toMm(lim.dn);
-  const curMm = Math.round(S.shiftPct / 100 * nativeH * 10);
-  const inRng = S.shiftPct >= -lim.dn - 0.01 && S.shiftPct <= lim.up + 0.01;
-
-  const _t = document.documentElement.dataset.theme;
-  const dk = _t === 'dark' ? true : _t === 'light' ? false : matchMedia('(prefers-color-scheme: dark)').matches;
-  const bgCol    = dk ? '#27272a'              : '#f4f4f5';
-  const trackBg  = dk ? '#3f3f46'             : '#e4e4e7';
-  const trackFil = dk ? 'rgba(59,130,246,.32)' : 'rgba(59,130,246,.22)';
-  const lblCol   = dk ? '#71717a'              : '#a1a1aa';
-  const dotCol   = inRng ? '#10b981'           : '#ef4444';
-  const zeroCol  = dk ? '#52525b'              : '#c4c4c8';
-
-  // Track geometry
-  const tx = 15, tw = 6;
-  const PT = 8, PB = 8;
-  const ty_top = PT, ty_bot = H - PB, trH = ty_bot - ty_top;
-  const total = lim.up + lim.dn || 1;
-  const yOf = pct => ty_top + (lim.up - pct) / total * trH;
-  const ty_zero = yOf(0);
-  const ty_cur  = Math.max(ty_top + 4, Math.min(ty_bot - 4, yOf(S.shiftPct)));
-
-  const lx = tx + tw / 2 + 8;   // labels start x
-
-  // Current label: keep it away from top and bottom static labels
-  let ly = ty_cur + 3.5;
-  if (ty_cur < ty_top + 14) ly = ty_top + 14;
-  if (ty_cur > ty_bot - 12) ly = ty_bot - 4;
-
-  const curLabel = `${curMm >= 0 ? '+' : ''}${curMm}mm (${S.shiftPct >= 0 ? '+' : ''}${S.shiftPct.toFixed(1)}%)`;
-
-  const out = [
-    `<rect x="0" y="0" width="${W}" height="${H}" fill="${bgCol}" rx="3"/>`,
-    // Track
-    `<rect x="${tx - tw/2}" y="${ty_top}" width="${tw}" height="${trH}" rx="${tw/2}" fill="${trackBg}"/>`,
-    `<rect x="${tx - tw/2}" y="${ty_top}" width="${tw}" height="${trH}" rx="${tw/2}" fill="${trackFil}"/>`,
-    // Zero tick (wider than track)
-    `<line x1="${tx - tw/2 - 4}" y1="${ty_zero.toFixed(1)}" x2="${tx + tw/2 + 4}" y2="${ty_zero.toFixed(1)}" stroke="${zeroCol}" stroke-width="1.5"/>`,
-    // Connector from dot to current label
-    `<line x1="${(tx + tw/2 + 1).toFixed(1)}" y1="${ty_cur.toFixed(1)}" x2="${(lx - 2).toFixed(1)}" y2="${ty_cur.toFixed(1)}" stroke="${dotCol}" stroke-width="0.7" opacity=".5"/>`,
-    // Static range labels
-    `<text x="${lx}" y="${(ty_top + 5).toFixed(1)}" font-size="8" fill="${lblCol}" font-family="monospace">+${upMm}mm (+${lim.up.toFixed(0)}%)</text>`,
-    `<text x="${lx}" y="${(ty_bot + 1).toFixed(1)}" font-size="8" fill="${lblCol}" font-family="monospace">−${dnMm}mm (−${lim.dn.toFixed(0)}%)</text>`,
-    // Current value (colored, bold)
-    `<text x="${lx}" y="${ly.toFixed(1)}" font-size="8.5" font-weight="600" fill="${dotCol}" font-family="monospace">${curLabel}</text>`,
-    // Dot on top
-    `<circle cx="${tx}" cy="${ty_cur.toFixed(1)}" r="4.5" fill="${dotCol}" opacity=".95"/>`,
-  ];
-  svg.innerHTML = out.join('');
+// Update the shift slider range and value to reflect current limits and position.
+function updateShiftSlider() {
+  const p = store.activePreset;
+  const row = g('shiftRow');
+  if (!p || p.shiftType !== 'optical') { row.style.display = 'none'; return; }
+  row.style.display = 'flex';
+  const sl = g('shiftSlider');
+  sl.min   = (-S.maxDn).toFixed(1);
+  sl.max   = S.maxUp.toFixed(1);
+  sl.value = S.shiftPct.toFixed(2);
+  g('shiftVal').textContent = (S.shiftPct >= 0 ? '+' : '') + S.shiftPct.toFixed(1) + '%';
 }
 
 // Cache last computed height difference for slant↔dist reverse calculation
@@ -307,7 +232,7 @@ function refresh() {
   if (g('zoomRow').style.display !== 'none') g('zoomVal').textContent = S.ratio.toFixed(2) + ':1';
   draw(r);
   renderRes(r);
-  drawShiftCurve();
+  updateShiftSlider();
   drawBrightnessBar(r);
 }
 
@@ -469,7 +394,7 @@ function clearPreset() {
   lb.classList.remove('pl'); lb.innerHTML = store.lkState.ratio ? LSVG : USVG;
   lb.classList.toggle('on', store.lkState.ratio);
   g('zoomRow').style.display = 'none';
-  g('shiftCurveWrap').style.display = 'none';
+  g('shiftRow').style.display = 'none';
 }
 
 function applyPreset(p) {
@@ -787,6 +712,13 @@ g('sPct').addEventListener('input', function() {
   if (!this.readOnly) { S.shiftPct = +this.value; refresh(); }
 });
 
+g('shiftSlider').addEventListener('input', function() {
+  S.shiftPct = +this.value;
+  g('sPct').value = S.shiftPct.toFixed(2);
+  g('shiftVal').textContent = (S.shiftPct >= 0 ? '+' : '') + S.shiftPct.toFixed(1) + '%';
+  refresh();
+});
+
 g('sMm').addEventListener('input', function() {
   if (this.readOnly) return;
   rd();
@@ -824,16 +756,12 @@ g('themeBtn').addEventListener('click', () => {
 });
 
 // ─── Print support ───────────────────────────────────────────────────────────
-const printImg = g('printImg');
-g('printBtn').addEventListener('click', () => {
-  if (lastR) printImg.src = drawForPrint(lastR);  // set before print dialog opens
-  window.print();
-});
+g('printBtn').addEventListener('click', () => window.print());
 window.addEventListener('beforeprint', () => {
-  if (lastR) printImg.src = drawForPrint(lastR);  // fallback for Ctrl+P
+  if (lastR) drawForPrint(lastR);  // redraw canvas in light mode at print dimensions
 });
 window.addEventListener('afterprint', () => {
-  printImg.src = '';
+  if (lastR) draw(lastR);  // restore canvas to screen theme/dimensions
 });
 
 // ─── Resize observer + dark mode ─────────────────────────────────────────────

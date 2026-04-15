@@ -325,14 +325,12 @@ export function draw(r) {
   _draw(r, ctx, dpr, W, H, false);
 }
 
-// Returns a data URL of the diagram sized for A4 landscape print.
-// Target: 840 × 430 CSS pixels at 2× → 1680 × 860 px buffer, 12pt fonts.
+// Redraws the diagram on the existing canvas in print/light mode.
+// Target: 840 × 430 CSS pixels at 2× → 1680 × 860 px buffer.
+// Call from beforeprint; afterprint should call draw(r) to restore screen state.
 export function drawForPrint(r) {
   const dpr = 2;
   const W = 840 * dpr, H = 430 * dpr;
-  const oc  = document.createElement('canvas');
-  oc.width  = W;
-  oc.height = H;
-  _draw(r, oc.getContext('2d'), dpr, W, H, true);
-  return oc.toDataURL('image/png');
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  _draw(r, ctx, dpr, W, H, true);
 }
