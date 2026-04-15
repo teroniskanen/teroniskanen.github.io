@@ -168,12 +168,12 @@ function refresh() {
 
   // Disable shift inputs when no shift range defined
   if (S.maxUp === 0 && S.maxDn === 0) {
-    S.shiftPct = 0; g('sPct').value = 0; g('sMm').value = 0;
-    g('sPct').readOnly = true; g('sMm').readOnly = true;
-    g('sPct').classList.add('ro'); g('sMm').classList.add('ro');
+    S.shiftPct = 0; g('sPct').value = 0;
+    g('sPct').readOnly = true;
+    g('sPct').classList.add('ro');
   } else {
-    g('sPct').readOnly = false; g('sMm').readOnly = false;
-    g('sPct').classList.remove('ro'); g('sMm').classList.remove('ro');
+    g('sPct').readOnly = false;
+    g('sPct').classList.remove('ro');
   }
   if (S.maxH === 0) {
     S.hShiftPct = 0; g('hPct').value = 0;
@@ -205,7 +205,6 @@ function refresh() {
   // Keep image dimensions in sync with physical calc
   g('imgW').value = r.mediaW.toFixed(1);
   g('imgH').value = r.mediaH.toFixed(1);
-  g('sMm').value  = Math.round((S.shiftPct / 100) * r.nativeH * 10);
   g('slantDist').value  = r.lensToScreen.toFixed(1);
   _lastHeightDiff = r.lH - r.tCH;
 
@@ -635,7 +634,6 @@ function autoSolvePosition() {
   const shiftPctRaw  = nativeH > 0 ? (delta / nativeH) * 100 : 0;
   const shiftPct     = Math.max(-maxDn, Math.min(maxUp, shiftPctRaw));
   const shiftM_used  = (shiftPct / 100) * nativeH;
-  const shiftMm      = Math.round(shiftM_used * 10);
 
   // Remaining offset after shift → cover with tilt using exact inverse of compute.js forward model.
   // Forward: baseAngle=atan2(shiftM_total,dist); tCH = lH + dist*tan(baseAngle - mirrorFactor*tr)
@@ -652,7 +650,6 @@ function autoSolvePosition() {
   }
 
   g('sPct').value     = shiftPct.toFixed(2);
-  g('sMm').value      = shiftMm;
   g('tiltDeg').value  = tiltDeg.toFixed(1);
   store.dropDriver    = true;
   updateDropModeLabel();
@@ -719,16 +716,6 @@ g('shiftSlider').addEventListener('input', function() {
   refresh();
 });
 
-g('sMm').addEventListener('input', function() {
-  if (this.readOnly) return;
-  rd();
-  const nativeAspect = store.activePreset ? parseFloat(store.activePreset.aspectVal) : S.aspect;
-  const nativeW = S.dist / S.ratio;
-  const nativeH = nativeW / nativeAspect;
-  S.shiftPct = nativeH ? (((+this.value) / 10) / nativeH) * 100 : 0;
-  g('sPct').value = S.shiftPct.toFixed(2);
-  refresh();
-});
 
 g('aspect').addEventListener('change', function() { tri('aspect'); refresh(); });
 
