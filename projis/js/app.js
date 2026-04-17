@@ -114,7 +114,9 @@ function updateShiftSliders() {
     sl.max   = S.maxUp.toFixed(1);
     sl.value = S.shiftPct.toFixed(2);
     vLimRow.style.display = '';
-    g('vLimDisp').textContent = `+${S.maxUp.toFixed(0)}% / −${S.maxDn.toFixed(0)}%`;
+    g('vLimDisp').textContent = S.maxUp === S.maxDn
+      ? `±${S.maxUp.toFixed(0)}%`
+      : `+${S.maxUp.toFixed(0)}% / −${S.maxDn.toFixed(0)}%`;
   }
 
   // H slider — shown whenever a non-zero H limit is set
@@ -423,6 +425,8 @@ function clearPreset() {
   g('hShiftRow').style.display = 'none';
   g('vLimRow').style.display = 'none';
   g('hLimRow').style.display = 'none';
+  g('pi-upd').disabled = true;
+  g('pi-upd').textContent = 'Update';
 }
 
 function applyPreset(p) {
@@ -456,6 +460,7 @@ function applyPreset(p) {
   const nName = ASPECT_NAMES[p.aspectVal] || p.aspectVal;
   g('pi-t').textContent = `Nat ${nName} · Throw ${p.fixed ? p.rMin+':1 fix' : p.rMin+'-'+p.rMax+':1'} · Shift ±${p.sUp}%`;
   g('pbox').classList.add('on');
+  g('pi-upd').disabled = false;
   g('pi-upd').textContent = 'Update';
   _presetEditing = false;
   psel.value = p.id;
