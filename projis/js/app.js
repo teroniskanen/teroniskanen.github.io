@@ -98,8 +98,23 @@ function getDynamicHLimit() {
 }
 
 // Update both shift sliders and effective-limit displays.
+// When both V and H shift are active the combined elliptical envelope
+// (v/vMax)² + (h/hMax)² ≤ 1 reduces each axis's available range.
 function updateShiftSliders() {
   const p = store.activePreset;
+  const hasH = S.maxH > 0;
+
+  // ── Effective V limits given current H position ──────────────────────────
+  const hFrac   = hasH ? Math.min(1, (S.hShiftPct / S.maxH) ** 2) : 0;
+  const vScale  = Math.sqrt(Math.max(0, 1 - hFrac));
+  const vEffUp  = S.maxUp * vScale;
+  const vEffDn  = S.maxDn * vScale;
+
+  // ── Effective H limit given current V position ───────────────────────────
+  const vMax   = S.shiftPct >= 0 ? S.maxUp : S.maxDn;
+  const vFrac  = (hasH && vMax > 0) ? Math.min(1, (S.shiftPct / vMax) ** 2) : 0;
+  const hScale = Math.sqrt(Math.max(0, 1 - vFrac));
+  const hEff   = S.maxH * hScale;
 
   // V slider — only for optical-shift presets
   const vRow = g('shiftRow');
@@ -110,29 +125,29 @@ function updateShiftSliders() {
   } else {
     vRow.style.display = 'flex';
     const sl = g('shiftSlider');
-    sl.min   = (-S.maxDn).toFixed(1);
-    sl.max   = S.maxUp.toFixed(1);
+    sl.min   = (-vEffDn).toFixed(1);
+    sl.max   = vEffUp.toFixed(1);
     sl.value = S.shiftPct.toFixed(2);
     vLimRow.style.display = '';
-    g('vLimDisp').textContent = S.maxUp === S.maxDn
-      ? `±${S.maxUp.toFixed(0)}%`
-      : `+${S.maxUp.toFixed(0)}% / −${S.maxDn.toFixed(0)}%`;
+    g('vLimDisp').textContent = vEffUp.toFixed(0) === vEffDn.toFixed(0)
+      ? `±${vEffUp.toFixed(0)}%`
+      : `+${vEffUp.toFixed(0)}% / −${vEffDn.toFixed(0)}%`;
   }
 
   // H slider — shown whenever a non-zero H limit is set
   const hRow = g('hShiftRow');
   const hLimRow = g('hLimRow');
-  if (S.maxH <= 0) {
+  if (!hasH) {
     hRow.style.display = 'none';
     hLimRow.style.display = 'none';
   } else {
     hRow.style.display = 'flex';
     const hsl = g('hShiftSlider');
-    hsl.min   = (-S.maxH).toFixed(1);
-    hsl.max   = S.maxH.toFixed(1);
+    hsl.min   = (-hEff).toFixed(1);
+    hsl.max   = hEff.toFixed(1);
     hsl.value = S.hShiftPct.toFixed(2);
     hLimRow.style.display = '';
-    g('hLimDisp').textContent = `±${S.maxH.toFixed(0)}%`;
+    g('hLimDisp').textContent = `±${hEff.toFixed(0)}%`;
   }
 }
 
