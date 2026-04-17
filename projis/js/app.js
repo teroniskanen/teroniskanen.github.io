@@ -97,23 +97,49 @@ function getDynamicHLimit() {
   return hMax * Math.sqrt(1 - vNorm * vNorm);
 }
 
-// Update the shift slider range and value to reflect current limits and position.
-function updateShiftSlider() {
+// Update both shift sliders and effective-limit displays.
+function updateShiftSliders() {
   const p = store.activePreset;
-  const row = g('shiftRow');
-  if (!p || p.shiftType !== 'optical') { row.style.display = 'none'; return; }
-  row.style.display = 'flex';
-  const sl = g('shiftSlider');
-  sl.min   = (-S.maxDn).toFixed(1);
-  sl.max   = S.maxUp.toFixed(1);
-  sl.value = S.shiftPct.toFixed(2);
-  g('shiftVal').textContent = (S.shiftPct >= 0 ? '+' : '') + S.shiftPct.toFixed(1) + '%';
+
+  // V slider — only for optical-shift presets
+  const vRow = g('shiftRow');
+  const vLimRow = g('vLimRow');
+  if (!p || p.shiftType !== 'optical') {
+    vRow.style.display = 'none';
+    vLimRow.style.display = 'none';
+  } else {
+    vRow.style.display = 'flex';
+    const sl = g('shiftSlider');
+    sl.min   = (-S.maxDn).toFixed(1);
+    sl.max   = S.maxUp.toFixed(1);
+    sl.value = S.shiftPct.toFixed(2);
+    vLimRow.style.display = '';
+    g('vLimDisp').textContent = `+${S.maxUp.toFixed(0)}% / −${S.maxDn.toFixed(0)}%`;
+  }
+
+  // H slider — shown whenever a non-zero H limit is set
+  const hRow = g('hShiftRow');
+  const hLimRow = g('hLimRow');
+  if (S.maxH <= 0) {
+    hRow.style.display = 'none';
+    hLimRow.style.display = 'none';
+  } else {
+    hRow.style.display = 'flex';
+    const hsl = g('hShiftSlider');
+    hsl.min   = (-S.maxH).toFixed(1);
+    hsl.max   = S.maxH.toFixed(1);
+    hsl.value = S.hShiftPct.toFixed(2);
+    hLimRow.style.display = '';
+    g('hLimDisp').textContent = `±${S.maxH.toFixed(0)}%`;
+  }
 }
 
 // Cache last computed height difference for slant↔dist reverse calculation
 let _lastHeightDiff = 0;
 // Cache last compute result for print capture
 let lastR = null;
+// Tracks whether preset fields are in edit mode
+let _presetEditing = false;
 
 // ─── Main refresh ─────────────────────────────────────────────────────────────
 function refresh() {
@@ -231,7 +257,7 @@ function refresh() {
   if (g('zoomRow').style.display !== 'none') g('zoomVal').textContent = S.ratio.toFixed(2) + ':1';
   draw(r);
   renderRes(r);
-  updateShiftSlider();
+  updateShiftSliders();
   drawBrightnessBar(r);
 }
 
@@ -394,6 +420,9 @@ function clearPreset() {
   lb.classList.toggle('on', store.lkState.ratio);
   g('zoomRow').style.display = 'none';
   g('shiftRow').style.display = 'none';
+  g('hShiftRow').style.display = 'none';
+  g('vLimRow').style.display = 'none';
+  g('hLimRow').style.display = 'none';
 }
 
 function applyPreset(p) {
@@ -427,8 +456,11 @@ function applyPreset(p) {
   const nName = ASPECT_NAMES[p.aspectVal] || p.aspectVal;
   g('pi-t').textContent = `Nat ${nName} · Throw ${p.fixed ? p.rMin+':1 fix' : p.rMin+'-'+p.rMax+':1'} · Shift ±${p.sUp}%`;
   g('pbox').classList.add('on');
+  g('pi-upd').textContent = 'Update';
+  _presetEditing = false;
   psel.value = p.id;
 
+  applyPresetOverrides(p);
   tri('ratio'); refresh();
 }
 
@@ -712,10 +744,55 @@ g('sPct').addEventListener('input', function() {
 g('shiftSlider').addEventListener('input', function() {
   S.shiftPct = +this.value;
   g('sPct').value = S.shiftPct.toFixed(2);
-  g('shiftVal').textContent = (S.shiftPct >= 0 ? '+' : '') + S.shiftPct.toFixed(1) + '%';
   refresh();
 });
 
+g('hShiftSlider').addEventListener('input', function() {
+  S.hShiftPct = +this.value;
+  g('hPct').value = S.hShiftPct.toFixed(2);
+  refresh();
+});
+
+// ─── Preset update / save ─────────────────────────────────────────────────────
+const PRESET_OVR_KEY = 'proj_preset_overrides';
+function loadPresetOverrides() {
+  try { return JSON.parse(localStorage.getItem(PRESET_OVR_KEY) || '{}'); } catch { return {}; }
+}
+function applyPresetOverrides(p) {
+  const ovr = loadPresetOverrides()[p.id];
+  if (!ovr) return;
+  if (ovr.sUp  != null) { g('maxUp').value = g('maxUp').dataset.raw = ovr.sUp; store.rawMaxUp = ovr.sUp; }
+  if (ovr.sDn  != null) { g('maxDn').value = g('maxDn').dataset.raw = ovr.sDn; store.rawMaxDn = ovr.sDn; }
+  if (ovr.hMax != null) { g('maxH').value  = g('maxH').dataset.raw  = ovr.hMax; store.rawMaxH  = ovr.hMax; }
+  if (ovr.bodyH!= null) { g('bodyH').value = ovr.bodyH; }
+  if (ovr.ks   != null) { g('maxKS').value = ovr.ks; }
+}
+
+g('pi-upd').addEventListener('click', () => {
+  const p = store.activePreset;
+  if (!p) return;
+  if (!_presetEditing) {
+    // Enter edit mode: unlock preset fields
+    pLock(['maxUp','maxDn','maxH','bodyH','maxKS'], false);
+    g('pi-upd').textContent = 'Save';
+    _presetEditing = true;
+  } else {
+    // Save current values to localStorage
+    const ovrs = loadPresetOverrides();
+    ovrs[p.id] = {
+      sUp:  +g('maxUp').value,
+      sDn:  +g('maxDn').value,
+      hMax: +g('maxH').value,
+      bodyH:+g('bodyH').value,
+      ks:   +g('maxKS').value,
+    };
+    localStorage.setItem(PRESET_OVR_KEY, JSON.stringify(ovrs));
+    pLock(['maxUp','maxDn','maxH','bodyH','maxKS'], true);
+    g('pi-upd').textContent = 'Update';
+    _presetEditing = false;
+    refresh();
+  }
+});
 
 g('aspect').addEventListener('change', function() { tri('aspect'); refresh(); });
 
