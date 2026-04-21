@@ -132,6 +132,9 @@ function updateShiftSliders() {
     g('vLimDisp').textContent = vEffUp.toFixed(0) === vEffDn.toFixed(0)
       ? `±${vEffUp.toFixed(0)}%`
       : `+${vEffUp.toFixed(0)}% / −${vEffDn.toFixed(0)}%`;
+    if (store.activePreset) {
+      g('maxUp').value = Math.max(vEffUp, vEffDn).toFixed(0);
+    }
   }
 
   // H slider — shown whenever a non-zero H limit is set
@@ -148,6 +151,9 @@ function updateShiftSliders() {
     hsl.value = S.hShiftPct.toFixed(2);
     hLimRow.style.display = '';
     g('hLimDisp').textContent = `±${hEff.toFixed(0)}%`;
+    if (store.activePreset) {
+      g('maxH').value = hEff.toFixed(0);
+    }
   }
 }
 
@@ -161,6 +167,13 @@ let _presetEditing = false;
 // ─── Main refresh ─────────────────────────────────────────────────────────────
 function refresh() {
   rd();
+
+  // Clamp person distance to prevent standing behind projector
+  if (S.personDist >= S.dist) {
+    S.personDist = Math.max(10, S.dist - 1);
+    g('personDist').value = S.personDist.toFixed(0);
+  }
+  g('personDist').max = S.dist - 1;
 
   // Auto-fit drawing width to encompass throw distance (+ person if shown)
   const personEnd = S.personOn && S.personDist > 0 ? S.personDist : 0;

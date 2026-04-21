@@ -168,8 +168,29 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     const pX    = sx(S.personDist);
     const pBotY = sy(0), pTopY = sy(PERSON_H), pW = 6*dpr;
     xctx.fillStyle = c.person;
-    xctx.fillRect(pX-pW/2, pTopY+6*dpr, pW, pBotY-pTopY-6*dpr);
+    // Head
     xctx.beginPath(); xctx.arc(pX, pTopY+4*dpr, 4*dpr, 0, Math.PI*2); xctx.fill();
+    // Eyes
+    xctx.fillStyle = '#ffffff';
+    xctx.beginPath(); xctx.arc(pX - 1.5*dpr, pTopY+2*dpr, 0.8*dpr, 0, Math.PI*2); xctx.fill();
+    xctx.beginPath(); xctx.arc(pX + 1.5*dpr, pTopY+2*dpr, 0.8*dpr, 0, Math.PI*2); xctx.fill();
+    // Pupils
+    xctx.fillStyle = '#000000';
+    xctx.beginPath(); xctx.arc(pX - 1.5*dpr, pTopY+2*dpr, 0.4*dpr, 0, Math.PI*2); xctx.fill();
+    xctx.beginPath(); xctx.arc(pX + 1.5*dpr, pTopY+2*dpr, 0.4*dpr, 0, Math.PI*2); xctx.fill();
+    // Smile
+    xctx.strokeStyle = '#000000'; xctx.lineWidth = 0.5*dpr;
+    xctx.beginPath(); xctx.arc(pX, pTopY+4*dpr, 2*dpr, 0, Math.PI); xctx.stroke();
+    // Body
+    xctx.fillStyle = c.person;
+    xctx.fillRect(pX-pW/2, pTopY+8*dpr, pW, 40*dpr);
+    // Arms
+    xctx.strokeStyle = c.person; xctx.lineWidth = 1.5*dpr;
+    xctx.beginPath(); xctx.moveTo(pX - pW/2, pTopY+12*dpr); xctx.lineTo(pX - pW, pTopY+20*dpr); xctx.stroke();
+    xctx.beginPath(); xctx.moveTo(pX + pW/2, pTopY+12*dpr); xctx.lineTo(pX + pW, pTopY+20*dpr); xctx.stroke();
+    // Legs
+    xctx.beginPath(); xctx.moveTo(pX - pW/4, pTopY+48*dpr); xctx.lineTo(pX - pW/4, pBotY); xctx.stroke();
+    xctx.beginPath(); xctx.moveTo(pX + pW/4, pTopY+48*dpr); xctx.lineTo(pX + pW/4, pBotY); xctx.stroke();
 
     const shWY = sy(r.shadowH);
     xctx.strokeStyle = c.shadowC; xctx.lineWidth = dpr; xctx.setLineDash([3*dpr, 2*dpr]);
@@ -289,6 +310,21 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     xctx.fillText(fmt(S.dist), mx, y + aF + 1*dpr);
   }
 
+  // Person distance arrow along the bottom margin
+  if (S.personOn) {
+    const pX = sx(S.personDist);
+    const y  = sy(0) + 6*dpr;
+    const mx = (wX + pX) / 2;
+    xctx.strokeStyle = c.dimB;
+    xctx.beginPath(); xctx.moveTo(wX, y); xctx.lineTo(pX, y); xctx.stroke();
+    [[wX, 1], [pX, -1]].forEach(([x, d]) => {
+      xctx.beginPath(); xctx.moveTo(x, y); xctx.lineTo(x + d*5*dpr, y - 3*dpr); xctx.stroke();
+      xctx.beginPath(); xctx.moveTo(x, y); xctx.lineTo(x + d*5*dpr, y + 3*dpr); xctx.stroke();
+    });
+    xctx.fillStyle = c.dim; xctx.textAlign = 'center';
+    xctx.fillText(fmt(S.personDist), mx, y + aF + 1*dpr);
+  }
+
   // Vertical dimension annotations in right margin
   {
     const rx = W - PR + 10*dpr;
@@ -330,7 +366,7 @@ export function draw(r) {
 // Call from beforeprint; afterprint should call draw(r) to restore screen state.
 export function drawForPrint(r) {
   const dpr = 2;
-  const W = 840 * dpr, H = 430 * dpr;
+  const W = 840 * dpr, H = Math.round(840 * dpr * (210 / 297));
   if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
   _draw(r, ctx, dpr, W, H, true);
 }
