@@ -361,7 +361,7 @@ function drawBrightnessBar(r) {
   const xOf  = v => PL + Math.min(1, Math.max(0, v / MAX)) * barW;
   const x10  = xOf(10), x25 = xOf(25);
   const pxE  = xOf(fLeff);
-  const eCol = level === 'low' ? '#ef4444' : level === 'ok' ? '#10b981' : '#f59e0b';
+  const eCol = level === 'low' ? '#ef4444' : level === 'ok' ? '#22c55e' : '#f59e0b';
   const arrowH = 5;
   const lblY = tickY + arrowH + 9; // scale labels below arrow
   const H2 = lblY + 1;
@@ -373,7 +373,7 @@ function drawBrightnessBar(r) {
      <!-- Red zone -->
      <rect x="${PL}" y="${barY}" width="${x10-PL}" height="${barH}" rx="3" fill="#ef4444" opacity="0.65"/>
      <!-- Green zone -->
-     <rect x="${x10}" y="${barY}" width="${x25-x10}" height="${barH}" fill="#10b981" opacity="0.65"/>
+     <rect x="${x10}" y="${barY}" width="${x25-x10}" height="${barH}" fill="#22c55e" opacity="0.65"/>
      <!-- Yellow zone -->
      <rect x="${x25}" y="${barY}" width="${PL+barW-x25}" height="${barH}" rx="3" fill="#f59e0b" opacity="0.65"/>
      <!-- Pointer line + arrow -->

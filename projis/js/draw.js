@@ -33,8 +33,8 @@ function C(light) {
     dim:       d ? '#71717a'               : '#71717a',
     dimB:      d ? '#52525b'               : '#52525b',
     lbl:       d ? '#a1a1aa'               : '#71717a',
-    wallDim:   d ? 'rgba(52,211,153,.7)'   : 'rgba(16,185,129,.7)',
-    person:    d ? '#4ade80'               : '#16a34a',
+    wallDim:   d ? 'rgba(74,222,128,.7)'   : 'rgba(34,197,94,.7)',
+    person:    d ? '#4ade80'               : '#22c55e',
     shadowC:   d ? 'rgba(248,113,113,.3)'  : 'rgba(239,68,68,.2)',
   };
 }
