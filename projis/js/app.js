@@ -169,6 +169,7 @@ let _presetEditing = false;
 // ─── Main refresh ─────────────────────────────────────────────────────────────
 function refresh() {
   rd();
+  syncNudgeVisibility();
 
   // Clamp person distance to prevent standing behind projector
   if (S.personDist >= S.dist) {
@@ -368,7 +369,7 @@ function drawBrightnessBar(r) {
 
   svg.innerHTML =
     `<!-- Value above bar -->
-     <text x="${pxE}" y="${barY - 4}" font-size="10" fill="${eCol}" font-family="monospace" text-anchor="middle" font-weight="700">${fLeff.toFixed(1)} fL</text>
+     <text x="${pxE}" y="${barY - 4}" font-size="10" fill="${eCol}" font-family="monospace" text-anchor="middle" font-weight="700">${fLeff.toFixed(1)}</text>
      <!-- Red zone -->
      <rect x="${PL}" y="${barY}" width="${x10-PL}" height="${barH}" rx="3" fill="#ef4444" opacity="0.65"/>
      <!-- Green zone -->
@@ -450,6 +451,17 @@ function initMobileNudges() {
     input.parentNode.insertBefore(dec, input);
     input.parentNode.insertBefore(inc, input.nextSibling);
     input.dataset.nudgeInit = '1';
+  });
+}
+
+function syncNudgeVisibility() {
+  document.querySelectorAll('.f input[type="number"]').forEach(input => {
+    const hidden = !input.id || input.id === 'maxDn' || input.readOnly || input.disabled ||
+      input.classList.contains('ro') || input.classList.contains('inp-p');
+    const dec = input.previousElementSibling;
+    const inc = input.nextElementSibling;
+    if (dec?.classList.contains('nudge')) dec.style.display = hidden ? 'none' : '';
+    if (inc?.classList.contains('nudge')) inc.style.display = hidden ? 'none' : '';
   });
 }
 

@@ -61,9 +61,9 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   // Print: 18pt at 96 dpi = 24 CSS px; at dpr=2 → 48 canvas px on an 840px-wide canvas.
   // Screen: same formula — ~24pt equivalent across window sizes.
   const cssW  = W / dpr;                                // logical canvas width
-  const fSz   = isPrint
+  const fSz   = (isPrint
     ? Math.round(24 * dpr)                              // 18pt at 96 dpi
-    : Math.max(18, Math.round(cssW / 27)) * dpr;         // ~24pt at 840px, scales proportionally
+    : Math.max(18, Math.round(cssW / 27)) * dpr) * 1.5; // 50% larger drawing measurements
 
   const WW = 16*dpr;
   const PL = 54*dpr + WW;
@@ -72,7 +72,20 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   const dW = W - PL - PR, dH = H - PT - PB;
 
   const roomW = S.viewW;
-  const scH   = Math.max(S.ceilH, S.wallH) + 60;
+  // Scale the drawing from the actual scene top instead of a fixed 60 cm buffer.
+  // This keeps the ceiling line visually aligned with the full-height sidebar
+  // while still leaving a small amount of space for labels and projector body.
+  const sceneTop = Math.max(
+    S.ceilH,
+    S.wallH,
+    r.effTop,
+    r.effNatTop ?? 0,
+    r.lH + (store.floorMode ? S.bodyH * 0.5 : 0),
+    r.tCH ?? 0,
+    S.personOn ? PERSON_H : 0,
+    r.shadowH ?? 0,
+  );
+  const scH   = sceneTop + 24;
   const sx = m => PL + m * (dW / roomW);
   const sy = m => H - PB - m * (dH / scH);
   const wX = PL, lX = sx(S.dist), lY = sy(r.lH);
