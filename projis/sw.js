@@ -1,5 +1,5 @@
 // Increment version string to force cache refresh on update
-const CACHE = 'projis-v27';
+const CACHE = 'projis-v28';
 
 const ASSETS = [
   '/projis/',
@@ -30,6 +30,12 @@ self.addEventListener('activate', e => {
     )
   );
   self.clients.claim();
+});
+
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 async function networkFirst(request) {
