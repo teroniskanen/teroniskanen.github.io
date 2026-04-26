@@ -296,17 +296,24 @@ function refresh() {
 function drawBrightnessBar(r) {
   const svg = g('brightSvg');
   const brightVal = g('brightVal');
+  const brightState = g('brightState');
   if (!svg) return;
   const W = svg.getBoundingClientRect().width || 260;
   const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
   const tc = isDark ? '#a1a1aa' : '#71717a';
-  const tp = isDark ? '#f4f4f5' : '#18181b';
 
   // 1 sq ft = 929.03 cm²
   const areaSqFt = (r.mediaW * r.mediaH) / 929.03;
   if (!S.lumens || areaSqFt <= 0) {
     svg.innerHTML = '';
-    if (brightVal) brightVal.textContent = '--.- fL';
+    if (brightVal) {
+      brightVal.textContent = '--.- fL';
+      brightVal.className = 'bright-value';
+    }
+    if (brightState) {
+      brightState.textContent = '--';
+      brightState.className = 'bright-state';
+    }
     return;
   }
 
@@ -335,7 +342,16 @@ function drawBrightnessBar(r) {
 
   // ── Effective fL ──────────────────────────────────────────────────────────
   const fLeff = (S.lumens * cMode * cZoom * cKey * S.gain) / areaSqFt;
-  if (brightVal) brightVal.textContent = `${fLeff.toFixed(1)} fL`;
+  const level = fLeff < 10 ? 'low' : fLeff <= 25 ? 'ok' : 'high';
+  const levelLabel = level === 'low' ? 'Low' : level === 'ok' ? 'Ref' : 'High';
+  if (brightVal) {
+    brightVal.textContent = `${fLeff.toFixed(1)} fL`;
+    brightVal.className = `bright-value ${level}`;
+  }
+  if (brightState) {
+    brightState.textContent = levelLabel;
+    brightState.className = `bright-state ${level}`;
+  }
 
   // ── Slider ────────────────────────────────────────────────────────────────
   const MAX = 50;
@@ -344,7 +360,7 @@ function drawBrightnessBar(r) {
   const xOf  = v => PL + Math.min(1, Math.max(0, v / MAX)) * barW;
   const x10  = xOf(10), x25 = xOf(25);
   const pxE  = xOf(fLeff);
-  const eCol = fLeff < 10 ? '#ef4444' : fLeff <= 25 ? '#10b981' : '#f59e0b';
+  const eCol = level === 'low' ? '#ef4444' : level === 'ok' ? '#10b981' : '#f59e0b';
   const arrowH = 5;
   const lblY = tickY + arrowH + 9; // scale labels below arrow
   const H2 = lblY + 1;
