@@ -169,7 +169,6 @@ let _presetEditing = false;
 // ─── Main refresh ─────────────────────────────────────────────────────────────
 function refresh() {
   rd();
-  syncNudgeVisibility();
 
   // Clamp person distance to prevent standing behind projector
   if (S.personDist >= S.dist) {
@@ -292,6 +291,7 @@ function refresh() {
   renderRes(r);
   updateShiftSliders();
   drawBrightnessBar(r);
+  syncNudgeVisibility();
 }
 
 function drawBrightnessBar(r) {
@@ -463,9 +463,13 @@ function syncNudgeVisibility() {
     const lock = row.querySelector('.lkbtn');
     const dec = row.querySelector('.nudge-dec');
     const inc = row.querySelector('.nudge-inc');
-    if (dec) dec.style.display = hidden ? 'none' : '';
+    if (dec) {
+      dec.style.display = hidden ? 'none' : '';
+      // When no lkbtn, shift the compensating gap to nudge-dec's left so minus
+      // stays 3px from the field (same as plus), keeping both columns aligned.
+      dec.style.marginLeft = (!lock && !hidden) ? '46px' : '';
+    }
     if (inc) inc.style.display = hidden ? 'none' : '';
-    field.classList.toggle('lock-gap-before', !lock);
     field.classList.toggle('nudge-gap-before', !dec || dec.style.display === 'none');
     field.classList.toggle('nudge-gap-after', !inc || inc.style.display === 'none');
   });
