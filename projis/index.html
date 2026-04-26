@@ -113,8 +113,11 @@
     position: absolute;
     top: 8px;
     right: 10px;
+    min-width: 5ch;
     font-size: 10px;
     font-family: var(--font-mono);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
     color: var(--color-text-tertiary);
     letter-spacing: 0.02em;
   }
@@ -175,7 +178,7 @@
   
   .rname-inp { width:100%; font-size:11px; height:24px; padding:2px 6px; margin-bottom:3px; flex-shrink:0; font-family:var(--font-sans); background:var(--color-background-primary); border:1px solid var(--color-border-tertiary); color:var(--color-text-primary); border-radius:var(--border-radius-sm); outline:none; box-sizing:border-box; }
   .rname-inp:focus { border-color:var(--color-border-info); }
-  .rp-btns { display:flex; gap:4px; margin-bottom:4px; flex-shrink:0; }
+  .rp-btns { display:flex; gap:4px; margin:0 auto 4px; width:calc(100% - 10px); flex-shrink:0; }
   .rp-btns button { font-size:11px; padding:0 8px; border:1px solid var(--color-border-secondary); border-radius:var(--border-radius-sm); background:transparent; color:var(--color-text-primary); cursor:pointer; height:24px; flex:1; }
   .whlk-row { display:flex; align-items:center; justify-content:flex-end; gap:4px; height:18px; margin-bottom:1px; flex-shrink:0; padding-right:18px; }
   .whlk-lbl { font-size:9px; color:var(--color-text-tertiary); letter-spacing:0.04em; }
@@ -201,7 +204,7 @@
     justify-content: space-between;
     align-items: baseline;
     gap: 8px;
-    margin-top: 2px;
+    margin-top: 5px;
     padding: 0 2px;
   }
   .bright-meta {
@@ -504,7 +507,7 @@
   <div class="f"><label>Projector lumens</label><input type="number" id="lumens" value="3000" step="100" min="0" class="ro" readonly><span class="u">lm</span></div>
   <div class="f"><label>Screen gain</label><input type="number" id="gain" value="1.0" step="0.1" min="0.1" max="5" style="width:50px"><span class="u">G</span></div>
   <div class="sec">Effective Brightness</div>
-  <div id="brightWrap" style="flex-shrink:0;margin-top:-2px;margin-bottom:8px;">
+  <div id="brightWrap" style="flex-shrink:0;margin-top:-5px;margin-bottom:8px;">
     <svg id="brightSvg" style="width:100%;height:42px;display:block;border-radius:3px;overflow:visible;"></svg>
     <div class="bright-readout" id="brightReadout">
       <span class="bright-meta">
