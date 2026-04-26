@@ -465,9 +465,6 @@ function syncNudgeVisibility() {
     const inc = row.querySelector('.nudge-inc');
     if (dec) {
       dec.style.display = hidden ? 'none' : '';
-      // When no lkbtn, shift the compensating gap to nudge-dec's left so minus
-      // stays 3px from the field (same as plus), keeping both columns aligned.
-      dec.style.marginLeft = (!lock && !hidden) ? '46px' : '';
     }
     if (inc) inc.style.display = hidden ? 'none' : '';
     field.classList.toggle('nudge-gap-before', !dec || dec.style.display === 'none');
