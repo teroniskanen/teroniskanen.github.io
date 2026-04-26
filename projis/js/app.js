@@ -365,6 +365,70 @@ function clampRatio(r) {
   return r;
 }
 
+function fracDigits(n) {
+  const s = String(n ?? '');
+  if (!s.includes('.')) return 0;
+  return s.length - s.indexOf('.') - 1;
+}
+
+// Adaptive mobile nudge step: scales with value but respects the field's base step.
+function calcAdaptiveStep(input, value) {
+  const base = Math.abs(parseFloat(input.step)) || 1;
+  const mag = Math.abs(Number.isFinite(value) ? value : 0);
+  const target = Math.max(base, mag * 0.02); // roughly 2% of current value
+  const pow = 10 ** Math.floor(Math.log10(target || base));
+  const m = target / pow;
+  const nice = (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * pow;
+  const raw = Math.max(base, nice);
+  const maxStep = base * 20;
+  const clamped = Math.min(maxStep, raw);
+  const units = Math.max(1, Math.round(clamped / base));
+  return units * base;
+}
+
+function applyNudge(input, dir) {
+  if (!input || input.readOnly || input.disabled) return;
+  const min = parseFloat(input.min);
+  const max = parseFloat(input.max);
+  const cur = parseFloat(input.value);
+  const safe = Number.isFinite(cur) ? cur : (Number.isFinite(min) ? min : 0);
+  const step = calcAdaptiveStep(input, safe);
+  let next = safe + dir * step;
+  if (Number.isFinite(min)) next = Math.max(min, next);
+  if (Number.isFinite(max)) next = Math.min(max, next);
+
+  const prec = Math.max(fracDigits(input.step), fracDigits(step));
+  input.value = next.toFixed(prec);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function initMobileNudges() {
+  document.querySelectorAll('.f input[type="number"]').forEach(input => {
+    if (!input.id || input.id === 'maxDn' || input.dataset.nudgeInit === '1') return;
+    if (input.classList.contains('ro') || input.readOnly) return;
+
+    const dec = document.createElement('button');
+    dec.type = 'button';
+    dec.className = 'nudge nudge-dec';
+    dec.textContent = '-';
+    dec.title = `Decrease ${input.id}`;
+    dec.setAttribute('aria-label', `Decrease ${input.id}`);
+    dec.addEventListener('click', () => applyNudge(input, -1));
+
+    const inc = document.createElement('button');
+    inc.type = 'button';
+    inc.className = 'nudge nudge-inc';
+    inc.textContent = '+';
+    inc.title = `Increase ${input.id}`;
+    inc.setAttribute('aria-label', `Increase ${input.id}`);
+    inc.addEventListener('click', () => applyNudge(input, 1));
+
+    input.parentNode.insertBefore(dec, input);
+    input.parentNode.insertBefore(inc, input.nextSibling);
+    input.dataset.nudgeInit = '1';
+  });
+}
+
 // ─── Geometry triangle solver ─────────────────────────────────────────────────
 function tri(changed) {
   rd();
@@ -875,6 +939,7 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refresh);
   const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
   g('themeBtn').textContent = isDark ? '☽' : '☀';
 }
+initMobileNudges();
 if (location.hash.startsWith('#s=')) {
   try {
     loadSetup(JSON.parse(atob(location.hash.slice(3))));

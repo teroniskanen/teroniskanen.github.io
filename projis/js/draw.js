@@ -66,7 +66,9 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     : Math.max(18, Math.round(cssW / 27)) * dpr;         // ~24pt at 840px, scales proportionally
 
   const WW = 16*dpr;
-  const PL = 54*dpr + WW, PR = 50*dpr, PT = 18*dpr, PB = 24*dpr;
+  const PL = 54*dpr + WW;
+  const PR = (isPrint ? 34 : 50) * dpr;
+  const PT = 18*dpr, PB = 24*dpr;
   const dW = W - PL - PR, dH = H - PT - PB;
 
   const roomW = S.viewW;

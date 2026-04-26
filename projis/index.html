@@ -147,6 +147,7 @@
   .lkbtn.on { background: var(--color-background-info); border-color: var(--color-border-info); color: var(--color-text-info); }
   .lkbtn.pl { background: var(--color-background-warning); border-color: var(--color-border-warning); color: var(--color-text-warning); cursor: default; }
   .drv { border-color: var(--color-border-success) !important; background: var(--color-background-success) !important; color: var(--color-text-success) !important; }
+  .nudge { display: none; }
 
   .rr { display: flex; gap: 4px; height: 24px; margin-bottom: 4px; flex-shrink: 0; }
   .rr input { display: none; }
@@ -194,6 +195,36 @@
     .u { font-size: 9px; width: 12px; }
     .sec { font-size: 9px; margin-top: 8px; }
     .rc { flex: 1 1 120px; }
+    .f { gap: 3px; }
+    .nudge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      border: 1px solid var(--color-border-secondary);
+      border-radius: 3px;
+      background: var(--color-background-primary);
+      color: var(--color-text-secondary);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1;
+      padding: 0;
+      cursor: pointer;
+      user-select: none;
+      touch-action: manipulation;
+    }
+    .nudge:active {
+      background: var(--color-background-info);
+      color: var(--color-text-info);
+    }
+    .f label { order: 1; }
+    .f .lkbtn { order: 2; }
+    .f .nudge-dec { order: 3; }
+    .f input[type=number], .f select { order: 4; }
+    .f .nudge-inc { order: 5; }
+    .f .u { order: 6; }
   }
 
   .printbtn { position:absolute; top:8px; right:42px; z-index:10; width:28px; height:28px; border:1px solid var(--color-border-tertiary); border-radius:var(--border-radius-sm); background:var(--color-background-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--color-text-tertiary); font-size:13px; transition:all var(--transition-speed); }
@@ -209,13 +240,13 @@
 
     /* Sidebar – narrow, all overflow visible */
     .lp {
-      width: 220px; flex-shrink: 0; overflow: visible;
+      width: 230px; flex-shrink: 0; overflow: visible;
       padding: 4px 6px; font-size: 10px;
       background: transparent; border-right: 1px solid #ccc;
     }
     .sec { font-size: 8px; margin-top: 6px; }
-    .f { height: auto; margin-bottom: 2px; }
-    .f label { font-size: 10px; }
+    .f { height: auto; margin-bottom: 2px; gap: 4px; }
+    .f label { font-size: 10px; min-width: 0; }
 
     /* Style inputs/selects as plain read values */
     input[type=number], input[type=text], select {
@@ -225,6 +256,12 @@
       padding: 0 !important; color: inherit !important;
       box-shadow: none !important; height: auto !important;
     }
+    .f input[type=number], .f select {
+      width: 54px !important;
+      flex: 0 0 54px;
+      text-align: right;
+    }
+    .u { width: 14px; }
     input[type=range], input[type=checkbox] { display: none !important; }
     input[type=radio] { display: none !important; }
     .rr { height: auto; gap: 3px; margin-bottom: 3px; }
@@ -233,7 +270,7 @@
 
     /* Hide interactive chrome */
     .lkbtn, .rp-btns, #rname, #rsel, #zoomRow, #shiftRow, #hShiftRow, #brightWrap,
-    .pbox, .whlk-row, .themebtn, .printbtn,
+    .pbox, .whlk-row, .themebtn, .printbtn, .nudge,
     #arInfo, #dropModeRow, .tog ~ .f:last-of-type { display: none !important; }
 
     /* Right panel – fill remaining width */
@@ -245,14 +282,40 @@
 
     /* Results bar */
     .res {
-      flex: none; max-height: none; overflow: visible; padding: 6px;
-      border-top: 1px solid #ccc; gap: 4px; flex-wrap: wrap;
-      background: transparent; page-break-inside: avoid;
+      display: block; flex: none; max-height: none; overflow: visible; padding: 6px;
+      border-top: 1px solid #ccc; background: transparent; page-break-inside: avoid;
     }
-    .rc { flex: 1 1 110px; padding: 4px 6px; background: #f4f4f5 !important; }
-    .rl { font-size: 8px; }
-    .rv { font-size: 11px; }
-    .ba { font-size: 7px; }
+    .rc {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 20ch auto;
+      align-items: baseline;
+      column-gap: 7px;
+      padding: 2px 0;
+      border-bottom: 1px solid #e4e4e7;
+      background: transparent !important;
+      border-radius: 0;
+    }
+    .rc:last-child { border-bottom: none; }
+    .rc.tw { background: transparent !important; }
+    .rl {
+      font-size: 8px;
+      margin-bottom: 0;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .rv {
+      font-size: 10px;
+      text-align: right;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .ba {
+      font-size: 7px;
+      margin-top: 0;
+      white-space: nowrap;
+    }
   }
 </style>
 </head>
