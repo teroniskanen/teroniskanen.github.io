@@ -295,6 +295,7 @@ function refresh() {
 
 function drawBrightnessBar(r) {
   const svg = g('brightSvg');
+  const brightVal = g('brightVal');
   if (!svg) return;
   const W = svg.getBoundingClientRect().width || 260;
   const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
@@ -303,7 +304,11 @@ function drawBrightnessBar(r) {
 
   // 1 sq ft = 929.03 cm²
   const areaSqFt = (r.mediaW * r.mediaH) / 929.03;
-  if (!S.lumens || areaSqFt <= 0) { svg.innerHTML = ''; return; }
+  if (!S.lumens || areaSqFt <= 0) {
+    svg.innerHTML = '';
+    if (brightVal) brightVal.textContent = '--.- fL';
+    return;
+  }
 
   // ── C-coefficients ────────────────────────────────────────────────────────
   const p = store.activePreset;
@@ -330,6 +335,7 @@ function drawBrightnessBar(r) {
 
   // ── Effective fL ──────────────────────────────────────────────────────────
   const fLeff = (S.lumens * cMode * cZoom * cKey * S.gain) / areaSqFt;
+  if (brightVal) brightVal.textContent = `${fLeff.toFixed(1)} fL`;
 
   // ── Slider ────────────────────────────────────────────────────────────────
   const MAX = 50;
