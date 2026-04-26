@@ -465,7 +465,6 @@ function syncNudgeVisibility() {
     const inc = row.querySelector('.nudge-inc');
     if (dec) dec.style.display = hidden ? 'none' : '';
     if (inc) inc.style.display = hidden ? 'none' : '';
-    if (dec) dec.classList.toggle('nudge-gap-before', !lock);
     field.classList.toggle('lock-gap-before', !lock);
     field.classList.toggle('nudge-gap-before', !dec || dec.style.display === 'none');
     field.classList.toggle('nudge-gap-after', !inc || inc.style.display === 'none');
