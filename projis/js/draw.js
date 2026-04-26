@@ -364,7 +364,8 @@ export function draw(r) {
 }
 
 // Redraws the diagram on the existing canvas in print/light mode.
-// Target: 840 × 430 CSS pixels at 2× → 1680 × 860 px buffer.
+// Target: A4 landscape ratio (297:210).
+// Base size: 840 × ~594 CSS pixels at 2x -> 1680 × ~1188 px buffer.
 // Call from beforeprint; afterprint should call draw(r) to restore screen state.
 export function drawForPrint(r) {
   const dpr = 2;
