@@ -72,20 +72,18 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   const dW = W - PL - PR, dH = H - PT - PB;
 
   const roomW = S.viewW;
-  // Scale the drawing from the actual scene top instead of a fixed 60 cm buffer.
-  // This keeps the ceiling line visually aligned with the full-height sidebar
-  // while still leaving a small amount of space for labels and projector body.
+  // Use the room/image top for vertical scaling, but keep only a small fixed
+  // headroom so the ceiling line stays near the top instead of dropping toward
+  // projector-height references.
   const sceneTop = Math.max(
     S.ceilH,
     S.wallH,
     r.effTop,
     r.effNatTop ?? 0,
-    r.lH + (store.floorMode ? S.bodyH * 0.5 : 0),
-    r.tCH ?? 0,
     S.personOn ? PERSON_H : 0,
     r.shadowH ?? 0,
   );
-  const scH   = sceneTop + 24;
+  const scH   = sceneTop + 12;
   const sx = m => PL + m * (dW / roomW);
   const sy = m => H - PB - m * (dH / scH);
   const wX = PL, lX = sx(S.dist), lY = sy(r.lH);

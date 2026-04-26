@@ -308,7 +308,7 @@ function drawBrightnessBar(r) {
   if (!S.lumens || areaSqFt <= 0) {
     svg.innerHTML = '';
     if (brightVal) {
-      brightVal.textContent = '--.- fL';
+      brightVal.textContent = '-- fL';
       brightVal.className = 'bright-value';
     }
     if (brightState) {
@@ -346,7 +346,7 @@ function drawBrightnessBar(r) {
   const level = fLeff < 10 ? 'low' : fLeff <= 25 ? 'ok' : 'high';
   const levelLabel = level === 'low' ? 'Low' : level === 'ok' ? 'Ref' : 'High';
   if (brightVal) {
-    brightVal.textContent = `${fLeff.toFixed(1)} fL`;
+    brightVal.textContent = `${fLeff.toFixed(0)} fL`;
     brightVal.className = `bright-value ${level}`;
   }
   if (brightState) {
@@ -369,7 +369,7 @@ function drawBrightnessBar(r) {
 
   svg.innerHTML =
     `<!-- Value above bar -->
-     <text x="${pxE}" y="${barY - 4}" font-size="10" fill="${eCol}" font-family="monospace" text-anchor="middle" font-weight="700">${fLeff.toFixed(1)}</text>
+     <text x="${pxE}" y="${barY - 1}" font-size="10" fill="${eCol}" font-family="monospace" text-anchor="middle" font-weight="700">${fLeff.toFixed(0)}</text>
      <!-- Red zone -->
      <rect x="${PL}" y="${barY}" width="${x10-PL}" height="${barH}" rx="3" fill="#ef4444" opacity="0.65"/>
      <!-- Green zone -->
@@ -430,7 +430,6 @@ function applyNudge(input, dir) {
 function initMobileNudges() {
   document.querySelectorAll('.f input[type="number"]').forEach(input => {
     if (!input.id || input.id === 'maxDn' || input.dataset.nudgeInit === '1') return;
-    if (input.classList.contains('ro') || input.readOnly) return;
 
     const dec = document.createElement('button');
     dec.type = 'button';
@@ -455,13 +454,20 @@ function initMobileNudges() {
 }
 
 function syncNudgeVisibility() {
-  document.querySelectorAll('.f input[type="number"]').forEach(input => {
-    const hidden = !input.id || input.id === 'maxDn' || input.readOnly || input.disabled ||
-      input.classList.contains('ro') || input.classList.contains('inp-p');
-    const dec = input.previousElementSibling;
-    const inc = input.nextElementSibling;
-    if (dec?.classList.contains('nudge')) dec.style.display = hidden ? 'none' : '';
-    if (inc?.classList.contains('nudge')) inc.style.display = hidden ? 'none' : '';
+  document.querySelectorAll('.f input[type="number"], .f select').forEach(field => {
+    const hidden = field.matches('input[type="number"]') && (
+      !field.id || field.id === 'maxDn' || field.readOnly || field.disabled ||
+      field.classList.contains('ro') || field.classList.contains('inp-p')
+    );
+    const row = field.parentNode;
+    const lock = row.querySelector('.lkbtn');
+    const dec = row.querySelector('.nudge-dec');
+    const inc = row.querySelector('.nudge-inc');
+    if (dec) dec.style.display = hidden ? 'none' : '';
+    if (inc) inc.style.display = hidden ? 'none' : '';
+    field.classList.toggle('lock-gap-before', !lock);
+    field.classList.toggle('nudge-gap-before', !dec || dec.style.display === 'none');
+    field.classList.toggle('nudge-gap-after', !inc || inc.style.display === 'none');
   });
 }
 
