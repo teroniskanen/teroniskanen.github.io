@@ -107,6 +107,16 @@
     padding: 12px; overflow-y: auto;
     display: flex; flex-direction: column;
     background: var(--color-background-secondary);
+    position: relative;
+  }
+  .appver {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--color-text-tertiary);
+    letter-spacing: 0.02em;
   }
 
   /* Right Content */
@@ -270,7 +280,7 @@
 
     /* Hide interactive chrome */
     .lkbtn, .rp-btns, #rname, #rsel, #zoomRow, #shiftRow, #hShiftRow, #brightWrap,
-    .pbox, .whlk-row, .themebtn, .printbtn, .nudge,
+    .pbox, .whlk-row, .themebtn, .printbtn, .nudge, .appver,
     #arInfo, #dropModeRow, .tog ~ .f:last-of-type { display: none !important; }
 
     /* Right panel – fill remaining width */
@@ -334,6 +344,7 @@
 
 <div class="g">
  <div class="lp">
+  <div class="appver" id="appVer">v0.9</div>
   <div class="sec" style="margin-top:0">Projector preset</div>
   <select class="psel" id="psel"></select>
   <div class="pbox" id="pbox"><div class="pi-t" id="pi-t"></div><span class="pi-c" id="pi-c">Clear</span></div>

@@ -3,9 +3,11 @@ import { PRESETS, LSVG, USVG, ASPECT_NAMES } from './data.js';
 import { compute } from './compute.js';
 import { draw, drawForPrint } from './draw.js';
 import { pLock, buildRoomSel, updateDropModeLabel, renderRes } from './ui.js';
+import { APP_VERSION } from './version.js';
 
 // ─── Initialise lock button icons ────────────────────────────────────────────
 ['lkDist','lkRatio','lkDrop','lkImgW'].forEach(id => g(id).innerHTML = USVG);
+g('appVer').textContent = `v${APP_VERSION}`;
 
 // ─── Build projector preset dropdown ─────────────────────────────────────────
 const psel = g('psel');

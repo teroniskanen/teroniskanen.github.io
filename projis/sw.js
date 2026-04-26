@@ -12,6 +12,7 @@ const ASSETS = [
   '/projis/js/draw.js',
   '/projis/js/ui.js',
   '/projis/js/app.js',
+  '/projis/js/version.js',
 ];
 
 // Install: pre-cache all app assets
