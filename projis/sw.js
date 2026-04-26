@@ -1,5 +1,5 @@
 // Increment version string to force cache refresh on update
-const CACHE = 'projis-v26';
+const CACHE = 'projis-v27';
 
 const ASSETS = [
   '/projis/',
@@ -32,9 +32,42 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Fetch: cache-first, fall back to network
+async function networkFirst(request) {
+  try {
+    const fresh = await fetch(request);
+    const cache = await caches.open(CACHE);
+    cache.put(request, fresh.clone());
+    return fresh;
+  } catch (err) {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    throw err;
+  }
+}
+
+async function cacheFirst(request) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
+  const fresh = await fetch(request);
+  const cache = await caches.open(CACHE);
+  cache.put(request, fresh.clone());
+  return fresh;
+}
+
+// Fetch strategy:
+// - Navigations and app scripts use network-first to avoid stale deployments
+// - Everything else uses cache-first for speed/offline support
 self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
-  );
+  if (e.request.method !== 'GET') return;
+
+  const url = new URL(e.request.url);
+  const isSameOrigin = url.origin === self.location.origin;
+  const isAppScript = isSameOrigin && url.pathname.includes('/projis/js/');
+
+  if (e.request.mode === 'navigate' || isAppScript) {
+    e.respondWith(networkFirst(e.request));
+    return;
+  }
+
+  e.respondWith(cacheFirst(e.request));
 });
