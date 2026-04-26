@@ -369,7 +369,7 @@ function drawBrightnessBar(r) {
 
   svg.innerHTML =
     `<!-- Value above bar -->
-     <text x="${pxE}" y="${barY - 1}" font-size="10" fill="${eCol}" font-family="monospace" text-anchor="middle" font-weight="700">${fLeff.toFixed(0)}</text>
+     <text x="${pxE}" y="${barY - 5}" font-size="10" fill="${eCol}" font-family="monospace" text-anchor="middle" font-weight="700">${fLeff.toFixed(0)}</text>
      <!-- Red zone -->
      <rect x="${PL}" y="${barY}" width="${x10-PL}" height="${barH}" rx="3" fill="#ef4444" opacity="0.65"/>
      <!-- Green zone -->
@@ -465,6 +465,7 @@ function syncNudgeVisibility() {
     const inc = row.querySelector('.nudge-inc');
     if (dec) dec.style.display = hidden ? 'none' : '';
     if (inc) inc.style.display = hidden ? 'none' : '';
+    if (dec) dec.classList.toggle('nudge-gap-before', !lock);
     field.classList.toggle('lock-gap-before', !lock);
     field.classList.toggle('nudge-gap-before', !dec || dec.style.display === 'none');
     field.classList.toggle('nudge-gap-after', !inc || inc.style.display === 'none');
