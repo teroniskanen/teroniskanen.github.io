@@ -283,14 +283,18 @@
   @media print {
     @page { size: A4 landscape; margin: 8mm; }
 
-    body { width: auto; height: auto; overflow: visible; }
-    .g   { height: auto; min-height: 0; overflow: visible; }
+    body { width: auto; height: auto; margin: 0; overflow: visible; }
+    .g   { display: block; width: auto; height: auto; min-height: 0; overflow: visible; }
+
+    /* Ensure print layout fits inside A4 margins by stacking vertical blocks */
+    .lp, .rp, .dia, .res { width: auto; max-width: 100%; }
+    .lp { box-sizing: border-box; }
 
     /* Sidebar – narrow, all overflow visible */
     .lp {
-      width: 230px; flex-shrink: 0; overflow: visible;
-      padding: 0 6px 4px; font-size: 10px;
-      background: transparent; border-right: 1px solid #ccc;
+      width: auto; flex-shrink: 0; overflow: visible;
+      padding: 4px 6px; font-size: 10px;
+      background: transparent; border-right: none; border-bottom: 1px solid #ccc;
     }
     .sec { font-size: 8px; margin-top: 6px; }
     .f { height: auto; margin-bottom: 2px; gap: 4px; }
@@ -337,49 +341,15 @@
     .res {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      column-gap: 10px;
-      row-gap: 0;
-      flex: none;
-      max-height: none;
-      overflow: visible;
-      padding: 6px;
+      gap: 4px;
+      flex: none; max-height: none; overflow: visible; padding: 6px;
       border-top: 1px solid #ccc;
-      background: transparent;
-      page-break-inside: avoid;
-      align-content: start;
+      background: transparent; page-break-inside: avoid;
     }
-    .rc {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 20ch auto;
-      align-items: baseline;
-      column-gap: 7px;
-      padding: 2px 0;
-      border-bottom: 1px solid #e4e4e7;
-      background: transparent !important;
-      border-radius: 0;
-      break-inside: avoid;
-    }
-    .rc:last-child { border-bottom: none; }
-    .rc.tw { background: transparent !important; grid-column: 1 / -1; }
-    .rl {
-      font-size: 8px;
-      margin-bottom: 0;
-      letter-spacing: 0.01em;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .rv {
-      font-size: 10px;
-      text-align: right;
-      white-space: nowrap;
-      font-variant-numeric: tabular-nums;
-    }
-    .ba {
-      font-size: 7px;
-      margin-top: 0;
-      white-space: nowrap;
-    }
+    .rc { flex: none; width: auto; padding: 4px 6px; background: #f4f4f5 !important; }
+    .rl { font-size: 8px; }
+    .rv { font-size: 11px; }
+    .ba { font-size: 7px; }
   }
 </style>
 </head>
