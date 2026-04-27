@@ -159,6 +159,13 @@
   .lkbtn:hover { background: var(--color-background-secondary); }
   .lkbtn.on { background: var(--color-background-info); border-color: var(--color-border-info); color: var(--color-text-info); }
   .lkbtn.pl { background: var(--color-background-warning); border-color: var(--color-border-warning); color: var(--color-text-warning); cursor: default; }
+
+  /* Desktop: lkbtn sits left of input; all inputs align to the same horizontal position */
+  .f .lkbtn { order: 2; }
+  .f input[type=number], .f select { order: 3; }
+  .f .u { order: 4; }
+  .f:not(:has(.lkbtn)) input[type=number],
+  .f:not(:has(.lkbtn)) select { margin-left: 27px; }
   .drv { border-color: var(--color-border-success) !important; background: var(--color-background-success) !important; color: var(--color-text-success) !important; }
   .nudge { display: none; }
 
@@ -270,6 +277,8 @@
     .f input[type=number], .f select { order: 4; }
     .f input[type=number].nudge-gap-before, .f select.nudge-gap-before { margin-left: 0; }
     .f input[type=number].nudge-gap-after, .f select.nudge-gap-after { margin-right: 21px; }
+    .f:not(:has(.lkbtn)) input[type=number],
+    .f:not(:has(.lkbtn)) select { margin-left: 0; }
     .f .nudge-inc { order: 5; }
     .f .u { order: 6; }
     .rp-btns { width: 100%; margin: 0 0 4px; }
@@ -308,8 +317,11 @@
       width: 54px !important;
       flex: 0 0 54px;
       text-align: right;
+      margin-left: 0 !important;
+      order: unset !important;
     }
-    .u { width: 14px; }
+    .f .lkbtn { order: unset !important; }
+    .f .u { order: unset !important; width: 14px; }
     input[type=range], input[type=checkbox] { display: none !important; }
     input[type=radio] { display: none !important; }
     .rr { height: auto; gap: 3px; margin-bottom: 3px; }

@@ -81,7 +81,6 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     r.effTop,
     r.effNatTop ?? 0,
     S.personOn ? PERSON_H : 0,
-    r.shadowH ?? 0,
   );
   const scH   = sceneTop + 12;
   const sx = m => PL + m * (dW / roomW);
@@ -205,11 +204,22 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     xctx.beginPath(); xctx.moveTo(pX - pW/4, pTopY+48*dpr); xctx.lineTo(pX - pW/4, pBotY); xctx.stroke();
     xctx.beginPath(); xctx.moveTo(pX + pW/4, pTopY+48*dpr); xctx.lineTo(pX + pW/4, pBotY); xctx.stroke();
 
-    const shWY = sy(r.shadowH);
+    const rawShWY = sy(r.shadowH);
+    const floorY  = sy(0);
     xctx.strokeStyle = c.shadowC; xctx.lineWidth = dpr; xctx.setLineDash([3*dpr, 2*dpr]);
     xctx.beginPath(); xctx.moveTo(lX, lY); xctx.lineTo(pX, pTopY); xctx.stroke();
     xctx.setLineDash([]);
-    xctx.beginPath(); xctx.moveTo(pX, pTopY); xctx.lineTo(wX, shWY); xctx.stroke();
+    if (rawShWY <= floorY) {
+      // Shadow at or above floor — draw toward wall, clip to view top if needed
+      let endX = wX, endY = rawShWY;
+      if (rawShWY < PT) {
+        const t = (PT - pTopY) / (rawShWY - pTopY);
+        endX = pX + t * (wX - pX);
+        endY = PT;
+      }
+      xctx.beginPath(); xctx.moveTo(pX, pTopY); xctx.lineTo(endX, endY); xctx.stroke();
+    }
+    // shadow below floor (rawShWY > floorY): don't draw outside the view
     xctx.fillStyle = c.person; xctx.font = `${fSz}px var(--font-mono)`;
     xctx.fillText(`${PERSON_H}cm`, pX+5*dpr, pTopY+3*dpr);
   }
@@ -375,12 +385,11 @@ export function draw(r) {
 }
 
 // Redraws the diagram on the existing canvas in print/light mode.
-// Target: A4 landscape ratio (297:210).
-// Base size: 840 × ~594 CSS pixels at 2x -> 1680 × ~1188 px buffer.
+// Shorter than A4 ratio (297:150) so results fit on the same page.
 // Call from beforeprint; afterprint should call draw(r) to restore screen state.
 export function drawForPrint(r) {
   const dpr = 2;
-  const W = 840 * dpr, H = Math.round(840 * dpr * (210 / 297));
+  const W = 840 * dpr, H = Math.round(840 * dpr * (150 / 297));
   if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
   _draw(r, ctx, dpr, W, H, true);
 }
