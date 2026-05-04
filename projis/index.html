@@ -178,6 +178,13 @@
   .pbox.on { display: flex; }
   .pi-t { flex: 1; }
   .pi-c { cursor: pointer; font-size: 10px; text-decoration: underline; white-space: nowrap; flex-shrink: 0; font-weight: 600; }
+  .mini-note {
+    font-size: 9px;
+    line-height: 1.35;
+    color: var(--color-text-tertiary);
+    margin: 2px 0 6px 27px;
+    flex-shrink: 0;
+  }
 
   .psel { width: 100%; font-size: 12px; padding: 4px 6px; height: 26px; margin-bottom: 6px; flex-shrink: 0; }
   .tog { display: flex; align-items: center; gap: 6px; height: 24px; margin-bottom: 4px; flex-shrink: 0; }
@@ -193,6 +200,12 @@
   .themebtn { position:absolute; top:8px; right:8px; z-index:10; width:28px; height:28px; border:1px solid var(--color-border-tertiary); border-radius:var(--border-radius-sm); background:var(--color-background-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--color-text-tertiary); font-size:14px; transition:all var(--transition-speed); }
   .themebtn:hover { background:var(--color-background-primary); color:var(--color-text-primary); }
   .rp { position:relative; }
+  .hidebtn { position:absolute; top:8px; right:42px; z-index:10; width:28px; height:28px; border:1px solid var(--color-border-tertiary); border-radius:var(--border-radius-sm); background:var(--color-background-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--color-text-tertiary); font-size:12px; transition:all var(--transition-speed); }
+  .hidebtn:hover, .hidebtn.on { background:var(--color-background-info); color:var(--color-text-info); border-color:var(--color-border-info); }
+  .layout-hide-visuals .lp { width: calc(100% - 42px); }
+  .layout-hide-visuals .rp { flex: 0 0 42px; min-width: 42px; }
+  .layout-hide-visuals .dia,
+  .layout-hide-visuals .res { display: none; }
 
   .rc { background: var(--color-background-secondary); border-radius: var(--border-radius-sm); padding: 5px 8px; flex: 1 1 140px; }
   .rc.tw { background: var(--color-background-warning); flex: 1 1 100%; }
@@ -241,7 +254,7 @@
 
   /* Mobile */
   @media (max-width: 600px), (hover: none) and (pointer: coarse) and (orientation: landscape) {
-    .lp { width: 185px; padding: 8px 6px; }
+    .lp { width: 220px; padding: 8px 6px; }
     .f label { font-size: 10px; }
     .f input[type=number], .f select { width: 55px; font-size: 10px; padding: 2px 4px; }
     .u { font-size: 9px; width: 12px; }
@@ -284,7 +297,7 @@
     .rp-btns { width: 100%; margin: 0 0 4px; }
   }
 
-  .printbtn { position:absolute; top:8px; right:42px; z-index:10; width:28px; height:28px; border:1px solid var(--color-border-tertiary); border-radius:var(--border-radius-sm); background:var(--color-background-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--color-text-tertiary); font-size:13px; transition:all var(--transition-speed); }
+  .printbtn { position:absolute; top:8px; right:76px; z-index:10; width:28px; height:28px; border:1px solid var(--color-border-tertiary); border-radius:var(--border-radius-sm); background:var(--color-background-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--color-text-tertiary); font-size:13px; transition:all var(--transition-speed); }
   .printbtn:hover { background:var(--color-background-primary); color:var(--color-text-primary); }
   #printImg { display:none; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
 
@@ -330,7 +343,7 @@
 
     /* Hide interactive chrome */
     .lkbtn, .rp-btns, #rname, #rsel, #zoomRow, #shiftRow, #hShiftRow,
-    .pbox, .whlk-row, .themebtn, .printbtn, .nudge, .appver,
+    .pbox, .whlk-row, .themebtn, .hidebtn, .printbtn, .nudge, .appver,
     #arInfo, #dropModeRow, .tog ~ .f:last-of-type { display: none !important; }
     #brightSvg { display: none !important; }
     #brightWrap { margin-top: 0 !important; margin-bottom: 0 !important; }
@@ -514,6 +527,26 @@
    <input type="number" id="bodyH" value="13.6" step="0.5" min="0">
    <span class="u">cm</span>
   </div>
+  <div class="sec">Measured mount stack</div>
+  <div class="f">
+   <label>Ceiling to extension low</label>
+   <input type="number" id="mCeilToExt" value="0" step="0.5" min="0">
+   <span class="u">cm</span>
+  </div>
+  <div class="f">
+   <label>Extension low to proj top</label>
+   <input type="number" id="mExtToTop" value="0" step="0.5" min="0">
+   <span class="u">cm</span>
+  </div>
+  <div class="f">
+   <label>Proj top to lens</label>
+   <input type="number" id="mTopToLens" value="0" step="0.5" min="0">
+   <span class="u">cm</span>
+  </div>
+  <div class="mini-note">
+    Lens drop = all three measurements.<br>
+    Fixed body stack = extension low to projector top + projector top to lens.
+  </div>
 
   <div class="sec">Tilt</div>
   <div class="f"><label>Tilt angle (down +)</label><input type="number" id="tiltDeg" value="0" step="0.5" min="-45" max="45"><span class="u">°</span></div>
@@ -540,6 +573,7 @@
 
  <div class="rp">
   <button class="themebtn" id="themeBtn" title="Toggle light/dark mode">☀</button>
+  <button class="hidebtn" id="hideBtn" title="Hide drawing and results">▥</button>
   <button class="printbtn" id="printBtn" title="Print / Save as PDF">⎙</button>
   <div class="dia"><canvas id="cv"></canvas></div>
   <div class="res" id="res"></div>

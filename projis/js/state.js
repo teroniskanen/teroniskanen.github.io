@@ -8,6 +8,7 @@ export const S = {
   lumens:3000, gain:1.0,
   bodyH:13.6, targetH:70, posType:'bottom', tiltDeg:0, maxKS:30,
   drop:200, personOn:false, personDist:200,
+  mCeilToExt:0, mExtToTop:0, mTopToLens:0,
 };
 
 // --- App-level flags (wrapped in object so cross-module mutation works) ---

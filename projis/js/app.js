@@ -5,6 +5,10 @@ import { draw, drawForPrint } from './draw.js';
 import { pLock, buildRoomSel, updateDropModeLabel, renderRes } from './ui.js';
 import { APP_VERSION } from './version.js';
 
+const LAYOUT_HIDE_KEY = 'proj_hide_visuals';
+const THEME_KEY = 'proj_theme';
+const LAST_SESSION_NAME = 'Last session';
+
 // ─── Initialise lock button icons ────────────────────────────────────────────
 ['lkDist','lkRatio','lkDrop','lkImgW'].forEach(id => g(id).innerHTML = USVG);
 g('appVer').textContent = `v${APP_VERSION}`;
@@ -40,6 +44,9 @@ function rd() {
   S.personDist = +g('personDist').value || 200;
   S.lumens     = +g('lumens').value     || 0;
   S.gain       = +g('gain').value       || 1.0;
+  S.mCeilToExt = +g('mCeilToExt').value || 0;
+  S.mExtToTop  = +g('mExtToTop').value  || 0;
+  S.mTopToLens = +g('mTopToLens').value || 0;
 }
 
 // ─── Shift curve helpers ──────────────────────────────────────────────────────
@@ -292,6 +299,7 @@ function refresh() {
   updateShiftSliders();
   drawBrightnessBar(r);
   syncNudgeVisibility();
+  scheduleLastSessionSave();
 }
 
 function drawBrightnessBar(r) {
@@ -657,6 +665,9 @@ function loadSetup(r) {
   g('lumens').value  = r.lumens    ?? g('lumens').value;
   g('gain').value    = r.gain      ?? g('gain').value;
   g('dropV').value   = r.drop;
+  g('mCeilToExt').value = r.mCeilToExt ?? 0;
+  g('mExtToTop').value  = r.mExtToTop  ?? 0;
+  g('mTopToLens').value = r.mTopToLens ?? 0;
   if (!proj) {
     g('bodyH').value = r.bodyH ?? g('bodyH').value;
     g('maxKS').value = r.maxKS ?? g('maxKS').value;
@@ -704,6 +715,9 @@ g('rsave').addEventListener('click', () => {
     maxH:       +g('maxH').value,
     lumens:     +g('lumens').value,
     gain:       +g('gain').value,
+    mCeilToExt: +g('mCeilToExt').value,
+    mExtToTop:  +g('mExtToTop').value,
+    mTopToLens: +g('mTopToLens').value,
   });
   buildRoomSel();
   g('rsel').value = store.roomPresets.length - 1;
@@ -738,7 +752,32 @@ function currentSetup() {
     maxUp:      parseFloat(g('maxUp').dataset.raw) || 0,
     maxDn:      parseFloat(g('maxDn').dataset.raw) || 0,
     maxH:       parseFloat(g('maxH').dataset.raw)  || 0,
+    lumens:     +g('lumens').value,
+    gain:       +g('gain').value,
+    mCeilToExt: +g('mCeilToExt').value,
+    mExtToTop:  +g('mExtToTop').value,
+    mTopToLens: +g('mTopToLens').value,
   };
+}
+
+function upsertLastSession() {
+  const snapshot = { name: LAST_SESSION_NAME, ...currentSetup() };
+  const idx = store.roomPresets.findIndex(r => r && r.name === LAST_SESSION_NAME);
+  if (idx === 0) {
+    store.roomPresets[0] = snapshot;
+  } else if (idx > 0) {
+    store.roomPresets.splice(idx, 1);
+    store.roomPresets.unshift(snapshot);
+  } else {
+    store.roomPresets.unshift(snapshot);
+  }
+  buildRoomSel();
+}
+
+let _lastSessionTimer = null;
+function scheduleLastSessionSave() {
+  clearTimeout(_lastSessionTimer);
+  _lastSessionTimer = setTimeout(upsertLastSession, 250);
 }
 
 g('shareUrl').addEventListener('click', () => {
@@ -944,19 +983,48 @@ g('aspect').addEventListener('change', function() { tri('aspect'); refresh(); })
     refresh();
   });
 });
-['ceilH','wallH','hPct','bodyH','tiltDeg','maxKS','personDist','gain'].forEach(id => {
+['ceilH','wallH','hPct','bodyH','tiltDeg','maxKS','personDist','gain','mCeilToExt','mExtToTop','mTopToLens'].forEach(id => {
   const el = g(id); if (el) el.addEventListener('input', refresh);
 });
 g('personOn').addEventListener('change', refresh);
 
 // ─── Theme toggle ─────────────────────────────────────────────────────────────
+function applyTheme(theme) {
+  const html = document.documentElement;
+  if (theme === 'dark' || theme === 'light') {
+    html.dataset.theme = theme;
+    localStorage.setItem(THEME_KEY, theme);
+  } else {
+    delete html.dataset.theme;
+    localStorage.removeItem(THEME_KEY);
+  }
+
+  const isDark = html.dataset.theme === 'dark' ||
+    (html.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+  g('themeBtn').textContent = isDark ? '☽' : '☀';
+}
+
 g('themeBtn').addEventListener('click', () => {
   const html = document.documentElement;
   const isDark = html.dataset.theme === 'dark' ||
     (html.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
-  html.dataset.theme = isDark ? 'light' : 'dark';
-  g('themeBtn').textContent = isDark ? '☀' : '☽';
+  applyTheme(isDark ? 'light' : 'dark');
   refresh();
+});
+
+// ─── Right-panel visibility toggle ───────────────────────────────────────────
+function setVisualsHidden(hidden) {
+  const root = document.querySelector('.g');
+  root.classList.toggle('layout-hide-visuals', hidden);
+  g('hideBtn').classList.toggle('on', hidden);
+  g('hideBtn').textContent = hidden ? '▤' : '▥';
+  g('hideBtn').title = hidden ? 'Show drawing and results' : 'Hide drawing and results';
+  localStorage.setItem(LAYOUT_HIDE_KEY, hidden ? '1' : '0');
+}
+
+g('hideBtn').addEventListener('click', () => {
+  const root = document.querySelector('.g');
+  setVisualsHidden(!root.classList.contains('layout-hide-visuals'));
 });
 
 // ─── Print support ───────────────────────────────────────────────────────────
@@ -979,9 +1047,9 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refresh);
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 {
-  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
-  g('themeBtn').textContent = isDark ? '☽' : '☀';
+  applyTheme(localStorage.getItem(THEME_KEY));
 }
+setVisualsHidden(localStorage.getItem(LAYOUT_HIDE_KEY) === '1');
 initMobileNudges();
 if (location.hash.startsWith('#s=')) {
   try {
@@ -989,5 +1057,10 @@ if (location.hash.startsWith('#s=')) {
     history.replaceState(null, '', location.pathname);
   } catch { setTimeout(refresh, 100); }
 } else {
-  setTimeout(refresh, 100);
+  const lastSession = store.roomPresets.find(r => r && r.name === LAST_SESSION_NAME);
+  if (lastSession) {
+    loadSetup(lastSession);
+  } else {
+    setTimeout(refresh, 100);
+  }
 }

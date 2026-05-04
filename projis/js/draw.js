@@ -363,13 +363,24 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
       xctx.fillText(fmt(r.lH), rx + 6*dpr, (y0 + y1) / 2 + 3.5*dpr);
     }
 
+    if (!store.floorMode && r.rod > 0) {
+      const y0 = sy(S.ceilH), y1 = sy(S.ceilH - r.rod);
+      if (y0 < y1 - 4*dpr) {
+        xctx.beginPath(); xctx.moveTo(rx, y0); xctx.lineTo(rx, y1); xctx.stroke();
+        [y0, y1].forEach(y => {
+          xctx.beginPath(); xctx.moveTo(rx - 4*dpr, y); xctx.lineTo(rx + 4*dpr, y); xctx.stroke();
+        });
+        xctx.fillText(`Mount ${fmt(r.rod)}`, rx + 6*dpr, (y0 + y1) / 2 + 3.5*dpr);
+      }
+    }
+
     if (sy(S.ceilH) < lY - 4*dpr) {
       const y0 = sy(S.ceilH), y1 = lY;
       xctx.beginPath(); xctx.moveTo(rx, y0); xctx.lineTo(rx, y1); xctx.stroke();
       [y0, y1].forEach(y => {
         xctx.beginPath(); xctx.moveTo(rx - 4*dpr, y); xctx.lineTo(rx + 4*dpr, y); xctx.stroke();
       });
-      xctx.fillText(fmt(S.ceilH - r.lH), rx + 6*dpr, (y0 + y1) / 2 + 3.5*dpr);
+      xctx.fillText(`Lens ${fmt(S.ceilH - r.lH)}`, rx + 6*dpr, (y0 + y1) / 2 + 3.5*dpr);
     }
   }
 }
