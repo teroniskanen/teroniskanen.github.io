@@ -39,14 +39,14 @@ export function updateDropModeLabel() {
     if (bodyHLbl) bodyHLbl.textContent = 'Lens above pedestal';
   } else {
     if (dropLbl)  dropLbl.textContent  = 'Drop from ceiling';
-    if (bodyHLbl) bodyHLbl.textContent = 'Lens to mount plate';
+    if (bodyHLbl) bodyHLbl.textContent = 'Lens center to mount plate';
   }
   if (store.dropDriver) {
-    el.textContent = store.floorMode ? 'Driver: pedestal height sets projector' : 'Driver: drop sets projector height';
+    el.textContent = '→ sets projector position';
     el.style.color  = 'var(--color-text-success)';
     dv.classList.add('drv');
   } else {
-    el.textContent  = 'Derived from media position';
+    el.textContent  = '→ from target height';
     el.style.color  = 'var(--color-text-tertiary)';
     dv.classList.remove('drv');
   }
