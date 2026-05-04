@@ -66,14 +66,44 @@ export function renderRes(r) {
   const hasMeasuredStack = S.mCeilToExt > 0 && S.mExtToTop > 0;
 
   let h = '';
+  // Image setup
   h += card('Throw distance (H)', `${S.dist.toFixed(0)} cm`, '');
   h += card('Lens → screen center', `${r.lensToScreen.toFixed(1)} cm`, '');
   h += card('Media Area', `${r.mediaW.toFixed(1)} × ${r.mediaH.toFixed(1)} cm`, '');
-
   if (r.isLetterboxed || r.isPillared) {
     h += card('Projected Native', `${r.nativeW.toFixed(1)} × ${r.nativeH.toFixed(1)} cm`, 'ti', 'Black light output');
   }
 
+  // Image position
+  h += card('Media Top height',    `${r.effTop.toFixed(1)} cm`, r.effTop > S.wallH ? 'warn' : '');
+  h += card('Media Bottom height', `${r.effBot.toFixed(1)} cm`, r.effBot < 0 ? 'warn' : '');
+  const wg = r.wallGap;
+  h += card(
+    'Wall gap to media top',
+    wg >= 0 ? `${wg.toFixed(1)} cm` : `${Math.abs(wg).toFixed(1)} cm CLIPS`,
+    wg < 0 ? 'warn' : ''
+  );
+
+  // Shift
+  // S.maxUp / S.maxDn are already ceiling-flipped room-direction limits (updated in refresh())
+  const shiftLimitStr = store.activePreset
+    ? `+${S.maxUp.toFixed(0)}%/−${S.maxDn.toFixed(0)}%`
+    : `${Math.abs(Math.round(r.userShiftM / (r.nativeH || 1) * 100))}%`;
+  h += card('Shift V (user)',
+    `${S.shiftPct >= 0 ? '+' : ''}${S.shiftPct.toFixed(1)}% / ${r.shiftOk ? '' : '⚠ '}${shiftLimitStr}`,
+    r.shiftOk ? 'ok' : 'warn',
+    r.shiftOk ? 'In range' : 'Out of range'
+  );
+  if (S.maxH > 0 || Math.abs(S.hShiftPct) > 0) {
+    const hLimitStr = S.maxH > 0 ? `±${S.maxH.toFixed(0)}%` : '—';
+    h += card('Shift H (user)',
+      `${S.hShiftPct >= 0 ? '+' : ''}${S.hShiftPct.toFixed(1)}% / ${r.hShiftOk ? '' : '⚠ '}${hLimitStr}`,
+      r.hShiftOk ? (r.combinedShiftOk ? 'ok' : 'warn') : 'warn',
+      r.hShiftOk ? (r.combinedShiftOk ? 'In range' : 'Combined V+H exceeds spec') : 'Out of range'
+    );
+  }
+
+  // Mounting
   h += card('Lens height',     `${r.lH.toFixed(1)} cm`,   r.lensOk ? '' : 'warn');
   h += card(store.floorMode ? 'Pedestal height' : 'Drop (ceil→lens)', `${r.drop.toFixed(1)} cm`, '');
   if (!store.floorMode) {
@@ -99,47 +129,22 @@ export function renderRes(r) {
         }
       }
       h += card('Measured lens drop', `${measuredDrop.toFixed(1)} cm`, '');
-      h += card('Calculated floor to extension bottom', `${floorToExtBottom.toFixed(1)} cm`, '');
+      h += card('Floor to extension bottom', `${floorToExtBottom.toFixed(1)} cm`, '');
       h += card('Extension adjust', adjustText, adjustCls, adjustBadge, true);
     }
   }
-  // S.maxUp / S.maxDn are already ceiling-flipped room-direction limits (updated in refresh())
-  const shiftLimitStr = store.activePreset
-    ? `+${S.maxUp.toFixed(0)}%/−${S.maxDn.toFixed(0)}%`
-    : `${Math.abs(Math.round(r.userShiftM / (r.nativeH || 1) * 100))}%`;
-  h += card('Shift V (user)',
-    `${S.shiftPct >= 0 ? '+' : ''}${S.shiftPct.toFixed(1)}% / ${r.shiftOk ? '' : '⚠ '}${shiftLimitStr}`,
-    r.shiftOk ? 'ok' : 'warn',
-    r.shiftOk ? 'In range' : 'Out of range'
-  );
-  if (S.maxH > 0 || Math.abs(S.hShiftPct) > 0) {
-    const hLimitStr = S.maxH > 0 ? `±${S.maxH.toFixed(0)}%` : '—';
-    h += card('Shift H (user)',
-      `${S.hShiftPct >= 0 ? '+' : ''}${S.hShiftPct.toFixed(1)}% / ${r.hShiftOk ? '' : '⚠ '}${hLimitStr}`,
-      r.hShiftOk ? (r.combinedShiftOk ? 'ok' : 'warn') : 'warn',
-      r.hShiftOk ? (r.combinedShiftOk ? 'In range' : 'Combined V+H exceeds spec') : 'Out of range'
-    );
-  }
-  h += card('Media Top',    `${r.effTop.toFixed(1)} cm`, r.effTop > S.wallH ? 'warn' : '');
-  h += card('Media Bottom', `${r.effBot.toFixed(1)} cm`, r.effBot < 0 ? 'warn' : '');
+
+  // Clearance
   if (store.floorMode) {
-    // Floor mode: lens should be below image bottom (projector clears audience sightline from below)
     const belowBot = r.effBot - r.lH;
-    h += card('Lens below bottom', `${belowBot >= 0 ? '+' : ''}${belowBot.toFixed(1)} cm`, belowBot < 0 ? 'warn' : '');
+    h += card('Lens clearance below image', `${belowBot >= 0 ? '+' : ''}${belowBot.toFixed(1)} cm`, belowBot < 0 ? 'warn' : '');
   } else {
     const sightClear = r.lH - r.effTop;
-    h += card('Lens above top', `${sightClear >= 0 ? '+' : ''}${sightClear.toFixed(1)} cm`, sightClear < 0 ? 'warn' : '');
+    h += card('Lens clearance above image', `${sightClear >= 0 ? '+' : ''}${sightClear.toFixed(1)} cm`, sightClear < 0 ? 'warn' : '');
   }
 
-  const wg = r.wallGap;
-  h += card(
-    'Wall gap to media top',
-    wg >= 0 ? `${wg.toFixed(1)} cm` : `${Math.abs(wg).toFixed(1)} cm CLIPS`,
-    wg < 0 ? 'warn' : ''
-  );
-
   if (r.hasTilt) {
-    h += card('Keystone needed', `${r.ksN.toFixed(1)}°`,
+    h += card('Keystone required', `${r.ksN.toFixed(1)}°`,
       r.ksOk ? 'ok' : 'warn',
       r.ksOk ? 'OK' : 'Exceeds max limit',
       true
