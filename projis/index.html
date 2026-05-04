@@ -523,29 +523,22 @@
    <label style="font-size:9px; color:var(--color-text-tertiary)" id="dropModeLabel">Derived from media position</label>
   </div>
   <div class="f">
-   <label id="bodyHLbl">Lens to mount top</label>
+   <label id="bodyHLbl">Lens to mount plate</label>
    <input type="number" id="bodyH" value="13.6" step="0.5" min="0">
    <span class="u">cm</span>
   </div>
-  <div class="sec">Measured mount stack</div>
   <div class="f">
-   <label>Ceiling to extension low</label>
+   <label>Ceiling to extension bottom</label>
    <input type="number" id="mCeilToExt" value="0" step="0.5" min="0">
    <span class="u">cm</span>
   </div>
   <div class="f">
-   <label>Extension low to proj top</label>
+   <label>Extension bottom to mount plate</label>
    <input type="number" id="mExtToTop" value="0" step="0.5" min="0">
    <span class="u">cm</span>
   </div>
-  <div class="f">
-   <label>Proj top to lens</label>
-   <input type="number" id="mTopToLens" value="0" step="0.5" min="0">
-   <span class="u">cm</span>
-  </div>
   <div class="mini-note">
-    Lens drop = all three measurements.<br>
-    Fixed body stack = extension low to projector top + projector top to lens.
+    Measured lens drop = ceiling to extension bottom + extension bottom to mount plate + lens to mount plate.
   </div>
 
   <div class="sec">Tilt</div>

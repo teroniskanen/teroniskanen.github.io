@@ -46,7 +46,6 @@ function rd() {
   S.gain       = +g('gain').value       || 1.0;
   S.mCeilToExt = +g('mCeilToExt').value || 0;
   S.mExtToTop  = +g('mExtToTop').value  || 0;
-  S.mTopToLens = +g('mTopToLens').value || 0;
 }
 
 // ─── Shift curve helpers ──────────────────────────────────────────────────────
@@ -667,7 +666,6 @@ function loadSetup(r) {
   g('dropV').value   = r.drop;
   g('mCeilToExt').value = r.mCeilToExt ?? 0;
   g('mExtToTop').value  = r.mExtToTop  ?? 0;
-  g('mTopToLens').value = r.mTopToLens ?? 0;
   if (!proj) {
     g('bodyH').value = r.bodyH ?? g('bodyH').value;
     g('maxKS').value = r.maxKS ?? g('maxKS').value;
@@ -717,7 +715,6 @@ g('rsave').addEventListener('click', () => {
     gain:       +g('gain').value,
     mCeilToExt: +g('mCeilToExt').value,
     mExtToTop:  +g('mExtToTop').value,
-    mTopToLens: +g('mTopToLens').value,
   });
   buildRoomSel();
   g('rsel').value = store.roomPresets.length - 1;
@@ -756,7 +753,6 @@ function currentSetup() {
     gain:       +g('gain').value,
     mCeilToExt: +g('mCeilToExt').value,
     mExtToTop:  +g('mExtToTop').value,
-    mTopToLens: +g('mTopToLens').value,
   };
 }
 
@@ -983,7 +979,7 @@ g('aspect').addEventListener('change', function() { tri('aspect'); refresh(); })
     refresh();
   });
 });
-['ceilH','wallH','hPct','bodyH','tiltDeg','maxKS','personDist','gain','mCeilToExt','mExtToTop','mTopToLens'].forEach(id => {
+['ceilH','wallH','hPct','bodyH','tiltDeg','maxKS','personDist','gain','mCeilToExt','mExtToTop'].forEach(id => {
   const el = g(id); if (el) el.addEventListener('input', refresh);
 });
 g('personOn').addEventListener('change', refresh);

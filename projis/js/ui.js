@@ -11,11 +11,21 @@ export const pLock = (ids, on) => ids.forEach(id => {
 // Rebuild room select dropdown and persist to localStorage
 export function buildRoomSel() {
   const rs = g('rsel');
+  const prevValue = rs.value;
+  const prevName = prevValue !== '' && store.roomPresets[+prevValue]
+    ? store.roomPresets[+prevValue].name
+    : '';
   rs.innerHTML = '<option value="">— select —</option>';
   store.roomPresets.forEach((r, i) => {
     const o = document.createElement('option');
     o.value = i; o.textContent = r.name; rs.appendChild(o);
   });
+  if (prevName) {
+    const nextIdx = store.roomPresets.findIndex(r => r && r.name === prevName);
+    rs.value = nextIdx >= 0 ? String(nextIdx) : '';
+  } else {
+    rs.value = '';
+  }
   localStorage.setItem('proj_rooms', JSON.stringify(store.roomPresets));
 }
 
@@ -29,7 +39,7 @@ export function updateDropModeLabel() {
     if (bodyHLbl) bodyHLbl.textContent = 'Lens above pedestal';
   } else {
     if (dropLbl)  dropLbl.textContent  = 'Drop from ceiling';
-    if (bodyHLbl) bodyHLbl.textContent = 'Lens to mount top';
+    if (bodyHLbl) bodyHLbl.textContent = 'Lens to mount plate';
   }
   if (store.dropDriver) {
     el.textContent = store.floorMode ? 'Driver: pedestal height sets projector' : 'Driver: drop sets projector height';
@@ -51,9 +61,9 @@ export function renderRes(r) {
     (badge ? `<div class="ba ${cls}">${badge}</div>` : '') +
     `</div>`;
 
-  const measuredDrop = S.mCeilToExt + S.mExtToTop + S.mTopToLens;
-  const measuredBody = S.mExtToTop + S.mTopToLens;
-  const hasMeasuredStack = S.mCeilToExt > 0 && S.mExtToTop > 0 && S.mTopToLens > 0;
+  const measuredDrop = S.mCeilToExt + S.mExtToTop + S.bodyH;
+  const floorToExtBottom = S.ceilH - S.mCeilToExt;
+  const hasMeasuredStack = S.mCeilToExt > 0 && S.mExtToTop > 0;
 
   let h = '';
   h += card('Throw distance (H)', `${S.dist.toFixed(0)} cm`, '');
@@ -70,8 +80,7 @@ export function renderRes(r) {
     h += card('Extension rod', r.rod > 0 ? `${r.rod.toFixed(1)} cm` : '— (none)', r.rod < 0 ? 'warn' : '');
     if (hasMeasuredStack) {
       const dropDelta = r.drop - measuredDrop;
-      const bodyDelta = measuredBody - S.bodyH;
-      let adjustText = 'Measure all three values';
+      let adjustText = 'Measure both values';
       let adjustCls = 'ti';
       let adjustBadge = 'Guide';
       if (measuredDrop > 0) {
@@ -90,11 +99,7 @@ export function renderRes(r) {
         }
       }
       h += card('Measured lens drop', `${measuredDrop.toFixed(1)} cm`, '');
-      h += card(
-        'Measured body stack',
-        `${measuredBody.toFixed(1)} cm / target ${S.bodyH.toFixed(1)} cm`,
-        Math.abs(bodyDelta) < 0.5 ? 'ok' : 'ti'
-      );
+      h += card('Calculated floor to extension bottom', `${floorToExtBottom.toFixed(1)} cm`, '');
       h += card('Extension adjust', adjustText, adjustCls, adjustBadge, true);
     }
   }
