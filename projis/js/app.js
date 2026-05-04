@@ -432,6 +432,7 @@ function applyNudge(input, dir) {
   const prec = Math.max(fracDigits(input.step), fracDigits(step));
   input.value = next.toFixed(prec);
   input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.dispatchEvent(new Event('blur'));
 }
 
 function initMobileNudges() {
@@ -806,7 +807,7 @@ document.querySelectorAll('input[name="mount"]').forEach(el => el.addEventListen
 }));
 
 // ─── Drop mode ────────────────────────────────────────────────────────────────
-g('dropV').addEventListener('input', function() {
+g('dropV').addEventListener('blur', function() {
   if (!store.dropDriver) { store.dropDriver = true; updateDropModeLabel(); }
   refresh();
 });
@@ -874,7 +875,7 @@ function imageEdit() {
   refresh();
 }
 
-g('targetH').addEventListener('input', imageEdit);
+g('targetH').addEventListener('blur', imageEdit);
 
 document.querySelectorAll('input[name="pt"]').forEach(el => el.addEventListener('change', function() {
   g('posLbl').textContent = { bottom:'Media bottom height', center:'Center height', top:'Top edge height' }[this.value];
@@ -882,18 +883,18 @@ document.querySelectorAll('input[name="pt"]').forEach(el => el.addEventListener(
 }));
 
 // ─── Geometry inputs ──────────────────────────────────────────────────────────
-g('ratio').addEventListener('input', function() {
+g('ratio').addEventListener('blur', function() {
   if (!this.readOnly) {
     if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = this.value;
     tri('ratio'); refresh();
   }
 });
-g('imgW').addEventListener('input', function() { tri('width'); refresh(); });
-g('imgH').addEventListener('input', function() { tri('height'); refresh(); });
-g('dist').addEventListener('input', function() {
+g('imgW').addEventListener('blur', function() { tri('width'); refresh(); });
+g('imgH').addEventListener('blur', function() { tri('height'); refresh(); });
+g('dist').addEventListener('blur', function() {
   if (!this.readOnly) { tri('dist'); refresh(); }
 });
-g('slantDist').addEventListener('input', function() {
+g('slantDist').addEventListener('blur', function() {
   if (g('dist').readOnly) return;
   const slant = +this.value;
   if (slant <= 0) return;
@@ -912,8 +913,8 @@ g('zoomSlider').addEventListener('input', function() {
 });
 
 // ─── Shift ────────────────────────────────────────────────────────────────────
-g('sPct').addEventListener('input', function() {
-  if (!this.readOnly) { S.shiftPct = +this.value; refresh(); }
+g('sPct').addEventListener('blur', function() {
+  if (!this.readOnly) refresh();
 });
 
 g('shiftSlider').addEventListener('input', function() {
@@ -973,14 +974,14 @@ g('aspect').addEventListener('change', function() { tri('aspect'); refresh(); })
 
 // ─── Other inputs ─────────────────────────────────────────────────────────────
 ['maxUp','maxDn','maxH'].forEach(id => {
-  const el = g(id); if (el) el.addEventListener('input', function() {
+  const el = g(id); if (el) el.addEventListener('blur', function() {
     this.dataset.raw = this.value;
     if (this.id === 'maxUp') { g('maxDn').dataset.raw = g('maxDn').value = this.value; }
     refresh();
   });
 });
 ['ceilH','wallH','hPct','bodyH','tiltDeg','maxKS','personDist','gain','mCeilToExt','mExtToTop'].forEach(id => {
-  const el = g(id); if (el) el.addEventListener('input', refresh);
+  const el = g(id); if (el) el.addEventListener('blur', refresh);
 });
 g('personOn').addEventListener('change', refresh);
 
