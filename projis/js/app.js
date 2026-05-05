@@ -266,7 +266,7 @@ function refresh() {
 
   const r = lastR = compute();
 
-  g('measuredDropDisp').textContent = (S.mCeilToExt + S.mExtToTop + S.bodyH).toFixed(1);
+  g('measuredDropDisp').value = (S.mCeilToExt + S.mExtToTop + S.bodyH).toFixed(1);
 
   // Keep image dimensions in sync with physical calc
   g('imgW').value = r.mediaW.toFixed(1);

@@ -50,6 +50,18 @@ export function updateDropModeLabel() {
     el.style.color  = 'var(--color-text-tertiary)';
     dv.classList.remove('drv');
   }
+
+  // Basis drop icon under Media height: green = drop-driven, gray = position-driven
+  const col = store.dropDriver ? 'var(--color-border-success)' : 'var(--color-border-tertiary)';
+  ['basisBarH', 'basisBarV'].forEach(id => {
+    const el = g(id); if (el) el.setAttribute('stroke', col);
+  });
+  const dot = g('basisDot'); if (dot) { dot.setAttribute('fill', col); dot.setAttribute('stroke', 'none'); }
+  const lbl = g('basisLabel');
+  if (lbl) {
+    lbl.textContent = store.dropDriver ? 'drop-driven' : 'pos-driven';
+    lbl.style.color = store.dropDriver ? 'var(--color-text-success)' : 'var(--color-text-tertiary)';
+  }
 }
 
 // Render the results bar at the bottom
