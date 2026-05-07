@@ -190,4 +190,48 @@ export function renderRes(r) {
   }
 
   g('res').innerHTML = h;
+  renderLaserTargets(r);
+}
+
+export function renderLaserTargets(r) {
+  const container = g('laserRes');
+  if (!container) return;
+
+  const card = (label, value, info) => 
+    `<div class="rc" style="margin-bottom:4px; background:var(--color-background-secondary); flex: 1 1 100%;">` +
+    `<div class="rl">${label}</div>` +
+    `<div class="rv">${value}</div>` +
+    (info ? `<div class="ba ok" style="margin-top:2px;">${info}</div>` : '') +
+    `</div>`;
+
+  const { activePreset } = store;
+  if (!activePreset) {
+    container.innerHTML = `<div style="font-size:10px; color:var(--color-text-tertiary); padding:10px; text-align:center;">Select a projector preset to see installation targets.</div>`;
+    return;
+  }
+
+  let h = '';
+  // Z-Axis (Throw)
+  const zLabel = r.isUST ? 'Z-Axis (Throw - Wall to Rear)' : 'Z-Axis (Throw - Screen to Front)';
+  h += card(zLabel, `${r.targetZ.toFixed(1)} cm`, 'Aim at flat plastic casing');
+
+  // Yaw (Squareness)
+  h += card('Yaw (Squareness - Screen to Front of Chassis)', `L/R: ${r.squarenessAB.toFixed(1)} cm`, 'Both sides must match exactly');
+
+  // Y-Axis (Vertical)
+  const yLensLabel = store.floorMode ? 'Y-Axis (Floor to Lens Center)' : 'Y-Axis (Ceiling to Lens Center)';
+  h += card(yLensLabel, `${r.targetYLens.toFixed(1)} cm`, 'Physical lens center height');
+  
+  const yImgLabel = store.floorMode ? 'Y-Axis (Table to Image Bottom)' : 'Y-Axis (Ceiling to Image Top)';
+  h += card(yImgLabel, `${r.targetYHeight.toFixed(1)} cm`, 'Screen edge position');
+
+  // X-Axis (relative to screen center line; +ve = right of center)
+  const xFmt = v => `${v >= 0 ? '+' : ''}${v.toFixed(1)} cm`;
+  h += card('X-Axis (Lens from screen center)', xFmt(r.lensFromScreenCenter), '+ve = right of screen center');
+  if (activePreset) {
+    h += card('X-Axis (Chassis L edge from center)', xFmt(r.chassisLeftFromScreenCenter), 'Measure from screen center line');
+    h += card('X-Axis (Chassis R edge from center)', xFmt(r.chassisRightFromScreenCenter), 'Measure from screen center line');
+  }
+
+  container.innerHTML = h;
 }

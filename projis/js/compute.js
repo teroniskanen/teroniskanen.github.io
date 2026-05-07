@@ -123,6 +123,27 @@ export function compute() {
   // Straight-line distance from lens to effective image centre (Pythagorean)
   const lensToScreen = Math.sqrt(S.dist * S.dist + (lH - tCH) * (lH - tCH));
 
+  // --- Laser Installation Targets ---
+  const isUST = activePreset && activePreset.ustMirror;
+  const targetZ = isUST
+    ? S.dist + S.chassisDepth - S.lensZOffset
+    : S.dist - S.lensZOffset;
+  const squarenessAB = S.dist - S.lensZOffset;
+
+  const targetYHeight = floorMode
+    ? effBot - S.drop
+    : S.ceilH - effTop;
+  const targetYLens = floorMode
+    ? lH
+    : S.ceilH - lH;
+
+  // X-axis: all values relative to the screen's vertical center line (+ve = right of center)
+  // Positive H shift moves image right → lens moves right relative to screen center
+  const lensFromScreenCenter = (S.hShiftPct / 100) * mediaW;
+  // lensXOffset: signed offset from chassis physical center to lens (+ve = lens right of chassis center)
+  const chassisLeftFromScreenCenter  = lensFromScreenCenter - (S.chassisWidth / 2 + S.lensXOffset);
+  const chassisRightFromScreenCenter = lensFromScreenCenter + (S.chassisWidth / 2 - S.lensXOffset);
+
   return {
     mediaW, mediaH, nativeW, nativeH, shiftM, userShiftM,
     cH, lH, drop, rod,
@@ -133,5 +154,8 @@ export function compute() {
     shadowH, personClears,
     ratioOk, isLetterboxed, isPillared, nativeAspect, distOk,
     lensToScreen,
+    // Laser targets
+    isUST, targetZ, squarenessAB, targetYHeight, targetYLens,
+    lensFromScreenCenter, chassisLeftFromScreenCenter, chassisRightFromScreenCenter,
   };
 }

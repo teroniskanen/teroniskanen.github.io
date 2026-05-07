@@ -572,6 +572,7 @@ function clearPreset() {
   g('hLimRow').style.display = 'none';
   g('pi-upd').disabled = true;
   g('pi-upd').textContent = 'Update';
+  S.chassisWidth = 0; S.chassisDepth = 0; S.lensXOffset = 0; S.lensZOffset = 0;
 }
 
 function applyPreset(p) {
@@ -585,6 +586,10 @@ function applyPreset(p) {
   g('maxH').value  = g('maxH').dataset.raw  = p.hMax ?? 0;
   store.rawMaxUp = p.sUp; store.rawMaxDn = p.sDn; store.rawMaxH = p.hMax ?? 0;
   g('bodyH').value   = p.bodyH.toFixed(1);
+  S.chassisWidth = p.chassisWidth ?? 0;
+  S.chassisDepth = p.chassisDepth ?? 0;
+  S.lensXOffset  = p.lensXOffset  ?? 0;
+  S.lensZOffset  = p.lensZOffset  ?? 0;
   g('maxKS').value   = p.ks;
   if (p.lumens) g('lumens').value = p.lumens;
   pLock(['maxUp','maxDn','maxH','bodyH','maxKS'], true);
@@ -671,6 +676,10 @@ function loadSetup(r) {
   g('mExtToTop').value  = r.mExtToTop  ?? 0;
   if (!proj) {
     g('bodyH').value = r.bodyH ?? g('bodyH').value;
+    S.chassisWidth = r.chassisWidth ?? 0;
+    S.chassisDepth = r.chassisDepth ?? 0;
+    S.lensXOffset  = r.lensXOffset  ?? 0;
+    S.lensZOffset  = r.lensZOffset  ?? 0;
     g('maxKS').value = r.maxKS ?? g('maxKS').value;
     g('maxUp').value = g('maxUp').dataset.raw = r.maxUp ?? g('maxUp').value;
     g('maxDn').value = g('maxDn').dataset.raw = r.maxDn ?? g('maxDn').value;
@@ -710,6 +719,10 @@ g('rsave').addEventListener('click', () => {
     drop:       +g('dropV').value,
     dropDriver: store.dropDriver,
     bodyH:      +g('bodyH').value,
+    chassisWidth: S.chassisWidth,
+    chassisDepth: S.chassisDepth,
+    lensXOffset:  S.lensXOffset,
+    lensZOffset:  S.lensZOffset,
     maxKS:      +g('maxKS').value,
     maxUp:      +g('maxUp').value,
     maxDn:      +g('maxDn').value,
@@ -748,6 +761,10 @@ function currentSetup() {
     drop:       +g('dropV').value,
     dropDriver: store.dropDriver,
     bodyH:      +g('bodyH').value,
+    chassisWidth: S.chassisWidth,
+    chassisDepth: S.chassisDepth,
+    lensXOffset:  S.lensXOffset,
+    lensZOffset:  S.lensZOffset,
     maxKS:      +g('maxKS').value,
     maxUp:      parseFloat(g('maxUp').dataset.raw) || 0,
     maxDn:      parseFloat(g('maxDn').dataset.raw) || 0,
