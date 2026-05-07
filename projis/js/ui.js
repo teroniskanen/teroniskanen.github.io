@@ -213,25 +213,37 @@ export function renderLaserTargets(r) {
     `</div>`;
 
   let h = '<div class="tlbl">Laser Installation Targets</div>';
-  // Z-Axis (Throw)
-  const zLabel = r.isUST ? 'Z-Axis (Throw - Wall to Rear)' : 'Z-Axis (Throw - Screen to Front)';
-  h += card(zLabel, `${r.targetZ.toFixed(1)} cm`, 'Aim at flat plastic casing');
+  // Z-Axis (Depth / Throw)
+  const zLabel = r.isUST
+    ? 'Depth: Wall → Projector Rear'
+    : 'Depth: Screen → Projector Front';
+  h += card(zLabel, `${r.targetZ.toFixed(1)} cm`, 'Hold laser against wall/screen; measure to projector face');
 
   // Yaw (Squareness)
-  h += card('Yaw (Squareness - Screen to Front of Chassis)', `L/R: ${r.squarenessAB.toFixed(1)} cm`, 'Both sides must match exactly');
+  h += card('Square: Screen → Both Corners', `L/R: ${r.squarenessAB.toFixed(1)} cm`, 'Measure both front corners to screen; must match exactly');
 
   // Y-Axis (Vertical)
-  const yLensLabel = store.floorMode ? 'Y-Axis (Floor to Lens Center)' : 'Y-Axis (Ceiling to Lens Center)';
-  h += card(yLensLabel, `${r.targetYLens.toFixed(1)} cm`, 'Physical lens center height');
-  
-  const yImgLabel = store.floorMode ? 'Y-Axis (Table to Image Bottom)' : 'Y-Axis (Ceiling to Image Top)';
-  h += card(yImgLabel, `${r.targetYHeight.toFixed(1)} cm`, 'Screen edge position');
+  const yLensLabel = store.floorMode
+    ? 'Height: Floor → Lens Center'
+    : 'Height: Ceiling → Lens Center';
+  h += card(yLensLabel, `${r.targetYLens.toFixed(1)} cm`, 'Vertical distance from floor/ceiling to optical center');
 
-  // X-Axis (relative to screen center line; +ve = right of center)
+  const yImgAbsLabel = store.floorMode
+    ? 'Height: Floor → Image Bottom'
+    : 'Height: Ceiling → Image Top';
+  const yImgAbsVal = store.floorMode ? r.effBot : (S.ceilH - r.effTop);
+  h += card(yImgAbsLabel, `${yImgAbsVal.toFixed(1)} cm`, 'Total image height from the floor/ceiling');
+
+  const yImgRelLabel = store.floorMode
+    ? 'Offset: Table → Image Bottom'
+    : 'Offset: Ceiling → Image Top';
+  h += card(yImgRelLabel, `${r.targetYHeight.toFixed(1)} cm`, 'Laser target when measuring from the projector surface');
+
+  // X-Axis (Horizontal Side-to-Side)
   const xFmt = v => `${v >= 0 ? '+' : ''}${v.toFixed(1)} cm`;
-  h += card('X-Axis (Lens from screen center)', xFmt(r.lensFromScreenCenter), '+ve = right of screen center');
-  h += card('X-Axis (Chassis L edge from center)', xFmt(r.chassisLeftFromScreenCenter), 'Measure from screen center line');
-  h += card('X-Axis (Chassis R edge from center)', xFmt(r.chassisRightFromScreenCenter), 'Measure from screen center line');
+  h += card('Side: Center Line → Lens', xFmt(r.lensFromScreenCenter), 'Distance from screen center mark to lens center');
+  h += card('Side: Center Line → Projector Left', xFmt(r.chassisLeftFromScreenCenter), 'Distance from center mark to chassis left edge');
+  h += card('Side: Center Line → Projector Right', xFmt(r.chassisRightFromScreenCenter), 'Distance from center mark to chassis right edge');
 
   container.innerHTML = h;
 }
