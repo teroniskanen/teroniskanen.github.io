@@ -197,20 +197,22 @@ export function renderLaserTargets(r) {
   const container = g('laserRes');
   if (!container) return;
 
-  const card = (label, value, info) => 
-    `<div class="rc" style="margin-bottom:4px; background:var(--color-background-secondary); flex: 1 1 100%;">` +
-    `<div class="rl">${label}</div>` +
-    `<div class="rv">${value}</div>` +
-    (info ? `<div class="ba ok" style="margin-top:2px;">${info}</div>` : '') +
-    `</div>`;
-
   const { activePreset } = store;
   if (!activePreset) {
-    container.innerHTML = `<div style="font-size:10px; color:var(--color-text-tertiary); padding:10px; text-align:center;">Select a projector preset to see installation targets.</div>`;
+    container.style.display = 'none';
+    container.innerHTML = '';
     return;
   }
+  container.style.display = 'flex';
 
-  let h = '';
+  const card = (label, value, info) =>
+    `<div class="rc">` +
+    `<div class="rl">${label}</div>` +
+    `<div class="rv">${value}</div>` +
+    (info ? `<div class="ba ok">${info}</div>` : '') +
+    `</div>`;
+
+  let h = '<div class="tlbl">Laser Installation Targets</div>';
   // Z-Axis (Throw)
   const zLabel = r.isUST ? 'Z-Axis (Throw - Wall to Rear)' : 'Z-Axis (Throw - Screen to Front)';
   h += card(zLabel, `${r.targetZ.toFixed(1)} cm`, 'Aim at flat plastic casing');
@@ -228,10 +230,8 @@ export function renderLaserTargets(r) {
   // X-Axis (relative to screen center line; +ve = right of center)
   const xFmt = v => `${v >= 0 ? '+' : ''}${v.toFixed(1)} cm`;
   h += card('X-Axis (Lens from screen center)', xFmt(r.lensFromScreenCenter), '+ve = right of screen center');
-  if (activePreset) {
-    h += card('X-Axis (Chassis L edge from center)', xFmt(r.chassisLeftFromScreenCenter), 'Measure from screen center line');
-    h += card('X-Axis (Chassis R edge from center)', xFmt(r.chassisRightFromScreenCenter), 'Measure from screen center line');
-  }
+  h += card('X-Axis (Chassis L edge from center)', xFmt(r.chassisLeftFromScreenCenter), 'Measure from screen center line');
+  h += card('X-Axis (Chassis R edge from center)', xFmt(r.chassisRightFromScreenCenter), 'Measure from screen center line');
 
   container.innerHTML = h;
 }
