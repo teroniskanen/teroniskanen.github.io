@@ -585,7 +585,7 @@ function clearPreset() {
   g('hLimRow').style.display = 'none';
   g('pi-upd').disabled = true;
   g('pi-upd').textContent = 'Update';
-  S.chassisWidth = 0; S.chassisDepth = 0; S.lensXOffset = 0; S.lensZOffset = 0;
+  S.chassisH = null; S.feetH = 0; S.chassisWidth = 0; S.chassisDepth = 0; S.lensXOffset = 0; S.lensZOffset = 0;
 }
 
 function applyPreset(p) {
@@ -599,6 +599,8 @@ function applyPreset(p) {
   g('maxH').value  = g('maxH').dataset.raw  = p.hMax ?? 0;
   store.rawMaxUp = p.sUp; store.rawMaxDn = p.sDn; store.rawMaxH = p.hMax ?? 0;
   g('bodyH').value   = p.bodyH.toFixed(1);
+  S.chassisH     = p.chassisH     ?? null;
+  S.feetH        = p.feetH        ?? 0;
   S.chassisWidth = p.chassisWidth ?? 0;
   S.chassisDepth = p.chassisDepth ?? 0;
   S.lensXOffset  = p.lensXOffset  ?? 0;
@@ -697,6 +699,8 @@ function loadSetup(r) {
   g('mExtToTop').value  = r.mExtToTop  ?? 0;
   if (!proj) {
     g('bodyH').value = r.bodyH ?? g('bodyH').value;
+    S.chassisH     = r.chassisH     ?? null;
+    S.feetH        = r.feetH        ?? 0;
     S.chassisWidth = r.chassisWidth ?? 0;
     S.chassisDepth = r.chassisDepth ?? 0;
     S.lensXOffset  = r.lensXOffset  ?? 0;
@@ -740,6 +744,8 @@ g('rsave').addEventListener('click', () => {
     drop:       +g('dropV').value,
     dropDriver: store.dropDriver,
     bodyH:      +g('bodyH').value,
+    chassisH:     S.chassisH,
+    feetH:        S.feetH,
     chassisWidth: S.chassisWidth,
     chassisDepth: S.chassisDepth,
     lensXOffset:  S.lensXOffset,
@@ -782,6 +788,8 @@ function currentSetup() {
     drop:       +g('dropV').value,
     dropDriver: store.dropDriver,
     bodyH:      +g('bodyH').value,
+    chassisH:     S.chassisH,
+    feetH:        S.feetH,
     chassisWidth: S.chassisWidth,
     chassisDepth: S.chassisDepth,
     lensXOffset:  S.lensXOffset,

@@ -237,9 +237,15 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   xctx.stroke(); xctx.setLineDash([]);
 
   // Projector mount (rod + body)
-  const bH      = Math.max(S.bodyH*(dH/scH), 10*dpr);
+  // chassisH = physical chassis box height (draw only). bodyH = base-to-lens (calculations).
+  // Universal offset: box bottom always aligns with shelf; lens dot at correct height inside/above/below box.
+  // Fallback when chassisH unknown: centre lens in box (-bH/2), which is a reasonable approximation.
+  const visH    = S.chassisH ?? S.bodyH;
+  const bH      = Math.max(visH*(dH/scH), 10*dpr);
   const bW      = Math.max(bH * 1.6, 14*dpr);
   const tiltRad = S.tiltDeg * Math.PI / 180;
+  // Box top = (bodyH − feetH − chassisH) × scale from lens: positions box so bottom = feet top, lens at correct height.
+  const bodyYOff = S.chassisH != null ? (S.bodyH - S.feetH - S.chassisH) * (dH/scH) : -bH/2;
 
   if (store.floorMode) {
     const pedBot = sy(0), pedH = pedBot - lY;
@@ -252,12 +258,22 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     xctx.rotate(-tiltRad);
     xctx.shadowColor = 'rgba(0,0,0,0.2)'; xctx.shadowBlur = 6*dpr; xctx.shadowOffsetY = -3*dpr;
     xctx.fillStyle = c.proj; xctx.strokeStyle = c.projS; xctx.lineWidth = 1.2*dpr;
-    rr(0, -bH/2, bW, bH, 3*dpr, xctx); xctx.fill(); xctx.stroke();
+    rr(0, bodyYOff, bW, bH, 3*dpr, xctx); xctx.fill(); xctx.stroke();
     xctx.shadowColor = 'transparent';
-    const legW = 4*dpr, legH = 5*dpr;
+    const legW = 4*dpr;
     xctx.fillStyle = c.projS;
-    xctx.fillRect(2*dpr, bH/2 - 1*dpr, legW, legH);
-    xctx.fillRect(bW - legW - 2*dpr, bH/2 - 1*dpr, legW, legH);
+    if (S.feetH > 0) {
+      // Draw feet proportional to feetH, hanging below chassis bottom to shelf level
+      const feetPx = Math.max(S.feetH * (dH/scH), 3*dpr);
+      const feetYTop = bodyYOff + bH;
+      xctx.fillRect(bW * 0.12, feetYTop, legW, feetPx);
+      xctx.fillRect(bW * 0.88 - legW, feetYTop, legW, feetPx);
+    } else {
+      // Stub feet for projectors without explicit feet data
+      const legY = bodyYOff + bH - 1*dpr;
+      xctx.fillRect(2*dpr, legY, legW, 5*dpr);
+      xctx.fillRect(bW - legW - 2*dpr, legY, legW, 5*dpr);
+    }
     xctx.restore();
   } else {
     xctx.fillStyle = c.rod;
