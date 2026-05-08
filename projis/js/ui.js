@@ -176,9 +176,7 @@ export function renderRes(r) {
     h += card('Shift type', 'Digital shift — image quality reduced', 'warn', 'Digital', true);
   }
 
-  if (store.activePreset && store.activePreset.digitalZoom) {
-    const p = store.activePreset;
-    // warn any time digital zoom projector is in use
+  if (store.activePreset && store.activePreset.digitalZoom && S.ratio > store.activePreset.rMin + 0.001) {
     h += card('Zoom type', 'Digital zoom — image quality reduced', 'warn', 'Digital', true);
   }
 
@@ -228,11 +226,11 @@ export function renderLaserTargets(r) {
     : 'Height: Ceiling → Lens Center';
   h += card(yLensLabel, `${r.targetYLens.toFixed(1)} cm`, 'Vertical distance from floor/ceiling to optical center');
 
-  const yBodyLabel = store.floorMode
-    ? 'Height: Floor → Projector Base'
-    : 'Height: Ceiling → Projector Body';
+  const yBodyLabel = store.floorMode ? 'Height: Floor → Projector Base' : 'Height: Ceiling → Projector Body';
   const yBodyInfo = store.floorMode
-    ? `Flat bottom of projector; lens center is ${S.bodyH.toFixed(1)} cm above`
+    ? (r.isUST
+        ? `Chassis base; body is ${S.bodyH.toFixed(1)} cm tall with lens on top — measuring to projector top gives lens height directly`
+        : `Flat bottom of projector; lens center is ${S.bodyH.toFixed(1)} cm above`)
     : `Top of projector body; lens center is ${S.bodyH.toFixed(1)} cm below`;
   h += card(yBodyLabel, `${r.targetYBody.toFixed(1)} cm`, yBodyInfo);
 
