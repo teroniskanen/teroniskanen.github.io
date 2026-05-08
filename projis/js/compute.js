@@ -136,6 +136,9 @@ export function compute() {
   const targetYLens = floorMode
     ? lH
     : S.ceilH - lH;
+  // Body-reference: floor→projector-base (floor) or ceiling→projector-body-top (ceiling).
+  // Easier to measure than lens center; lens is bodyH away from this surface.
+  const targetYBody = floorMode ? drop : rod;
 
   // X-axis: all values relative to the screen's vertical center line (+ve = right of center)
   // Positive H shift moves image right → lens moves right relative to screen center
@@ -155,7 +158,7 @@ export function compute() {
     ratioOk, isLetterboxed, isPillared, nativeAspect, distOk,
     lensToScreen,
     // Laser targets
-    isUST, targetZ, squarenessAB, targetYHeight, targetYLens,
+    isUST, targetZ, squarenessAB, targetYHeight, targetYLens, targetYBody,
     lensFromScreenCenter, chassisLeftFromScreenCenter, chassisRightFromScreenCenter,
   };
 }

@@ -228,6 +228,14 @@ export function renderLaserTargets(r) {
     : 'Height: Ceiling → Lens Center';
   h += card(yLensLabel, `${r.targetYLens.toFixed(1)} cm`, 'Vertical distance from floor/ceiling to optical center');
 
+  const yBodyLabel = store.floorMode
+    ? 'Height: Floor → Projector Base'
+    : 'Height: Ceiling → Projector Body';
+  const yBodyInfo = store.floorMode
+    ? `Flat bottom of projector; lens center is ${S.bodyH.toFixed(1)} cm above`
+    : `Top of projector body; lens center is ${S.bodyH.toFixed(1)} cm below`;
+  h += card(yBodyLabel, `${r.targetYBody.toFixed(1)} cm`, yBodyInfo);
+
   const yImgAbsLabel = store.floorMode
     ? 'Height: Floor → Image Bottom'
     : 'Height: Ceiling → Image Top';
