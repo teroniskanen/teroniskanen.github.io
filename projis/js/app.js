@@ -66,13 +66,13 @@ function interpolateShiftCurve(curve, ratio) {
   return null;
 }
 
-// Returns {up, dn} shift limits in % for the current throw ratio, in room coordinates.
+// Returns {up, dn, h} shift limits in % for the current throw ratio, in room coordinates.
 // Positive = image moves UP in room. In ceiling mode the projector is physically inverted, so
 // the mechanical sUp/sDn swap: what was "shift up" on the body now moves the image downward.
 function getShiftLimits() {
   const p = store.activePreset;
-  if (!p) return { up: S.maxUp, dn: S.maxDn };
-  let up, dn;
+  if (!p) return { up: S.maxUp, dn: S.maxDn, h: S.maxH };
+  let up, dn, h = p.hMax ?? 0;
   if (p.shiftCurve) {
     const v = interpolateShiftCurve(p.shiftCurve, S.ratio);
     if (v) { up = v.up; dn = v.dn; }
@@ -80,8 +80,18 @@ function getShiftLimits() {
   } else {
     up = p.sUp; dn = p.sDn;
   }
+
+  // Digital zoom allows "panning" the cropped image within the full panel
+  if (p.digitalZoom && S.ratio > p.rMin) {
+    const zoomFactor = S.ratio / p.rMin;
+    const slackPct = (zoomFactor - 1) / 2 * 100;
+    up += slackPct;
+    dn += slackPct;
+    h  += slackPct;
+  }
+
   // Ceiling mount: shift direction is inverted in room coordinates
-  return store.floorMode ? { up, dn } : { up: dn, dn: up };
+  return store.floorMode ? { up, dn, h } : { up: dn, dn: up, h };
 }
 
 // Available vertical range given current horizontal shift (elliptical boundary)
@@ -124,10 +134,10 @@ function updateShiftSliders() {
   const hScale = Math.sqrt(Math.max(0, 1 - vFrac));
   const hEff   = S.maxH * hScale;
 
-  // V slider — only for optical-shift presets
+  // V slider — for optical or digital shift presets
   const vRow = g('shiftRow');
   const vLimRow = g('vLimRow');
-  if (!p || p.shiftType !== 'optical') {
+  if (!p || (p.shiftType !== 'optical' && p.shiftType !== 'digital')) {
     vRow.style.display = 'none';
     vLimRow.style.display = 'none';
   } else {
@@ -192,8 +202,10 @@ function refresh() {
     const lims = getShiftLimits();
     S.maxUp = store.rawMaxUp = lims.up;
     S.maxDn = store.rawMaxDn = lims.dn;
+    S.maxH  = store.rawMaxH  = lims.h;
     g('maxUp').dataset.raw = lims.up;
     g('maxDn').dataset.raw = lims.dn;
+    g('maxH').dataset.raw  = lims.h;
   }
 
   // Clamp shift to current spec limits (e.g. zoom-out shrinks the allowed range)
@@ -561,6 +573,7 @@ function clearPreset() {
   store.activePreset = null;
   psel.value = '';
   g('pbox').classList.remove('on');
+  g('pnote').style.display = 'none';
   pLock(['ratio','maxUp','maxDn','maxH','bodyH','maxKS'], false);
   const lb = g('lkRatio');
   lb.classList.remove('pl'); lb.innerHTML = store.lkState.ratio ? LSVG : USVG;
@@ -610,6 +623,14 @@ function applyPreset(p) {
   const nName = ASPECT_NAMES[p.aspectVal] || p.aspectVal;
   g('pi-t').textContent = `Nat ${nName} · Throw ${p.fixed ? p.rMin+':1 fix' : p.rMin+'-'+p.rMax+':1'} · Shift ±${p.sUp}%`;
   g('pbox').classList.add('on');
+
+  if (p.note) {
+    g('pnote').textContent = p.note;
+    g('pnote').style.display = 'block';
+  } else {
+    g('pnote').style.display = 'none';
+  }
+
   g('pi-upd').disabled = false;
   g('pi-upd').textContent = 'Update';
   _presetEditing = false;

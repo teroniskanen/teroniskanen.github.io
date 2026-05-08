@@ -274,6 +274,48 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   xctx.fillStyle = c.lens;
   xctx.beginPath(); xctx.arc(lX, lY, 4*dpr, 0, Math.PI*2); xctx.fill();
 
+  // ─── Digital Panel Mini-Map ────────────────────────────────────────────────
+  {
+    const p = store.activePreset;
+    if (p && p.digitalZoom && S.ratio > p.rMin) {
+      const zoomShrinkPct = 1 - (p.rMin / S.ratio);
+      const mW = 80 * dpr;
+      const ar = parseFloat(p.aspectVal);
+      const mH = mW / ar;
+      const mX = PL + 20 * dpr;
+      const mY = PT + 20 * dpr;
+
+      // Native panel (grey container)
+      xctx.fillStyle = 'rgba(50,50,50,0.85)';
+      xctx.fillRect(mX, mY, mW, mH);
+      xctx.strokeStyle = '#60a5fa';
+      xctx.lineWidth = dpr;
+      xctx.strokeRect(mX, mY, mW, mH);
+
+      // Active image (shrunk inner box)
+      const aW = mW * (1 - zoomShrinkPct);
+      const aH = mH * (1 - zoomShrinkPct);
+      const slackX = mW - aW;
+      const slackY = mH - aH;
+
+      const hLim = S.maxH;
+      const vLim = S.shiftPct >= 0 ? S.maxUp : S.maxDn;
+      const aX = mX + slackX / 2 + (hLim > 0 ? (S.hShiftPct / hLim) * (slackX / 2) : 0);
+      const aY = mY + slackY / 2 - (S.shiftPct / (vLim || 1)) * (slackY / 2);
+
+      xctx.fillStyle = 'rgba(100,200,255,0.8)';
+      xctx.fillRect(aX, aY, aW, aH);
+
+      // Labels
+      xctx.font = `${8 * dpr}px var(--font-sans)`;
+      xctx.textAlign = 'left';
+      xctx.fillStyle = 'rgba(255,255,255,0.7)';
+      xctx.fillText('Native panel', mX + 2 * dpr, mY + 9 * dpr);
+      xctx.fillStyle = 'rgba(0,0,0,0.8)';
+      xctx.fillText('Active', aX + 2 * dpr, aY + 9 * dpr);
+    }
+  }
+
   // ─── Measurement annotations ───────────────────────────────────────────────
   const aF   = fSz;
   const fmt  = v => (v / 100).toFixed(1) + 'm';

@@ -172,7 +172,7 @@ export function renderRes(r) {
     );
   }
 
-  if (store.activePreset && store.activePreset.shiftType === 'digital' && Math.abs(r.shiftM) > 0.01) {
+  if (store.activePreset && store.activePreset.shiftType === 'digital' && (Math.abs(r.userShiftM) > 0.01 || Math.abs(S.hShiftPct) > 0.01)) {
     h += card('Shift type', 'Digital shift — image quality reduced', 'warn', 'Digital', true);
   }
 
