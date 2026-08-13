@@ -61,9 +61,13 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   // Print: 18pt at 96 dpi = 24 CSS px; at dpr=2 → 48 canvas px on an 840px-wide canvas.
   // Screen: same formula — ~24pt equivalent across window sizes.
   const cssW  = W / dpr;                                // logical canvas width
+  // Mobile: the drawing area is much narrower (sidebar eats most of the viewport width),
+  // so triple would overflow/collide — keep the more modest 1.5x bump there instead.
+  const isMobile = !isPrint && matchMedia('(max-width: 600px)').matches;
+  const sizeMult = isPrint ? 1.5 : (isMobile ? 1.5 : 3);  // triple on desktop; unchanged for print
   const fSz   = (isPrint
     ? Math.round(24 * dpr)                              // 18pt at 96 dpi
-    : Math.max(18, Math.round(cssW / 27)) * dpr) * 1.5; // 50% larger drawing measurements
+    : Math.max(18, Math.round(cssW / 27)) * dpr) * sizeMult;
 
   const WW = 16*dpr;
   const PL = 54*dpr + WW;
