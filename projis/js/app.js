@@ -20,32 +20,47 @@ PRESETS.forEach(p => {
   const o = document.createElement('option'); o.value = p.id; o.textContent = p.name; psel.appendChild(o);
 });
 
+// Read a <input type="number"> against its own min/max attributes.
+// A bare `+el.value || fallback` treats a legitimately-typed 0 as "empty" and
+// silently swaps in the fallback instead — this clamps to the declared range
+// and only falls back on genuinely invalid (NaN) input, writing any correction
+// back into the field so the user can see it happened.
+function numVal(id, fallback) {
+  const el  = g(id);
+  const raw = parseFloat(el.value);
+  const min = el.min !== '' ? parseFloat(el.min) : -Infinity;
+  const max = el.max !== '' ? parseFloat(el.max) : Infinity;
+  const v   = Number.isFinite(raw) ? Math.min(Math.max(raw, min), max) : fallback;
+  if (parseFloat(el.value) !== v) el.value = v;
+  return v;
+}
+
 // ─── Read DOM inputs into S ───────────────────────────────────────────────────
 function rd() {
-  S.ceilH    = +g('ceilH').value   || 500;
-  S.wallH    = +g('wallH').value   || 300;
-  S.dist     = +g('dist').value    || 200;
+  S.ceilH    = numVal('ceilH', 500);
+  S.wallH    = numVal('wallH', 300);
+  S.dist     = numVal('dist', 200);
   S.aspect   = +g('aspect').value;
-  S.ratio    = +g('ratio').value   || 1.35;
-  S.imgW     = +g('imgW').value    || 148;
-  S.imgH     = +g('imgH').value    || 0;
+  S.ratio    = numVal('ratio', 1.35);
+  S.imgW     = numVal('imgW', 148);
+  S.imgH     = numVal('imgH', 0);
   S.shiftPct  = +g('sPct').value    || 0;
   S.maxUp  = store.rawMaxUp = parseFloat(g('maxUp').dataset.raw) || +g('maxUp').value || 0;
   S.maxDn  = store.rawMaxDn = S.maxUp;  // single ± field — V is symmetric in manual mode
   S.hShiftPct = +g('hPct').value   || 0;
   S.maxH   = store.rawMaxH  = parseFloat(g('maxH').dataset.raw)  || +g('maxH').value  || 0;
-  S.bodyH    = +g('bodyH').value   || 13.6;
-  S.targetH  = +g('targetH').value || 0;
+  S.bodyH    = numVal('bodyH', 13.6);
+  S.targetH  = numVal('targetH', 0);
   S.posType  = document.querySelector('input[name="pt"]:checked').value;
-  S.maxKS    = +g('maxKS').value   || 30;
-  S.tiltDeg  = +g('tiltDeg').value || 0;
-  S.drop     = +g('dropV').value   || 200;
+  S.maxKS    = numVal('maxKS', 30);
+  S.tiltDeg  = numVal('tiltDeg', 0);
+  S.drop     = numVal('dropV', 200);
   S.personOn   = g('personOn').checked;
-  S.personDist = +g('personDist').value || 200;
+  S.personDist = numVal('personDist', 200);
   S.lumens     = +g('lumens').value     || 0;
-  S.gain       = +g('gain').value       || 1.0;
-  S.mCeilToExt = +g('mCeilToExt').value || 0;
-  S.mExtToTop  = +g('mExtToTop').value  || 0;
+  S.gain       = numVal('gain', 1.0);
+  S.mCeilToExt = numVal('mCeilToExt', 0);
+  S.mExtToTop  = numVal('mExtToTop', 0);
 }
 
 // ─── Shift curve helpers ──────────────────────────────────────────────────────
@@ -241,6 +256,18 @@ function refresh() {
   tiltEl.max = S.maxKS; tiltEl.min = -S.maxKS;
   if (S.tiltDeg >  S.maxKS) { S.tiltDeg =  S.maxKS; tiltEl.value =  S.maxKS; }
   if (S.tiltDeg < -S.maxKS) { S.tiltDeg = -S.maxKS; tiltEl.value = -S.maxKS; }
+
+  // Clamp drop/pedestal height so the lens can't be placed above the ceiling:
+  // ceiling mode the drop can't exceed the ceiling, floor mode the pedestal + body
+  // can't push the lens above it. Static HTML min/max can't express this since it
+  // depends on ceiling height and mount mode (the >= 0 floor is already enforced
+  // by numVal() via the field's min="0" attribute). Only clamp when the field
+  // itself is the driver — otherwise it's about to be overwritten with the
+  // computed value below.
+  if (store.dropDriver) {
+    const maxDrop = Math.max(0, store.floorMode ? S.ceilH - S.bodyH : S.ceilH);
+    if (S.drop > maxDrop) { S.drop = maxDrop; g('dropV').value = maxDrop.toFixed(1); }
+  }
 
   // Disable shift inputs when no shift range defined
   if (S.maxUp === 0 && S.maxDn === 0) {
