@@ -125,13 +125,15 @@ export function compute() {
 
   // --- Laser Installation Targets ---
   const isUST = activePreset && activePreset.ustMirror;
+  // UST: front face is too close to the wall to measure, so both the depth and the
+  // squareness check reference the same plane — the chassis rear — instead of the front.
   const targetZ = isUST
     ? S.dist + S.chassisDepth - S.lensZOffset
     : S.dist - S.lensZOffset;
-  const squarenessAB = S.dist - S.lensZOffset;
+  const squarenessAB = targetZ;
 
   const targetYHeight = floorMode
-    ? effBot - S.drop
+    ? effBot - drop
     : S.ceilH - effTop;
   const targetYLens = floorMode
     ? lH
@@ -141,8 +143,10 @@ export function compute() {
   const targetYBody = floorMode ? drop : rod;
 
   // X-axis: all values relative to the screen's vertical center line (+ve = right of center)
-  // Positive H shift moves image right → lens moves right relative to screen center
-  const lensFromScreenCenter = (S.hShiftPct / 100) * mediaW;
+  // Image is pinned at screen center (no independent physical-X input), so by the same
+  // relation as the vertical model (image = lens + shift), lens X = -shift, measured
+  // against the native panel width (matches how hMax/vertical shift specs are defined).
+  const lensFromScreenCenter = -(S.hShiftPct / 100) * nativeW;
   // lensXOffset: signed offset from chassis physical center to lens (+ve = lens right of chassis center)
   const chassisLeftFromScreenCenter  = lensFromScreenCenter - (S.chassisWidth / 2 + S.lensXOffset);
   const chassisRightFromScreenCenter = lensFromScreenCenter + (S.chassisWidth / 2 - S.lensXOffset);

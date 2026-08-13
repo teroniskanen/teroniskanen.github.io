@@ -228,9 +228,7 @@ export function renderLaserTargets(r) {
 
   const yBodyLabel = store.floorMode ? 'Height: Floor → Projector Base' : 'Height: Ceiling → Projector Body';
   const yBodyInfo = store.floorMode
-    ? (r.isUST
-        ? `Chassis base; body is ${S.bodyH.toFixed(1)} cm tall with lens on top — measuring to projector top gives lens height directly`
-        : `Flat bottom of projector; lens center is ${S.bodyH.toFixed(1)} cm above`)
+    ? `Flat bottom of projector (feet included); lens center is ${S.bodyH.toFixed(1)} cm above`
     : `Top of projector body; lens center is ${S.bodyH.toFixed(1)} cm below`;
   h += card(yBodyLabel, `${r.targetYBody.toFixed(1)} cm`, yBodyInfo);
 
@@ -240,10 +238,12 @@ export function renderLaserTargets(r) {
   const yImgAbsVal = store.floorMode ? r.effBot : (S.ceilH - r.effTop);
   h += card(yImgAbsLabel, `${yImgAbsVal.toFixed(1)} cm`, 'Total image height from the floor/ceiling');
 
-  const yImgRelLabel = store.floorMode
-    ? 'Offset: Table → Image Bottom'
-    : 'Offset: Ceiling → Image Top';
-  h += card(yImgRelLabel, `${r.targetYHeight.toFixed(1)} cm`, 'Laser target when measuring from the projector surface');
+  // Ceiling mode: the projector's mount plate sits right at the ceiling, so this would be
+  // identical to the absolute row above — only show it in floor mode, where the projector's
+  // surface (table/pedestal) is a different datum than the floor.
+  if (store.floorMode) {
+    h += card('Offset: Table → Image Bottom', `${r.targetYHeight.toFixed(1)} cm`, 'Laser target when measuring from the projector surface');
+  }
 
   // X-Axis (Horizontal Side-to-Side)
   const xFmt = v => `${v >= 0 ? '+' : ''}${v.toFixed(1)} cm`;
