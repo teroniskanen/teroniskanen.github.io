@@ -209,9 +209,29 @@ let lastR = null;
 // Tracks whether preset fields are in edit mode
 let _presetEditing = false;
 
+// Media width/height have nothing left to solve for once both Throw distance and Throw
+// ratio are fixed (locked, or ratio pinned by a fixed-lens preset) — tri()'s 'width'/'height'
+// branches only reconcile dist OR ratio, so an edit here would otherwise be silently
+// discarded with no feedback. Disable editing instead of eating input. Called both from
+// refresh() and directly from toggleLock(), so the field goes readOnly the moment the
+// second lock engages rather than waiting for some unrelated future refresh.
+function syncWidthHeightLockability() {
+  const dFixed = g('dist').readOnly || store.lkState.dist;
+  const rFixed = g('ratio').readOnly || store.lkState.ratio;
+  const bothFixed = dFixed && rFixed;
+  const wEl = g('imgW'), hEl = g('imgH');
+  if (!wEl.classList.contains('inp-p')) wEl.readOnly = bothFixed || store.lkState.imgW;
+  if (!hEl.classList.contains('inp-p')) hEl.readOnly = bothFixed;
+}
+
 // ─── Main refresh ─────────────────────────────────────────────────────────────
 function refresh() {
   rd();
+
+  // Wall height can't exceed ceiling height — the wall stops at the ceiling. Static HTML
+  // min/max can't express this since it depends on the current ceiling height.
+  if (S.wallH > S.ceilH) { S.wallH = S.ceilH; g('wallH').value = S.ceilH.toFixed(0); }
+  g('wallH').max = S.ceilH;
 
   // Clamp person distance to prevent standing behind projector
   if (S.personDist >= S.dist) {
@@ -298,6 +318,8 @@ function refresh() {
   } else {
     g('hPct').readOnly = false; g('hPct').classList.remove('ro');
   }
+
+  syncWidthHeightLockability();
 
   // If media width is locked, back-calculate ratio (or dist if ratio is fixed) to maintain locked width
   if (store.lkState.imgW && S.imgW > 0) {
@@ -707,6 +729,7 @@ function toggleLock(key) {
     if (store.lkState.drop && !store.dropDriver) store.dropDriver = true;
     updateDropModeLabel();
   }
+  if (key === 'dist' || key === 'ratio' || key === 'imgW') syncWidthHeightLockability();
 }
 
 ['lkDist','lkRatio','lkDrop','lkImgW'].forEach(id => {
