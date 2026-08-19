@@ -45,6 +45,10 @@ export function updateDropModeLabel() {
   dv.classList.toggle('drv', store.dropDriver);
   g('targetH').classList.toggle('drv', !store.dropDriver);
 
+  // Ceiling-extension-rod verification fields have no meaning on a pedestal/table mount.
+  const msRows = g('measuredStackRows');
+  if (msRows) msRows.style.display = store.floorMode ? 'none' : '';
+
   const dtPos = g('dtPos'), dtDrop = g('dtDrop');
   if (dtPos)  { dtPos.textContent  = `Position → ${dropWord}`; dtPos.classList.toggle('active', !store.dropDriver); }
   if (dtDrop) { dtDrop.textContent = `${dropWord} → Position`; dtDrop.classList.toggle('active', store.dropDriver); }
