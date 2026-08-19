@@ -76,19 +76,41 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   const dW = W - PL - PR, dH = H - PT - PB;
 
   const roomW = S.viewW;
-  // Use the room/image top for vertical scaling, but keep only a small fixed
-  // headroom so the ceiling line stays near the top instead of dropping toward
-  // projector-height references.
-  const sceneTop = Math.max(
-    S.ceilH,
+
+  // Vertical content bounds from the actual geometry — not an assumed-correct layout, so
+  // failure states (image running below the floor, lens ending up above the ceiling, a
+  // person's shadow reaching high) must expand the range rather than get clipped off-canvas.
+  const contentTop = Math.max(
     S.wallH,
+    r.lH,
     r.effTop,
-    r.effNatTop ?? 0,
-    S.personOn ? PERSON_H : 0,
+    r.effNatTop ?? r.effTop,
+    r.tCH,
+    S.personOn ? PERSON_H : -Infinity,
   );
-  const scH   = sceneTop + 12;
-  const sx = m => PL + m * (dW / roomW);
-  const sy = m => H - PB - m * (dH / scH);
+  const contentBottom = Math.min(
+    0,
+    r.effBot,
+    r.effNatBot ?? r.effBot,
+    r.shadowH != null ? r.shadowH : Infinity,
+  );
+
+  // Pedestal/floor mount: the ceiling has no structural role in the drawing, so only fold it
+  // into the fitted range when it's actually close to the content — otherwise show it as a
+  // labeled break above the fitted view instead of stretching the whole scene to reach it.
+  // Ceiling mount: the extension rod is real structure connecting lens to ceiling, so ceilH
+  // always stays in the fit there, same as before.
+  const CEIL_NEAR = 60; // cm
+  const showCeilBreak = store.floorMode && (S.ceilH - contentTop) > CEIL_NEAR;
+  const fitTop = showCeilBreak ? contentTop : Math.max(contentTop, S.ceilH);
+
+  const sceneTop = fitTop + 12, sceneBottom = contentBottom - 12;
+  const scH = sceneTop - sceneBottom;
+  // One uniform px/cm scale on both axes — never distort the beam angle. Fit whichever axis
+  // is tighter; the other sits inside its full box without stretching to fill it.
+  const scale = Math.min(dW / roomW, dH / scH);
+  const sx = m => PL + m * scale;
+  const sy = m => (H - PB) - (m - sceneBottom) * scale;
   const wX = PL, lX = sx(S.dist), lY = sy(r.lH);
 
   // Grid
@@ -96,7 +118,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   for (let x = 0; x <= Math.max(roomW, S.dist+100); x += 100) {
     xctx.beginPath(); xctx.moveTo(sx(x), PT); xctx.lineTo(sx(x), H-PB); xctx.stroke();
   }
-  for (let y = 0; y <= scH; y += 50) {
+  for (let y = Math.ceil(sceneBottom/50)*50; y <= sceneTop; y += 50) {
     xctx.beginPath(); xctx.moveTo(0, sy(y)); xctx.lineTo(W, sy(y)); xctx.stroke();
   }
 
@@ -106,9 +128,12 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   xctx.fillStyle = floorGrad;
   xctx.fillRect(0, sy(0), W, H-sy(0));
 
-  // Ceiling line
-  xctx.fillStyle = c.floor;
-  xctx.fillRect(0, sy(S.ceilH)-2*dpr, W, 2*dpr);
+  // Ceiling line — only when the ceiling is actually within the fitted view; otherwise a
+  // break glyph near the top marks "more room above, not drawn to scale" with its true height.
+  if (!showCeilBreak) {
+    xctx.fillStyle = c.floor;
+    xctx.fillRect(0, sy(S.ceilH)-2*dpr, W, 2*dpr);
+  }
 
   // Wall
   const wTop = sy(S.wallH), wBot = sy(0);
@@ -120,9 +145,22 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   // Height labels — left of wall, right-aligned
   const hfmt = v => (v / 100).toFixed(1) + 'm';
   xctx.fillStyle = c.lbl; xctx.font = `${fSz}px var(--font-mono)`; xctx.textAlign = 'right';
-  xctx.fillText(hfmt(0),       PL-WW-3*dpr, sy(0)+3*dpr);
-  xctx.fillText(hfmt(S.ceilH), PL-WW-3*dpr, sy(S.ceilH)+3*dpr);
+  xctx.fillText(hfmt(0), PL-WW-3*dpr, sy(0)+3*dpr);
+  if (!showCeilBreak) xctx.fillText(hfmt(S.ceilH), PL-WW-3*dpr, sy(S.ceilH)+3*dpr);
   xctx.fillText(hfmt(S.wallH), PL-WW-3*dpr, wTop+fSz);
+
+  if (showCeilBreak) {
+    const by = PT + 8*dpr;
+    xctx.strokeStyle = c.lbl; xctx.lineWidth = 1.2*dpr;
+    xctx.beginPath();
+    for (let x = wX, i = 0; x <= wX + 70*dpr; x += 12*dpr, i++) {
+      const yy = by + (i % 2 === 0 ? -3*dpr : 3*dpr);
+      i === 0 ? xctx.moveTo(x, yy) : xctx.lineTo(x, yy);
+    }
+    xctx.stroke();
+    xctx.fillStyle = c.lbl; xctx.font = `${fSz}px var(--font-mono)`; xctx.textAlign = 'left';
+    xctx.fillText(`↑ ceiling ${hfmt(S.ceilH)}`, wX + 76*dpr, by + 3.5*dpr);
+  }
 
   const iSW = Math.round(Math.min(isPrint ? 4 : 8, (W/dpr) * 0.015)) * dpr;
 
@@ -245,11 +283,11 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   // Universal offset: box bottom always aligns with shelf; lens dot at correct height inside/above/below box.
   // Fallback when chassisH unknown: centre lens in box (-bH/2), which is a reasonable approximation.
   const visH    = S.chassisH ?? S.bodyH;
-  const bH      = Math.max(visH*(dH/scH), 10*dpr);
+  const bH      = Math.max(visH*(scale), 10*dpr);
   const bW      = Math.max(bH * 1.6, 14*dpr);
   const tiltRad = S.tiltDeg * Math.PI / 180;
   // Box top = (bodyH − feetH − chassisH) × scale from lens: positions box so bottom = feet top, lens at correct height.
-  const bodyYOff = S.chassisH != null ? (S.bodyH - S.feetH - S.chassisH) * (dH/scH) : -bH/2;
+  const bodyYOff = S.chassisH != null ? (S.bodyH - S.feetH - S.chassisH) * (scale) : -bH/2;
 
   if (store.floorMode) {
     const pedBot = sy(0), pedH = pedBot - lY;
@@ -268,7 +306,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     xctx.fillStyle = c.projS;
     if (S.feetH > 0) {
       // Draw feet proportional to feetH, hanging below chassis bottom to shelf level
-      const feetPx = Math.max(S.feetH * (dH/scH), 3*dpr);
+      const feetPx = Math.max(S.feetH * (scale), 3*dpr);
       const feetYTop = bodyYOff + bH;
       xctx.fillRect(bW * 0.12, feetYTop, legW, feetPx);
       xctx.fillRect(bW * 0.88 - legW, feetYTop, legW, feetPx);
