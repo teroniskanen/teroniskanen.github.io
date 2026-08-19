@@ -30,7 +30,10 @@ function numVal(id, fallback) {
   const raw = parseFloat(el.value);
   const min = el.min !== '' ? parseFloat(el.min) : -Infinity;
   const max = el.max !== '' ? parseFloat(el.max) : Infinity;
-  const v   = Number.isFinite(raw) ? Math.min(Math.max(raw, min), max) : fallback;
+  // Clamp the fallback too — a caller passing a fallback outside the field's own range
+  // (e.g. 0 against min="10") would otherwise bypass the clamp this function exists to enforce.
+  const clampedFallback = Math.min(Math.max(fallback, min), max);
+  const v = Number.isFinite(raw) ? Math.min(Math.max(raw, min), max) : clampedFallback;
   if (parseFloat(el.value) !== v) el.value = v;
   return v;
 }
@@ -46,7 +49,13 @@ function rd() {
   S.imgH     = numVal('imgH', 0);
   S.shiftPct  = +g('sPct').value    || 0;
   S.maxUp  = store.rawMaxUp = parseFloat(g('maxUp').dataset.raw) || +g('maxUp').value || 0;
-  S.maxDn  = store.rawMaxDn = S.maxUp;  // single ± field — V is symmetric in manual mode
+  // maxDn is a hidden field that mirrors maxUp (single ± UI control) in manual mode and while
+  // editing a preset's spec. For an active, non-editing preset it must NOT be forced symmetric
+  // here — asymmetric presets (e.g. NEC ceiling flip, sUp≠sDn) depend on refresh()'s
+  // getShiftLimits() block to set it correctly right after rd() runs.
+  if (!store.activePreset || _presetEditing) {
+    S.maxDn = store.rawMaxDn = S.maxUp;
+  }
   S.hShiftPct = +g('hPct').value   || 0;
   S.maxH   = store.rawMaxH  = parseFloat(g('maxH').dataset.raw)  || +g('maxH').value  || 0;
   S.bodyH    = numVal('bodyH', 13.6);
@@ -87,13 +96,16 @@ function interpolateShiftCurve(curve, ratio) {
 function getShiftLimits() {
   const p = store.activePreset;
   if (!p) return { up: S.maxUp, dn: S.maxDn, h: S.maxH };
-  let up, dn, h = p.hMax ?? 0;
+  const ovr = store.activePresetOverride;
+  const specUp = ovr?.sUp  ?? p.sUp;
+  const specDn = ovr?.sDn  ?? p.sDn;
+  let up, dn, h = ovr?.hMax ?? p.hMax ?? 0;
   if (p.shiftCurve) {
     const v = interpolateShiftCurve(p.shiftCurve, S.ratio);
     if (v) { up = v.up; dn = v.dn; }
-    else   { up = p.sUp; dn = p.sDn; }
+    else   { up = specUp; dn = specDn; }
   } else {
-    up = p.sUp; dn = p.sDn;
+    up = specUp; dn = specDn;
   }
 
   // Digital zoom allows "panning" the cropped image within the full panel
@@ -212,8 +224,10 @@ function refresh() {
   const personEnd = S.personOn && S.personDist > 0 ? S.personDist : 0;
   S.viewW = Math.max(Math.ceil(S.dist + 10), personEnd > 0 ? Math.ceil(personEnd * 1.1) : 0, 280);
 
-  // Apply shift limits for all presets (handles zoom curves + ceiling-mount inversion for fixed-shift presets too)
-  if (store.activePreset) {
+  // Apply shift limits for all presets (handles zoom curves + ceiling-mount inversion for fixed-shift presets too).
+  // Skipped while editing preset overrides: recomputing from spec here would stomp the value the
+  // user just typed on its next blur, before the "Save" click ever reads it.
+  if (store.activePreset && !_presetEditing) {
     const lims = getShiftLimits();
     S.maxUp = store.rawMaxUp = lims.up;
     S.maxDn = store.rawMaxDn = lims.dn;
@@ -246,7 +260,7 @@ function refresh() {
   // Show raw spec in limit fields (ceiling-flipped for preset, user-entered for manual).
   // For preset: show max(up,dn) so asymmetric presets (e.g. NEC ceiling flip) always show
   // the non-zero limit. Dynamic limits are enforced by clamping above.
-  if (store.activePreset) {
+  if (store.activePreset && !_presetEditing) {
     g('maxUp').value = Math.max(store.rawMaxUp, store.rawMaxDn).toFixed(0);
     if (store.rawMaxH > 0) g('maxH').value = parseFloat(g('maxH').dataset.raw).toFixed(0);
   }
@@ -599,6 +613,7 @@ function tri(changed) {
 // ─── Preset management ────────────────────────────────────────────────────────
 function clearPreset() {
   store.activePreset = null;
+  store.activePresetOverride = null;
   psel.value = '';
   g('pbox').classList.remove('on');
   g('pnote').style.display = 'none';
@@ -651,7 +666,8 @@ function applyPreset(p) {
     g('zoomVal').textContent = p.rMin.toFixed(2) + ':1';
   }
   const nName = ASPECT_NAMES[p.aspectVal] || p.aspectVal;
-  g('pi-t').textContent = `Nat ${nName} · Throw ${p.fixed ? p.rMin+':1 fix' : p.rMin+'-'+p.rMax+':1'} · Shift ±${p.sUp}%`;
+  const ovrSUp = loadPresetOverrides()[p.id]?.sUp ?? p.sUp;
+  g('pi-t').textContent = `Nat ${nName} · Throw ${p.fixed ? p.rMin+':1 fix' : p.rMin+'-'+p.rMax+':1'} · Shift ±${ovrSUp}%`;
   g('pbox').classList.add('on');
 
   if (p.note) {
@@ -697,6 +713,19 @@ function toggleLock(key) {
   const key = { lkDist:'dist', lkRatio:'ratio', lkDrop:'drop', lkImgW:'imgW' }[id];
   g(id).addEventListener('click', () => toggleLock(key));
 });
+
+// ─── Drive toggle (Position → Drop / Drop → Position) ────────────────────────
+// Routes through the drop lock so the choice sticks on the next targetH edit —
+// imageEdit() only keeps drop as the driver when store.lkState.drop is on.
+function setDriveMode(dropDrives) {
+  if (dropDrives === store.dropDriver) return;
+  if (store.lkState.drop !== dropDrives) toggleLock('drop');
+  store.dropDriver = dropDrives;
+  updateDropModeLabel();
+  refresh();
+}
+g('dtPos').addEventListener('click', () => setDriveMode(false));
+g('dtDrop').addEventListener('click', () => setDriveMode(true));
 
 // ─── Setup presets ────────────────────────────────────────────────────────────
 buildRoomSel();
@@ -911,12 +940,23 @@ function autoSolvePosition() {
   // → userShiftM - dist·tan(tilt) = delta
   const delta = cH_goal - lH - naturalOffsetM;
 
-  const { up: maxUp, dn: maxDn } = getShiftLimits();  // curve-aware + ceiling-flipped
+  const { up: maxUp, dn: maxDn, h: maxHspec } = getShiftLimits();  // curve-aware + ceiling-flipped
   const maxKS = S.maxKS;
+
+  // Reduce V limits by the current H shift on the same elliptical envelope refresh() enforces
+  // (getDynamicVLimits()), so the solved shift is one refresh() will actually keep rather than
+  // clamp away afterward, leaving the tilt uncompensated.
+  let effUp = maxUp, effDn = maxDn;
+  if (maxHspec > 0) {
+    const hNorm = Math.min(1, Math.abs(S.hShiftPct) / maxHspec);
+    const f = Math.sqrt(Math.max(0, 1 - hNorm * hNorm));
+    effUp = maxUp * f;
+    effDn = maxDn * f;
+  }
 
   // Use as much shift as possible first (prefer no-keystone)
   const shiftPctRaw  = nativeH > 0 ? (delta / nativeH) * 100 : 0;
-  const shiftPct     = Math.max(-maxDn, Math.min(maxUp, shiftPctRaw));
+  const shiftPct     = Math.max(-effDn, Math.min(effUp, shiftPctRaw));
   const shiftM_used  = (shiftPct / 100) * nativeH;
 
   // Remaining offset after shift → cover with tilt using exact inverse of compute.js forward model.
@@ -1011,11 +1051,9 @@ function loadPresetOverrides() {
   try { return JSON.parse(localStorage.getItem(PRESET_OVR_KEY) || '{}'); } catch { return {}; }
 }
 function applyPresetOverrides(p) {
-  const ovr = loadPresetOverrides()[p.id];
+  const ovr = loadPresetOverrides()[p.id] || null;
+  store.activePresetOverride = ovr;
   if (!ovr) return;
-  if (ovr.sUp  != null) { g('maxUp').value = g('maxUp').dataset.raw = ovr.sUp; store.rawMaxUp = ovr.sUp; }
-  if (ovr.sDn  != null) { g('maxDn').value = g('maxDn').dataset.raw = ovr.sDn; store.rawMaxDn = ovr.sDn; }
-  if (ovr.hMax != null) { g('maxH').value  = g('maxH').dataset.raw  = ovr.hMax; store.rawMaxH  = ovr.hMax; }
   if (ovr.bodyH!= null) { g('bodyH').value = ovr.bodyH; }
   if (ovr.ks   != null) { g('maxKS').value = ovr.ks; }
 }
@@ -1039,6 +1077,7 @@ g('pi-upd').addEventListener('click', () => {
       ks:   +g('maxKS').value,
     };
     localStorage.setItem(PRESET_OVR_KEY, JSON.stringify(ovrs));
+    store.activePresetOverride = ovrs[p.id];
     pLock(['maxUp','maxDn','maxH','bodyH','maxKS'], true);
     g('pi-upd').textContent = 'Update';
     _presetEditing = false;

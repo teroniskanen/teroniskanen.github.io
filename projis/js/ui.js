@@ -31,9 +31,10 @@ export function buildRoomSel() {
 
 // Update the drop mode label and input styling
 export function updateDropModeLabel() {
-  const el = g('dropModeLabel'), dv = g('dropV');
+  const dv = g('dropV');
   const dropLbl  = g('dropLbl');
   const bodyHLbl = g('bodyHLbl');
+  const dropWord = store.floorMode ? 'Pedestal' : 'Drop';
   if (store.floorMode) {
     if (dropLbl)  dropLbl.textContent  = 'Pedestal height';
     if (bodyHLbl) bodyHLbl.textContent = 'Lens above pedestal';
@@ -41,27 +42,11 @@ export function updateDropModeLabel() {
     if (dropLbl)  dropLbl.textContent  = 'Drop from ceiling';
     if (bodyHLbl) bodyHLbl.textContent = 'Lens center to mount plate';
   }
-  if (store.dropDriver) {
-    el.textContent = '→ sets projector position';
-    el.style.color  = 'var(--color-text-success)';
-    dv.classList.add('drv');
-  } else {
-    el.textContent  = '→ from target height';
-    el.style.color  = 'var(--color-text-tertiary)';
-    dv.classList.remove('drv');
-  }
+  dv.classList.toggle('drv', store.dropDriver);
 
-  // Basis drop icon under Media height: green = drop-driven, gray = position-driven
-  const col = store.dropDriver ? 'var(--color-border-success)' : 'var(--color-border-tertiary)';
-  ['basisBarH', 'basisBarV'].forEach(id => {
-    const el = g(id); if (el) el.setAttribute('stroke', col);
-  });
-  const dot = g('basisDot'); if (dot) { dot.setAttribute('fill', col); dot.setAttribute('stroke', 'none'); }
-  const lbl = g('basisLabel');
-  if (lbl) {
-    lbl.textContent = store.dropDriver ? 'drop-driven' : 'pos-driven';
-    lbl.style.color = store.dropDriver ? 'var(--color-text-success)' : 'var(--color-text-tertiary)';
-  }
+  const dtPos = g('dtPos'), dtDrop = g('dtDrop');
+  if (dtPos)  { dtPos.textContent  = `Position → ${dropWord}`; dtPos.classList.toggle('active', !store.dropDriver); }
+  if (dtDrop) { dtDrop.textContent = `${dropWord} → Position`; dtDrop.classList.toggle('active', store.dropDriver); }
 }
 
 // Render the results bar at the bottom
@@ -78,15 +63,24 @@ export function renderRes(r) {
   const hasMeasuredStack = S.mCeilToExt > 0 && S.mExtToTop > 0;
 
   let h = '';
-  // Image setup
-  h += card('Throw distance (H)', `${S.dist.toFixed(0)} cm`, '');
-  h += card('Lens → screen center', `${r.lensToScreen.toFixed(1)} cm`, '');
-  h += card('Media Area', `${r.mediaW.toFixed(1)} × ${r.mediaH.toFixed(1)} cm`, '');
+
+  // Room: Ceiling height, Wall height, Throw distance, Lens → screen (slant) — both already
+  // shown live in the sidebar fields, so no plain-echo cards here.
+  if (!r.distOk && store.activePreset) {
+    h += card('Focus distance',
+      `${store.activePreset.dMin}–${store.activePreset.dMax} cm`,
+      'warn',
+      'Out of focus range',
+      true
+    );
+  }
+
+  // Media: aspect ratio, width, height — width/height already shown live in the sidebar fields.
   if (r.isLetterboxed || r.isPillared) {
     h += card('Projected Native', `${r.nativeW.toFixed(1)} × ${r.nativeH.toFixed(1)} cm`, 'ti', 'Black light output');
   }
 
-  // Image position
+  // Media position on wall: throw ratio, zoom, Bottom/Center/Top, Center height, drive toggle
   h += card('Media Top height',    `${r.effTop.toFixed(1)} cm`, r.effTop > S.wallH ? 'warn' : '');
   h += card('Media Bottom height', `${r.effBot.toFixed(1)} cm`, r.effBot < 0 ? 'warn' : '');
   const wg = r.wallGap;
@@ -95,8 +89,11 @@ export function renderRes(r) {
     wg >= 0 ? `${wg.toFixed(1)} cm` : `${Math.abs(wg).toFixed(1)} cm CLIPS`,
     wg < 0 ? 'warn' : ''
   );
+  if (store.activePreset && store.activePreset.digitalZoom && S.ratio > store.activePreset.rMin + 0.001) {
+    h += card('Zoom type', 'Digital zoom — image quality reduced', 'warn', 'Digital', true);
+  }
 
-  // Shift
+  // Lens shift (V): shift %, spec limit
   // S.maxUp / S.maxDn are already ceiling-flipped room-direction limits (updated in refresh())
   const shiftLimitStr = store.activePreset
     ? `+${S.maxUp.toFixed(0)}%/−${S.maxDn.toFixed(0)}%`
@@ -106,6 +103,8 @@ export function renderRes(r) {
     r.shiftOk ? 'ok' : 'warn',
     r.shiftOk ? 'In range' : 'Out of range'
   );
+
+  // Lens shift (H): H shift %, spec limit
   if (S.maxH > 0 || Math.abs(S.hShiftPct) > 0) {
     const hLimitStr = S.maxH > 0 ? `±${S.maxH.toFixed(0)}%` : '—';
     h += card('Shift H (user)',
@@ -114,10 +113,13 @@ export function renderRes(r) {
       r.hShiftOk ? (r.combinedShiftOk ? 'In range' : 'Combined V+H exceeds spec') : 'Out of range'
     );
   }
+  if (store.activePreset && store.activePreset.shiftType === 'digital' && (Math.abs(r.userShiftM) > 0.01 || Math.abs(S.hShiftPct) > 0.01)) {
+    h += card('Shift type', 'Digital shift — image quality reduced', 'warn', 'Digital', true);
+  }
 
-  // Mounting
-  h += card('Lens height',     `${r.lH.toFixed(1)} cm`,   r.lensOk ? '' : 'warn');
-  h += card(store.floorMode ? 'Pedestal height' : 'Drop (ceil→lens)', `${r.drop.toFixed(1)} cm`, '');
+  // Projector mounting: Ceiling/Pedestal, Drop/Pedestal height, mount-plate offsets — the
+  // drop/pedestal value itself already shown live in its sidebar field.
+  h += card('Lens height', `${r.lH.toFixed(1)} cm`, r.lensOk ? '' : 'warn');
   if (!store.floorMode) {
     h += card('Extension rod', r.rod > 0 ? `${r.rod.toFixed(1)} cm` : '— (none)', r.rod < 0 ? 'warn' : '');
     if (hasMeasuredStack) {
@@ -145,8 +147,6 @@ export function renderRes(r) {
       h += card('Extension adjust', adjustText, adjustCls, adjustBadge, true);
     }
   }
-
-  // Clearance
   if (store.floorMode) {
     const belowBot = r.effBot - r.lH;
     h += card('Lens clearance below image', `${belowBot >= 0 ? '+' : ''}${belowBot.toFixed(1)} cm`, belowBot < 0 ? 'warn' : '');
@@ -155,29 +155,13 @@ export function renderRes(r) {
     h += card('Lens clearance above image', `${sightClear >= 0 ? '+' : ''}${sightClear.toFixed(1)} cm`, sightClear < 0 ? 'warn' : '');
   }
 
+  // Tilt: angle, max keystone
   if (r.hasTilt) {
     h += card('Keystone required', `${r.ksN.toFixed(1)}°`,
       r.ksOk ? 'ok' : 'warn',
       r.ksOk ? 'OK' : 'Exceeds max limit',
       true
     );
-  }
-
-  if (!r.distOk && store.activePreset) {
-    h += card('Focus distance',
-      `${store.activePreset.dMin}–${store.activePreset.dMax} cm`,
-      'warn',
-      'Out of focus range',
-      true
-    );
-  }
-
-  if (store.activePreset && store.activePreset.shiftType === 'digital' && (Math.abs(r.userShiftM) > 0.01 || Math.abs(S.hShiftPct) > 0.01)) {
-    h += card('Shift type', 'Digital shift — image quality reduced', 'warn', 'Digital', true);
-  }
-
-  if (store.activePreset && store.activePreset.digitalZoom && S.ratio > store.activePreset.rMin + 0.001) {
-    h += card('Zoom type', 'Digital zoom — image quality reduced', 'warn', 'Digital', true);
   }
 
   // Show aspect name using the preset's aspectVal string (avoids toFixed floating-point mismatch)
@@ -203,11 +187,13 @@ export function renderLaserTargets(r) {
   }
   container.style.display = 'flex';
 
+  // info is shown only when it adds something the label/value don't already say —
+  // a measuring instruction or a number that isn't printed elsewhere.
   const card = (label, value, info) =>
     `<div class="rc">` +
     `<div class="rl">${label}</div>` +
     `<div class="rv">${value}</div>` +
-    (info ? `<div class="ba ok">${info}</div>` : '') +
+    (info ? `<div class="ba info">${info}</div>` : '') +
     `</div>`;
 
   let h = '<div class="tlbl">Laser Installation Targets</div>';
@@ -215,7 +201,10 @@ export function renderLaserTargets(r) {
   const zLabel = r.isUST
     ? 'Depth: Wall → Projector Rear'
     : 'Depth: Screen → Projector Front';
-  h += card(zLabel, `${r.targetZ.toFixed(1)} cm`, 'Hold laser against wall/screen; measure to projector face');
+  const zInfo = r.isUST
+    ? 'Hold laser against the wall; measure to projector rear'
+    : 'Hold laser against the screen; measure to projector face';
+  h += card(zLabel, `${r.targetZ.toFixed(1)} cm`, zInfo);
 
   // Yaw (Squareness)
   h += card('Square: Screen → Both Corners', `L/R: ${r.squarenessAB.toFixed(1)} cm`, 'Measure both front corners to screen; must match exactly');
@@ -224,7 +213,7 @@ export function renderLaserTargets(r) {
   const yLensLabel = store.floorMode
     ? 'Height: Floor → Lens Center'
     : 'Height: Ceiling → Lens Center';
-  h += card(yLensLabel, `${r.targetYLens.toFixed(1)} cm`, 'Vertical distance from floor/ceiling to optical center');
+  h += card(yLensLabel, `${r.targetYLens.toFixed(1)} cm`, '');
 
   const yBodyLabel = store.floorMode ? 'Height: Floor → Projector Base' : 'Height: Ceiling → Projector Body';
   const yBodyInfo = store.floorMode
@@ -236,7 +225,10 @@ export function renderLaserTargets(r) {
     ? 'Height: Floor → Image Bottom'
     : 'Height: Ceiling → Image Top';
   const yImgAbsVal = store.floorMode ? r.effBot : (S.ceilH - r.effTop);
-  h += card(yImgAbsLabel, `${yImgAbsVal.toFixed(1)} cm`, 'Total image height from the floor/ceiling');
+  const yImgAbsInfo = store.floorMode
+    ? "Height of the image's bottom edge above the floor"
+    : "Depth of the image's top edge below the ceiling";
+  h += card(yImgAbsLabel, `${yImgAbsVal.toFixed(1)} cm`, yImgAbsInfo);
 
   // Ceiling mode: the projector's mount plate sits right at the ceiling, so this would be
   // identical to the absolute row above — only show it in floor mode, where the projector's
@@ -247,9 +239,9 @@ export function renderLaserTargets(r) {
 
   // X-Axis (Horizontal Side-to-Side)
   const xFmt = v => `${v >= 0 ? '+' : ''}${v.toFixed(1)} cm`;
-  h += card('Side: Center Line → Lens', xFmt(r.lensFromScreenCenter), 'Distance from screen center mark to lens center');
-  h += card('Side: Center Line → Projector Left', xFmt(r.chassisLeftFromScreenCenter), 'Distance from center mark to chassis left edge');
-  h += card('Side: Center Line → Projector Right', xFmt(r.chassisRightFromScreenCenter), 'Distance from center mark to chassis right edge');
+  h += card('Side: Center Line → Lens', xFmt(r.lensFromScreenCenter), '');
+  h += card('Side: Center Line → Projector Left', xFmt(r.chassisLeftFromScreenCenter), '');
+  h += card('Side: Center Line → Projector Right', xFmt(r.chassisRightFromScreenCenter), '');
 
   container.innerHTML = h;
 }

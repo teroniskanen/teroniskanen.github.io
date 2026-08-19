@@ -100,7 +100,9 @@ export function compute() {
   const ksOk       = ksN <= S.maxKS;
   // Ceiling mode: check projector is above image top (audience sightline)
   // Floor mode:   check projector is below image bottom (it's below the screen, no sightline issue)
-  const aboveSight = floorMode ? lH < effNatBot : lH > effNatTop;
+  // Uses the visible media bounds (not native) to match the sightline drawn in draw.js and
+  // the "Lens clearance" card in ui.js — a blocked pixel only matters where content is shown.
+  const aboveSight = floorMode ? lH < effBot : lH > effTop;
   const wallGap    = S.wallH - effTop;
 
   let shadowH = null, personClears = false;

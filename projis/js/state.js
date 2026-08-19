@@ -14,6 +14,7 @@ export const S = {
 // --- App-level flags (wrapped in object so cross-module mutation works) ---
 export const store = {
   activePreset: null,
+  activePresetOverride: null,
   dropDriver:   false,
   floorMode:    false,
   lkState:      { dist:false, ratio:false, drop:false, imgW:false },
