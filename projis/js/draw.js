@@ -242,9 +242,20 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     xctx.strokeStyle = c.person; xctx.lineWidth = 1.5*dpr;
     xctx.beginPath(); xctx.moveTo(pX - pW/2, pTopY+12*dpr); xctx.lineTo(pX - pW, pTopY+20*dpr); xctx.stroke();
     xctx.beginPath(); xctx.moveTo(pX + pW/2, pTopY+12*dpr); xctx.lineTo(pX + pW, pTopY+20*dpr); xctx.stroke();
-    // Legs
-    xctx.beginPath(); xctx.moveTo(pX - pW/4, pTopY+48*dpr); xctx.lineTo(pX - pW/4, pBotY); xctx.stroke();
-    xctx.beginPath(); xctx.moveTo(pX + pW/4, pTopY+48*dpr); xctx.lineTo(pX + pW/4, pBotY); xctx.stroke();
+    // Legs — kept a short stub, not stretched to the true floor. The room's px/cm scale can
+    // put the floor hundreds of pixels below this fixed-size glyph (a tight room fit or a
+    // person standing far from a low ceiling), which would otherwise draw the legs as a long
+    // line running through/past the floor instead of a recognizable figure.
+    const legEndY = Math.min(pBotY, pTopY + 56*dpr);
+    xctx.beginPath(); xctx.moveTo(pX - pW/4, pTopY+48*dpr); xctx.lineTo(pX - pW/4, legEndY); xctx.stroke();
+    xctx.beginPath(); xctx.moveTo(pX + pW/4, pTopY+48*dpr); xctx.lineTo(pX + pW/4, legEndY); xctx.stroke();
+    // Thin dashed line grounds the icon to the true floor when the stub legs don't reach it.
+    if (legEndY < pBotY - 2*dpr) {
+      xctx.strokeStyle = c.person; xctx.lineWidth = dpr; xctx.globalAlpha = 0.4;
+      xctx.setLineDash([2*dpr, 3*dpr]);
+      xctx.beginPath(); xctx.moveTo(pX, legEndY); xctx.lineTo(pX, pBotY); xctx.stroke();
+      xctx.setLineDash([]); xctx.globalAlpha = 1;
+    }
 
     const rawShWY = sy(r.shadowH);
     const floorY  = sy(0);
