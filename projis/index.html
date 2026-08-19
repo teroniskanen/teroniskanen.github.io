@@ -267,13 +267,12 @@
   @media (max-width: 600px), (hover: none) and (pointer: coarse) and (orientation: landscape) {
     .lp { width: 220px; padding: 8px 6px; }
     /* Long labels (e.g. "Extension bottom to mount plate") can't fit alongside the lock
-       button, nudge buttons, input and unit in a 220px sidebar without being truncated to
-       an unreadable ellipsis — wrap the label onto its own full-width line instead. */
-    .f { flex-wrap: wrap; height: auto; row-gap: 2px; }
-    .f label {
-      font-size: 10px; flex: 1 1 100%; white-space: normal; overflow: visible;
-      text-overflow: clip; order: -1;
-    }
+       button, nudge buttons, input and unit in a 220px sidebar on one line without being
+       truncated to an unreadable ellipsis. Let the label wrap to two lines within its own
+       column instead of moving to its own row — keeps every row's input/unit/lock aligned
+       in the same columns as everywhere else. */
+    .f { align-items: center; height: auto; min-height: 24px; }
+    .f label { font-size: 10px; white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.2; }
     .f input[type=number], .f select { width: 55px; font-size: 10px; padding: 2px 4px; }
     .u { font-size: 9px; width: 12px; }
     .sec { font-size: 9px; margin-top: 8px; }
