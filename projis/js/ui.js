@@ -43,6 +43,7 @@ export function updateDropModeLabel() {
     if (bodyHLbl) bodyHLbl.textContent = 'Lens center to mount plate';
   }
   dv.classList.toggle('drv', store.dropDriver);
+  g('targetH').classList.toggle('drv', !store.dropDriver);
 
   const dtPos = g('dtPos'), dtDrop = g('dtDrop');
   if (dtPos)  { dtPos.textContent  = `Position → ${dropWord}`; dtPos.classList.toggle('active', !store.dropDriver); }
