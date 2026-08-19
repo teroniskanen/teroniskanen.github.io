@@ -10,7 +10,7 @@ const THEME_KEY = 'proj_theme';
 const LAST_SESSION_NAME = 'Last session';
 
 // ─── Initialise lock button icons ────────────────────────────────────────────
-['lkDist','lkRatio','lkDrop','lkImgW'].forEach(id => g(id).innerHTML = USVG);
+['lkDist','lkRatio','lkDrop','lkImgW','lkTargetH'].forEach(id => g(id).innerHTML = USVG);
 g('appVer').textContent = `v${APP_VERSION}`;
 
 // ─── Build projector preset dropdown ─────────────────────────────────────────
@@ -757,6 +757,10 @@ function setDriveMode(dropDrives) {
 }
 g('dtPos').addEventListener('click', () => setDriveMode(false));
 g('dtDrop').addEventListener('click', () => setDriveMode(true));
+// Center height's own padlock — same driver choice as the toggle/Drop's lock, expressed
+// from the position side so both fields in the pair carry the same lock affordance.
+// Toggles like the other lock buttons rather than pinning to one state.
+g('lkTargetH').addEventListener('click', () => setDriveMode(store.dropDriver ? false : true));
 
 // Solver panel "Apply": drives drop to the value the panel computed (zero shift/tilt for
 // the current target), making drop the driver so that value actually sticks.

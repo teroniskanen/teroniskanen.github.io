@@ -507,7 +507,11 @@
     <input type="radio" name="pt" id="ptC" value="center" checked><label for="ptC">Center</label>
     <input type="radio" name="pt" id="ptT" value="top"><label for="ptT">Top</label>
   </div>
-  <div class="f"><label id="posLbl">Center height</label><input type="number" id="targetH" value="150" step="5" min="0"><span class="u">cm</span></div>
+  <div class="f">
+   <label id="posLbl">Center height</label>
+   <input type="number" id="targetH" value="150" step="5" min="0">
+   <button class="lkbtn" id="lkTargetH" title="Lock Center height"></button><span class="u">cm</span>
+  </div>
   <div class="drive-toggle">
     <button type="button" class="dt-cell" id="dtPos" title="Media position sets projector drop/pedestal">Position → Drop</button>
     <button type="button" class="dt-cell" id="dtDrop" title="Projector drop/pedestal sets media position">Drop → Position</button>

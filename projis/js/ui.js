@@ -1,5 +1,5 @@
 import { g, S, store } from './state.js';
-import { ASPECT_NAMES } from './data.js';
+import { ASPECT_NAMES, LSVG, USVG } from './data.js';
 
 // Lock input fields visually (preset-locked fields get warning style)
 export const pLock = (ids, on) => ids.forEach(id => {
@@ -44,6 +44,13 @@ export function updateDropModeLabel() {
   }
   dv.classList.toggle('drv', store.dropDriver);
   g('targetH').classList.toggle('drv', !store.dropDriver);
+
+  // Center height's padlock mirrors Drop's — locked means that field is the driver.
+  const lkTargetH = g('lkTargetH');
+  if (lkTargetH) {
+    lkTargetH.classList.toggle('on', !store.dropDriver);
+    lkTargetH.innerHTML = !store.dropDriver ? LSVG : USVG;
+  }
 
   // Ceiling-extension-rod verification fields have no meaning on a pedestal/table mount.
   const msRows = g('measuredStackRows');
