@@ -1,5 +1,5 @@
 import { g, S, store } from './state.js';
-import { ASPECT_NAMES, LSVG, USVG } from './data.js';
+import { ASPECT_NAMES, LSVG, USVG, PRESETS } from './data.js';
 
 // Lock input fields visually (preset-locked fields get warning style)
 export const pLock = (ids, on) => ids.forEach(id => {
@@ -59,6 +59,40 @@ export function updateDropModeLabel() {
   const dtPos = g('dtPos'), dtDrop = g('dtDrop');
   if (dtPos)  { dtPos.textContent  = `Position → ${dropWord}`; dtPos.classList.toggle('active', !store.dropDriver); }
   if (dtDrop) { dtDrop.textContent = `${dropWord} → Position`; dtDrop.classList.toggle('active', store.dropDriver); }
+}
+
+// When no preset is active, the entered dist + image width imply a required throw ratio
+// (dist / native width). Lists which PRESETS could actually deliver that ratio at that
+// distance, so the user can shop for a projector instead of just reading the raw number.
+// Clicking an entry hands off to app.js's onMatchPick to load the preset at this ratio.
+const RATIO_EPS = 0.005;
+export function renderMatches(dist, reqRatio, onMatchPick) {
+  const box = g('matchBox');
+  if (!box) return;
+  if (store.activePreset || !(dist > 0) || !(reqRatio > 0) || !isFinite(reqRatio)) {
+    box.classList.remove('on');
+    box.innerHTML = '';
+    return;
+  }
+  const matches = PRESETS.filter(p =>
+    reqRatio >= p.rMin - RATIO_EPS && reqRatio <= p.rMax + RATIO_EPS &&
+    dist >= p.dMin && dist <= p.dMax
+  );
+  if (!matches.length) {
+    box.classList.remove('on');
+    box.innerHTML = '';
+    return;
+  }
+  box.classList.add('on');
+  box.innerHTML = `<div class="matchHdr">Needs ${reqRatio.toFixed(2)}:1 throw ratio — matching projectors:</div>`;
+  matches.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'matchItem';
+    const rangeTxt = p.fixed ? `${p.rMin.toFixed(2)}:1 fix` : `${p.rMin.toFixed(2)}-${p.rMax.toFixed(2)}:1`;
+    row.innerHTML = `<span>${p.name}</span><span class="mi-ratio">${rangeTxt}</span>`;
+    row.addEventListener('click', () => onMatchPick(p, reqRatio));
+    box.appendChild(row);
+  });
 }
 
 // Computes the drop/pedestal height that needs zero user shift and zero tilt to hit the
@@ -151,12 +185,12 @@ export function renderRes(r) {
     h += card('Projected Native', `${r.nativeW.toFixed(1)} × ${r.nativeH.toFixed(1)} cm`, 'ti', 'Black light output');
   }
 
-  // Media position on wall: throw ratio, zoom, Bottom/Center/Top, Center height, drive toggle
+  // Media position on surface: throw ratio, zoom, Bottom/Center/Top, Center height, drive toggle
   h += card('Media Top height',    `${r.effTop.toFixed(1)} cm`, r.effTop > S.wallH ? 'warn' : '');
   h += card('Media Bottom height', `${r.effBot.toFixed(1)} cm`, r.effBot < 0 ? 'warn' : '');
   const wg = r.wallGap;
   h += card(
-    'Wall gap to media top',
+    'Surface gap to media top',
     wg >= 0 ? `${wg.toFixed(1)} cm` : `${Math.abs(wg).toFixed(1)} cm CLIPS`,
     wg < 0 ? 'warn' : ''
   );
@@ -270,10 +304,10 @@ export function renderLaserTargets(r) {
   let h = '<div class="tlbl">Laser Installation Targets</div>';
   // Z-Axis (Depth / Throw)
   const zLabel = r.isUST
-    ? 'Depth: Wall → Projector Rear'
+    ? 'Depth: Surface → Projector Rear'
     : 'Depth: Screen → Projector Front';
   const zInfo = r.isUST
-    ? 'Hold laser against the wall; measure to projector rear'
+    ? 'Hold laser against the surface; measure to projector rear'
     : 'Hold laser against the screen; measure to projector face';
   h += card(zLabel, `${r.targetZ.toFixed(1)} cm`, zInfo);
 

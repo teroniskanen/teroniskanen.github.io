@@ -221,6 +221,14 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   if (S.personOn && r.shadowH !== null) {
     const pX    = sx(S.personDist);
     const pBotY = sy(0), pTopY = sy(PERSON_H), pW = 6*dpr;
+    // The glyph below (head/body/arms/legs) is drawn at a fixed pixel size regardless of
+    // scale. When the scale is small (tall room, or a fitted range much taller than
+    // PERSON_H), that fixed size can be taller than the true head-to-floor gap in pixels,
+    // so the unclamped shapes would draw past the floor line. Clip to the floor so nothing
+    // ever renders below it — the stub-leg logic below still shortens the legs themselves
+    // for a recognizable figure, this clip is just the hard backstop for everything else.
+    xctx.save();
+    xctx.beginPath(); xctx.rect(0, 0, W, pBotY); xctx.clip();
     xctx.fillStyle = c.person;
     // Head
     xctx.beginPath(); xctx.arc(pX, pTopY+4*dpr, 4*dpr, 0, Math.PI*2); xctx.fill();
@@ -256,6 +264,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
       xctx.beginPath(); xctx.moveTo(pX, legEndY); xctx.lineTo(pX, pBotY); xctx.stroke();
       xctx.setLineDash([]); xctx.globalAlpha = 1;
     }
+    xctx.restore();
 
     const rawShWY = sy(r.shadowH);
     const floorY  = sy(0);

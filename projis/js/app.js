@@ -2,7 +2,7 @@ import { g, S, store } from './state.js';
 import { PRESETS, LSVG, USVG, ASPECT_NAMES } from './data.js';
 import { compute } from './compute.js';
 import { draw, drawForPrint } from './draw.js';
-import { pLock, buildRoomSel, updateDropModeLabel, renderRes, updateSolverPanel } from './ui.js';
+import { pLock, buildRoomSel, updateDropModeLabel, renderRes, updateSolverPanel, renderMatches } from './ui.js';
 import { APP_VERSION } from './version.js';
 
 const LAYOUT_HIDE_KEY = 'proj_hide_visuals';
@@ -378,6 +378,9 @@ function refresh() {
 
   if (g('zoomRow').style.display !== 'none') g('zoomVal').textContent = S.ratio.toFixed(2) + ':1';
   updateDropModeLabel();
+  // No preset active → dist + image width imply a required throw ratio; show which
+  // real projectors could deliver it at this distance.
+  renderMatches(S.dist, S.dist / r.mediaW, onMatchPick);
   draw(r);
   renderRes(r);
   _idealDrop = updateSolverPanel(r);
@@ -714,6 +717,21 @@ function applyPreset(p) {
 
   applyPresetOverrides(p);
   tri('ratio'); refresh();
+}
+
+// Match-list pick: load the preset, then — for zoom lenses — dial the zoom to the exact
+// ratio the room needed (clamped to the lens's range) instead of resetting to its rMin,
+// so the dist/width the user already dialed in survives the switch.
+function onMatchPick(p, reqRatio) {
+  applyPreset(p);
+  if (!p.fixed) {
+    const ratio = Math.min(p.rMax, Math.max(p.rMin, reqRatio));
+    g('ratio').value = ratio.toFixed(2);
+    g('zoomSlider').value = ratio;
+    g('zoomVal').textContent = ratio.toFixed(2) + ':1';
+    tri('ratio');
+    refresh();
+  }
 }
 
 psel.addEventListener('change', function() {
