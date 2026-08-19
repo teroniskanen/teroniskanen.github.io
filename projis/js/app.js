@@ -2,7 +2,7 @@ import { g, S, store } from './state.js';
 import { PRESETS, LSVG, USVG, ASPECT_NAMES } from './data.js';
 import { compute } from './compute.js';
 import { draw, drawForPrint } from './draw.js';
-import { pLock, buildRoomSel, updateDropModeLabel, renderRes } from './ui.js';
+import { pLock, buildRoomSel, updateDropModeLabel, renderRes, updateSolverPanel } from './ui.js';
 import { APP_VERSION } from './version.js';
 
 const LAYOUT_HIDE_KEY = 'proj_hide_visuals';
@@ -68,8 +68,11 @@ function rd() {
   S.personDist = numVal('personDist', 200);
   S.lumens     = +g('lumens').value     || 0;
   S.gain       = numVal('gain', 1.0);
-  S.mCeilToExt = numVal('mCeilToExt', 0);
-  S.mExtToTop  = numVal('mExtToTop', 0);
+  // Read directly (not via numVal) so a blank field stays blank — these are optional
+  // verification inputs and numVal's write-back would force blank to "0", permanently
+  // marking them as "activated" the moment refresh() first runs.
+  S.mCeilToExt = Math.max(0, parseFloat(g('mCeilToExt').value) || 0);
+  S.mExtToTop  = Math.max(0, parseFloat(g('mExtToTop').value) || 0);
 }
 
 // ─── Shift curve helpers ──────────────────────────────────────────────────────
@@ -208,6 +211,8 @@ let _lastHeightDiff = 0;
 let lastR = null;
 // Tracks whether preset fields are in edit mode
 let _presetEditing = false;
+// Ideal drop value (cm) from the solver panel, refreshed each frame; null when not actionable
+let _idealDrop = null;
 
 // Media width/height have nothing left to solve for once both Throw distance and Throw
 // ratio are fixed (locked, or ratio pinned by a fixed-lens preset) — tri()'s 'width'/'height'
@@ -342,6 +347,8 @@ function refresh() {
   const r = lastR = compute();
 
   g('measuredDropDisp').value = (S.mCeilToExt + S.mExtToTop + S.bodyH).toFixed(1);
+  g('mCeilToExtRow').classList.toggle('opt-active', g('mCeilToExt').value !== '');
+  g('mExtToTopRow').classList.toggle('opt-active', g('mExtToTop').value !== '');
 
   // Keep image dimensions in sync with physical calc
   g('imgW').value = r.mediaW.toFixed(1);
@@ -373,6 +380,7 @@ function refresh() {
   updateDropModeLabel();
   draw(r);
   renderRes(r);
+  _idealDrop = updateSolverPanel(r);
   updateShiftSliders();
   drawBrightnessBar(r);
   syncNudgeVisibility();
@@ -749,6 +757,20 @@ function setDriveMode(dropDrives) {
 }
 g('dtPos').addEventListener('click', () => setDriveMode(false));
 g('dtDrop').addEventListener('click', () => setDriveMode(true));
+
+// Solver panel "Apply": drives drop to the value the panel computed (zero shift/tilt for
+// the current target), making drop the driver so that value actually sticks.
+g('idealApply').addEventListener('click', () => {
+  if (_idealDrop == null) return;
+  setDriveMode(true);
+  S.drop = _idealDrop;
+  g('dropV').value = _idealDrop.toFixed(1);
+  S.shiftPct = 0;
+  g('sPct').value = '0';
+  S.tiltDeg = 0;
+  g('tiltDeg').value = '0';
+  refresh();
+});
 
 // ─── Setup presets ────────────────────────────────────────────────────────────
 buildRoomSel();

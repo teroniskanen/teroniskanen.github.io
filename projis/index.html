@@ -153,6 +153,12 @@
 
   .ro { background: transparent !important; border-color: transparent !important; color: var(--color-text-tertiary) !important; cursor: default; }
   .inp-p { background: var(--color-background-warning) !important; border-color: var(--color-border-warning) !important; color: var(--color-text-warning) !important; }
+  /* Optional verification fields: dimmed/dashed until the installer actually enters a
+     measurement — most installs don't need rod-length verification every time. */
+  .f.opt-inactive label { color: var(--color-text-tertiary); }
+  .f.opt-inactive input { border-style: dashed; opacity: .55; }
+  .f.opt-inactive.opt-active input { border-style: solid; opacity: 1; }
+  .f.opt-inactive.opt-active label { color: var(--color-text-primary); }
   .u { font-size: 10px; color: var(--color-text-tertiary); width: 16px; flex-shrink: 0; text-align: left; }
   
   .lkbtn { width: 22px; height: 22px; flex-shrink: 0; border: 1px solid var(--color-border-secondary); border-radius: var(--border-radius-sm); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--color-text-tertiary); transition: all var(--transition-speed); }
@@ -230,6 +236,16 @@
   .ba.info { background: var(--color-background-secondary); color: var(--color-text-tertiary); }
   .tlbl { width: 100%; font-size: 9px; color: var(--color-text-warning); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding-top: 4px; border-top: 1px solid var(--color-border-warning); margin-top: 2px; }
   .ar-info { font-size: 9px; color: var(--color-text-warning); margin-top: 2px; line-height: 1.3; }
+  .ideal-panel { border-radius: var(--border-radius-sm); padding: 6px 7px; margin-bottom: 6px; flex-shrink: 0; border: 1px solid var(--color-border-info); background: var(--color-background-info); }
+  .ideal-panel.st-ok   { border-color: var(--color-border-success); background: var(--color-background-success); }
+  .ideal-panel.st-warn { border-color: var(--color-border-danger);  background: var(--color-background-danger); }
+  .ideal-hd { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-info); margin-bottom: 3px; }
+  .ideal-panel.st-ok .ideal-hd   { color: var(--color-text-success); }
+  .ideal-panel.st-warn .ideal-hd { color: var(--color-text-danger); }
+  .ideal-row { display: flex; align-items: center; gap: 6px; }
+  .ideal-msg { font-size: 10px; line-height: 1.35; flex: 1; color: var(--color-text-primary); }
+  .ideal-apply { flex-shrink: 0; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--color-border-info); background: var(--color-background-primary); color: var(--color-text-info); cursor: pointer; }
+  .ideal-apply:hover { background: var(--color-background-info); }
   .bright-readout {
     display: flex;
     justify-content: space-between;
@@ -545,17 +561,24 @@
    <input type="number" id="bodyH" value="13.6" step="0.5" min="0">
    <span class="u">cm</span>
   </div>
+  <div id="idealPanel" class="ideal-panel" style="display:none;">
+   <div class="ideal-hd">Optimal position solver</div>
+   <div class="ideal-row">
+    <span class="ideal-msg" id="idealMsg"></span>
+    <button type="button" id="idealApply" class="ideal-apply" style="display:none;">Apply</button>
+   </div>
+  </div>
   <div id="measuredStackRows">
    <!-- Verifies an installed ceiling extension rod against the calculated drop — meaningless
         on a pedestal/table mount, which has no ceiling-hung rod to measure. Hidden in that mode. -->
-   <div class="f">
+   <div class="f opt-inactive" id="mCeilToExtRow">
     <label>Ceiling to extension bottom</label>
-    <input type="number" id="mCeilToExt" value="0" step="0.5" min="0">
+    <input type="number" id="mCeilToExt" value="" step="0.5" min="0" placeholder="optional">
     <span class="u">cm</span>
    </div>
-   <div class="f">
+   <div class="f opt-inactive" id="mExtToTopRow">
     <label>Extension bottom to mount plate</label>
-    <input type="number" id="mExtToTop" value="0" step="0.5" min="0">
+    <input type="number" id="mExtToTop" value="" step="0.5" min="0" placeholder="optional">
     <span class="u">cm</span>
    </div>
    <div class="f">

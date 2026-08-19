@@ -54,6 +54,65 @@ export function updateDropModeLabel() {
   if (dtDrop) { dtDrop.textContent = `${dropWord} → Position`; dtDrop.classList.toggle('active', store.dropDriver); }
 }
 
+// Computes the drop/pedestal height that needs zero user shift and zero tilt to hit the
+// current target — i.e. the built-in preset vOffset alone does the work — and renders it
+// into the dedicated solver panel next to the Drop field. Shift and tilt each cost lumens
+// or resolution at the lens, so this shows how much physical repositioning buys that back.
+// Returns the ideal drop value (cm) so app.js's Apply handler can use it, or null when the
+// panel has nothing actionable to offer (already optimal, or physically unreachable).
+export function updateSolverPanel(r) {
+  const panel = g('idealPanel');
+  if (!panel) return null;
+  const msgEl = g('idealMsg');
+  const applyBtn = g('idealApply');
+
+  if (!(Math.abs(S.shiftPct) > 0.1 || r.hasTilt)) {
+    panel.style.display = 'none';
+    return null;
+  }
+  panel.style.display = '';
+  panel.classList.remove('st-ok', 'st-warn');
+
+  const cH_goal = S.posType === 'bottom' ? S.targetH + r.mediaH / 2
+                 : S.posType === 'top'    ? S.targetH - r.mediaH / 2
+                 :                          S.targetH;
+  const vOffsetPct = store.activePreset ? (store.activePreset.vOffset || 0) : 0;
+  const naturalOffsetM = (store.floorMode ? vOffsetPct : -vOffsetPct) / 100 * r.nativeH;
+  const lHIdeal = cH_goal - naturalOffsetM;
+  const dropIdeal = store.floorMode ? lHIdeal - S.bodyH : S.ceilH - lHIdeal;
+  const maxDrop = Math.max(0, store.floorMode ? S.ceilH - S.bodyH : S.ceilH);
+  const feasible = dropIdeal > -0.5 && dropIdeal < maxDrop + 0.5;
+  const mountWord = store.floorMode ? 'pedestal' : 'mount';
+
+  if (!feasible) {
+    // Don't report an unbuildable number — clamp to the physical bound and report the
+    // shift the installer is actually stuck with at that boundary.
+    const dropClamped = Math.max(0, Math.min(maxDrop, dropIdeal));
+    const lHClamped = store.floorMode ? dropClamped + S.bodyH : S.ceilH - dropClamped;
+    const shiftMResidual = cH_goal - lHClamped - naturalOffsetM;
+    const shiftPctResidual = r.nativeH > 0 ? (shiftMResidual / r.nativeH) * 100 : 0;
+    panel.classList.add('st-warn');
+    msgEl.textContent = `Not reachable — closest ${mountWord} position still needs ~${Math.abs(shiftPctResidual).toFixed(0)}% shift`;
+    applyBtn.style.display = 'none';
+    return null;
+  }
+
+  const delta = dropIdeal - r.drop;
+  if (Math.abs(delta) < 0.5) {
+    panel.classList.add('st-ok');
+    msgEl.textContent = 'Already at the optimal mount position — reduce shift/tilt toward 0 to use it';
+    applyBtn.style.display = 'none';
+    return null;
+  }
+
+  const dir = store.floorMode
+    ? (delta > 0 ? 'Raise' : 'Lower')
+    : (delta > 0 ? 'Lower' : 'Raise');
+  msgEl.textContent = `${dir} ${mountWord} by ${Math.abs(delta).toFixed(1)} cm → ~0% shift, 0° tilt`;
+  applyBtn.style.display = '';
+  return dropIdeal;
+}
+
 // Render the results bar at the bottom
 export function renderRes(r) {
   const card = (label, value, cls, badge, wide) =>
