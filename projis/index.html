@@ -266,7 +266,14 @@
   /* Mobile */
   @media (max-width: 600px), (hover: none) and (pointer: coarse) and (orientation: landscape) {
     .lp { width: 220px; padding: 8px 6px; }
-    .f label { font-size: 10px; }
+    /* Long labels (e.g. "Extension bottom to mount plate") can't fit alongside the lock
+       button, nudge buttons, input and unit in a 220px sidebar without being truncated to
+       an unreadable ellipsis — wrap the label onto its own full-width line instead. */
+    .f { flex-wrap: wrap; height: auto; row-gap: 2px; }
+    .f label {
+      font-size: 10px; flex: 1 1 100%; white-space: normal; overflow: visible;
+      text-overflow: clip; order: -1;
+    }
     .f input[type=number], .f select { width: 55px; font-size: 10px; padding: 2px 4px; }
     .u { font-size: 9px; width: 12px; }
     .sec { font-size: 9px; margin-top: 8px; }
@@ -295,7 +302,6 @@
       background: var(--color-background-info);
       color: var(--color-text-info);
     }
-    .f label { order: 1; }
     .f .lkbtn { order: 2; }
     .f .nudge-dec { order: 3; }
     .f input[type=number], .f select { order: 4; }
