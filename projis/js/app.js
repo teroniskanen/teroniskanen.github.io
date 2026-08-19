@@ -334,6 +334,7 @@ function refresh() {
   }
 
   if (g('zoomRow').style.display !== 'none') g('zoomVal').textContent = S.ratio.toFixed(2) + ':1';
+  updateDropModeLabel();
   draw(r);
   renderRes(r);
   updateShiftSliders();
