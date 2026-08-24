@@ -62,9 +62,9 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   // Screen: same formula — ~24pt equivalent across window sizes.
   const cssW  = W / dpr;                                // logical canvas width
   // Mobile: the drawing area is much narrower (sidebar eats most of the viewport width),
-  // so triple would overflow/collide — keep the more modest 1.5x bump there instead.
+  // so keep a smaller bump there.
   const isMobile = !isPrint && matchMedia('(max-width: 600px)').matches;
-  const sizeMult = isPrint ? 1.5 : (isMobile ? 1.5 : 3);  // triple on desktop; unchanged for print
+  const sizeMult = isPrint ? 0.13 : (isMobile ? 0.115 : 0.13);
   const fSz   = (isPrint
     ? Math.round(24 * dpr)                              // 18pt at 96 dpi
     : Math.max(18, Math.round(cssW / 27)) * dpr) * sizeMult;
@@ -144,7 +144,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
 
   // Height labels — left of wall, right-aligned
   const hfmt = v => (v / 100).toFixed(1) + 'm';
-  xctx.fillStyle = c.lbl; xctx.font = `${fSz}px var(--font-mono)`; xctx.textAlign = 'right';
+  xctx.fillStyle = c.lbl; xctx.font = `${fSz}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`; xctx.textAlign = 'right';
   xctx.fillText(hfmt(0), PL-WW-3*dpr, sy(0)+3*dpr);
   if (!showCeilBreak) xctx.fillText(hfmt(S.ceilH), PL-WW-3*dpr, sy(S.ceilH)+3*dpr);
   xctx.fillText(hfmt(S.wallH), PL-WW-3*dpr, wTop+fSz);
@@ -158,7 +158,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
       i === 0 ? xctx.moveTo(x, yy) : xctx.lineTo(x, yy);
     }
     xctx.stroke();
-    xctx.fillStyle = c.lbl; xctx.font = `${fSz}px var(--font-mono)`; xctx.textAlign = 'left';
+    xctx.fillStyle = c.lbl; xctx.font = `${fSz}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`; xctx.textAlign = 'left';
     xctx.fillText(`↑ ceiling ${hfmt(S.ceilH)}`, wX + 76*dpr, by + 3.5*dpr);
   }
 
@@ -282,7 +282,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
       xctx.beginPath(); xctx.moveTo(pX, pTopY); xctx.lineTo(endX, endY); xctx.stroke();
     }
     // shadow below floor (rawShWY > floorY): don't draw outside the view
-    xctx.fillStyle = c.person; xctx.font = `${fSz}px var(--font-mono)`;
+    xctx.fillStyle = c.person; xctx.font = `${fSz}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`;
     xctx.fillText(`${PERSON_H}cm`, pX+5*dpr, pTopY+3*dpr);
   }
 
@@ -385,7 +385,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
       xctx.fillRect(aX, aY, aW, aH);
 
       // Labels
-      xctx.font = `${8 * dpr}px var(--font-sans)`;
+      xctx.font = `${8 * dpr}px system-ui, -apple-system, sans-serif`;
       xctx.textAlign = 'left';
       xctx.fillStyle = 'rgba(255,255,255,0.7)';
       xctx.fillText('Native panel', mX + 2 * dpr, mY + 9 * dpr);
@@ -399,7 +399,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   const fmt  = v => (v / 100).toFixed(1) + 'm';
   const dimX = wX - WW;
 
-  xctx.font = `${aF}px var(--font-mono)`;
+  xctx.font = `${aF}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`;
   xctx.lineWidth = 0.7*dpr;
 
   // Image bottom height from floor
@@ -472,7 +472,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   {
     const rx = W - PR + 10*dpr;
     xctx.strokeStyle = c.dimB; xctx.lineWidth = 0.7*dpr;
-    xctx.fillStyle = c.dim; xctx.font = `${aF}px var(--font-mono)`; xctx.textAlign = 'left';
+    xctx.fillStyle = c.dim; xctx.font = `${aF}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`; xctx.textAlign = 'left';
 
     if (lY < sy(0) - 4*dpr) {
       const y0 = sy(0), y1 = lY;
