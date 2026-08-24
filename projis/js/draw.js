@@ -402,22 +402,39 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   xctx.font = `${aF}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`;
   xctx.lineWidth = 0.7*dpr;
 
-  // Image bottom height from floor
+  // Image top/bottom labels share their column with the floor/ceiling/wall-height labels
+  // (line 148-150) — when an image edge lands on one of those lines (image bottom on the
+  // floor, image top at wall height, etc., which is a common setup) the two would stack on
+  // the same pixels and become unreadable. Keep the surface label where it is (it's the
+  // room's fixed reference) and nudge the image-edge label off to the side instead of
+  // hiding it — the tick mark still stays at the true position either way.
+  const HGAP = 10*dpr;
+  const surfaceYs = [sy(0), sy(S.wallH)];
+  if (!showCeilBreak) surfaceYs.push(sy(S.ceilH));
+  const nudgeFromSurface = (y, dir) => {
+    const collide = surfaceYs.some(sy0 => Math.abs(sy0 - y) < HGAP);
+    return collide ? y + dir * (HGAP + 4*dpr) : y;
+  };
+
+  // Image bottom height from floor — colored to match the image beam outline so it reads as
+  // "this is the projected image's edge," distinct from the gray room/surface labels.
   {
     const y = sy(r.effBot);
-    xctx.strokeStyle = c.dimB;
+    const ly = nudgeFromSurface(y, 1); // push down, away from the floor/wall label above
+    xctx.strokeStyle = c.imgMediaS;
     xctx.beginPath(); xctx.moveTo(dimX, y); xctx.lineTo(dimX - 7*dpr, y); xctx.stroke();
-    xctx.fillStyle = c.dim; xctx.textAlign = 'right';
-    xctx.fillText(fmt(r.effBot), dimX - 9*dpr, y + 3.5*dpr);
+    xctx.fillStyle = c.imgMediaS; xctx.textAlign = 'right';
+    xctx.fillText(fmt(r.effBot), dimX - 9*dpr, ly + 3.5*dpr);
   }
 
   // Image top height from floor
   {
     const y = sy(r.effTop);
-    xctx.strokeStyle = c.dimB;
+    const ly = nudgeFromSurface(y, -1); // push up, away from the wall/ceiling label below
+    xctx.strokeStyle = c.imgMediaS;
     xctx.beginPath(); xctx.moveTo(dimX, y); xctx.lineTo(dimX - 7*dpr, y); xctx.stroke();
-    xctx.fillStyle = c.dim; xctx.textAlign = 'right';
-    xctx.fillText(fmt(r.effTop), dimX - 9*dpr, y + 3.5*dpr);
+    xctx.fillStyle = c.imgMediaS; xctx.textAlign = 'right';
+    xctx.fillText(fmt(r.effTop), dimX - 9*dpr, ly + 3.5*dpr);
   }
 
   // Wall gap label
