@@ -59,6 +59,15 @@ export const PRESETS = [
   // Epson EB-1980WU: spec "Offset 10:1" (10 parts above lens, 1 below) → vOffset = (10−1)/(2×11)×100 = 9/22×100 ≈ 41
   {id:'eb1980wu', name:'Epson EB-1980WU',            aspectVal:'1.6',        rMin:1.38,rMax:2.28,sUp:0,  sDn:0,  vOffset:41,  fixed:false, ks:30, bodyH:6.3,  chassisH:11.6, feetH:0.9,  chassisWidth:37.7, chassisDepth:29.2, lensXOffset:10, lensZOffset:1, dMin:93,  dMax:1830, shiftType:'none',    digitalZoom:false, shiftCurve:null, hMax:0,  lumens:4400, fWide:1.5,  fTele:2.0,  cMode:0.85},
   {id:'l1050_lm', name:'Epson EB-L1050U + ELPLM08',  aspectVal:'1.6',        rMin:1.44,rMax:2.32,sUp:67, sDn:67, vOffset:0,   fixed:false, ks:30, bodyH:10.7, chassisH:16.4, feetH:2.5,  chassisWidth:54.5, chassisDepth:43.6, lensXOffset:0, lensZOffset:-1.5, dMin:93,  dMax:1830, shiftType:'optical', digitalZoom:false, shiftCurve:null, hMax:24, lumens:5500, fWide:1.8,  fTele:2.35, cMode:0.85},
+  // Panasonic PT-RZ120BU (12,000 lm laser, large venue), supplied ET-DLE170 zoom lens.
+  // Dimensions/weight/shift/throw from official Panasonic RZ120 spec file (as of Oct 2018).
+  // Optical axis shift spec is asymmetric: V +50%/-16%, H +30%/-10% (powered); app models a
+  // single symmetric sUp/sDn/hMax pair, so the smaller (-16%, -10%) end is not separately capped.
+  // bodyH/chassisH/feetH derived from side-view dims: total 200mm = 180mm chassis + 20mm feet;
+  // lens centre at 115.5mm from base (20mm feet + 95.5mm within chassis) → bodyH 11.55.
+  // chassisDepth uses the lensless body dim (538mm); lensZOffset approximates the 42.8mm lens
+  // hood that extends the total depth to 581mm with the supplied lens mounted.
+  {id:'ptrz120bu', name:'Panasonic PT-RZ120BU',       aspectVal:'1.6',        rMin:1.71,rMax:2.41,sUp:50, sDn:16, vOffset:0,   fixed:false, ks:40, bodyH:11.55,chassisH:18.0, feetH:2.0,  chassisWidth:49.8, chassisDepth:53.8, lensXOffset:0, lensZOffset:-4.3, dMin:182, dMax:3165, shiftType:'optical', digitalZoom:false, shiftCurve:null, hMax:10, lumens:12000, fWide:1.7,  fTele:1.9,  cMode:0.60, note:'Supplied ET-DLE170 zoom lens. 1-chip DLP. Optical shift asymmetric (V +50/-16%, H +30/-10%); H shown as the conservative -10% symmetric limit.'},
 ];
 
 
