@@ -35,7 +35,7 @@ export function compute() {
   // Total shift from lens to image centre (built-in offset + user adjustment)
   const shiftM = ((naturalShiftPct + S.shiftPct) / 100) * nativeH;
 
-  const tr      = S.tiltDeg * Math.PI / 180;
+  const tr      = -S.tiltDeg * Math.PI / 180;
   const hasTilt = Math.abs(S.tiltDeg) > 0.01;
 
   let lH, cH, drop;
@@ -81,7 +81,7 @@ export function compute() {
   const angleDelta = (activePreset && activePreset.ustMirror) ? 2 * tr : tr;
 
   // Calculate final target using exact trigonometry
-  // (Subtracting angleDelta preserves your existing convention where +tilt moves image down)
+  // (Subtracting angleDelta preserves the convention where +tilt moves image up, −tilt moves it down)
   const newAngle = baseAngle - angleDelta;
   const tCH = lH + S.dist * Math.tan(newAngle);
 

@@ -305,7 +305,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   const visH    = S.chassisH ?? S.bodyH;
   const bH      = Math.max(visH*(scale), 10*dpr);
   const bW      = Math.max(bH * 1.6, 14*dpr);
-  const tiltRad = S.tiltDeg * Math.PI / 180;
+  const tiltRad = -S.tiltDeg * Math.PI / 180;
   // Box top = (bodyH − feetH − chassisH) × scale from lens: positions box so bottom = feet top, lens at correct height.
   const bodyYOff = S.chassisH != null ? (S.bodyH - S.feetH - S.chassisH) * (scale) : -bH/2;
 

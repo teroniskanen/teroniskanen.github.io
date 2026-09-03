@@ -1036,7 +1036,9 @@ function autoSolvePosition() {
   const mirrorFactor  = (store.activePreset && store.activePreset.ustMirror) ? 2 : 1;
   let tiltDeg = 0;
   if (Math.abs(angleDelta) > 0.0001) {
-    tiltDeg = (angleDelta / mirrorFactor) * (180 / Math.PI);
+    // Negate: angleDelta/tr uses the "+tilt moves image down" forward convention (see
+    // compute.js), but S.tiltDeg (and this input field) is now "+tilt moves image up".
+    tiltDeg = -(angleDelta / mirrorFactor) * (180 / Math.PI);
     tiltDeg = Math.max(-maxKS, Math.min(maxKS, tiltDeg));
   }
 
