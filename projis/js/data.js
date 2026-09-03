@@ -68,6 +68,10 @@ export const PRESETS = [
   // chassisDepth uses the lensless body dim (538mm); lensZOffset approximates the 42.8mm lens
   // hood that extends the total depth to 581mm with the supplied lens mounted.
   {id:'ptrz120bu', name:'Panasonic PT-RZ120BU',       aspectVal:'1.6',        rMin:1.71,rMax:2.41,sUp:50, sDn:16, vOffset:0,   fixed:false, ks:40, bodyH:11.55,chassisH:18.0, feetH:2.0,  chassisWidth:49.8, chassisDepth:53.8, lensXOffset:0, lensZOffset:-4.3, dMin:182, dMax:3165, shiftType:'optical', digitalZoom:false, shiftCurve:null, hMax:10, lumens:12000, fWide:1.7,  fTele:1.9,  cMode:0.60, note:'Supplied ET-DLE170 zoom lens. 1-chip DLP. Optical shift asymmetric (V +50/-16%, H +30/-10%); H shown as the conservative -10% symmetric limit.'},
+  // Same PT-RZ120B/W body with optional ET-DLE150 zoom lens (throw ratio + F-number/protrusion
+  // from Panasonic's ET-DLE150 spec file; shift range confirmed identical to supplied ET-DLE170
+  // group in the RZ120 spec's "Shift range" diagram, p.15).
+  {id:'ptrz120bu_dle150', name:'Panasonic PT-RZ120BU + ET-DLE150', aspectVal:'1.6', rMin:1.30,rMax:1.89,sUp:50, sDn:16, vOffset:0,   fixed:false, ks:40, bodyH:11.55,chassisH:18.0, feetH:2.0,  chassisWidth:49.8, chassisDepth:53.8, lensXOffset:0, lensZOffset:-4.4, dMin:138, dMax:2636, shiftType:'optical', digitalZoom:false, shiftCurve:null, hMax:10, lumens:12000, fWide:1.8,  fTele:2.4,  cMode:0.60, note:'ET-DLE150 zoom lens. 1-chip DLP. Optical shift asymmetric (V +50/-16%, H +30/-10%); H shown as the conservative -10% symmetric limit.'},
 ];
 
 
