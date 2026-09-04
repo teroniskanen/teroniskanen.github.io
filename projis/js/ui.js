@@ -1,4 +1,4 @@
-import { g, S, store } from './state.js';
+import { g, S, store, DETECT_THRESHOLD_DEG } from './state.js';
 import { ASPECT_NAMES, LSVG, USVG, PRESETS } from './data.js';
 
 // Lock input fields visually (preset-locked fields get warning style)
@@ -319,6 +319,18 @@ export function renderRes(r) {
     h += card('Keystone required', `${r.ksN.toFixed(1)}°`,
       r.ksOk ? 'ok' : 'warn',
       r.ksOk ? 'OK' : 'Exceeds max limit',
+      true
+    );
+    // Correction menus only take whole degrees — show what's actually left over after
+    // rounding to the nearest one, at the CURRENT distance/tilt (works the same for a
+    // fixed-throw-ratio lens as a zoom lens, unlike the exact-keystone distance finder
+    // below, which needs a variable throw ratio to solve for).
+    const nearestDeg = Math.round(r.ksN);
+    const residualDeg = Math.abs(r.ksN - nearestDeg);
+    const residualOk = residualDeg < DETECT_THRESHOLD_DEG;
+    h += card('Residual after whole-degree correction', `${nearestDeg}° set → ±${residualDeg.toFixed(2)}°`,
+      residualOk ? 'ok' : 'warn',
+      residualOk ? 'Imperceptible' : 'Visible trapezoid',
       true
     );
   }

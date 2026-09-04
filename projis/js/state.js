@@ -1,6 +1,12 @@
 // --- DOM helper ---
 export const g = id => document.getElementById(id);
 
+// Rule-of-thumb "imperceptible trapezoid" residual-keystone threshold, in degrees. Not a
+// spec value — there's no pixel geometry to derive it from since presets don't carry
+// native resolution. Shared between app.js (keystone-exact distance margins) and ui.js
+// (residual-keystone badge at the current tilt) so both use one number.
+export const DETECT_THRESHOLD_DEG = 0.3;
+
 // --- Input state (mutated by rd() in app.js) ---
 export const S = {
   viewW:500, ceilH:500, wallH:300, dist:405, aspect:1.77777778,

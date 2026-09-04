@@ -1,4 +1,4 @@
-import { g, S, store } from './state.js';
+import { g, S, store, DETECT_THRESHOLD_DEG } from './state.js';
 import { PRESETS, LSVG, USVG, ASPECT_NAMES } from './data.js';
 import { compute } from './compute.js';
 import { draw, drawForPrint } from './draw.js';
@@ -1135,12 +1135,10 @@ function computeKeystoneDistances(r) {
 
   // "Exact" is a geometric fiction — nobody measures a throw distance to the millimetre
   // on site. Attach a ± placement tolerance: how far off that distance can you actually be
-  // before the residual keystone grows past roughly what a viewer would notice. 0.3° is a
-  // rule-of-thumb "imperceptible trapezoid" threshold, not a spec value — there's no pixel
-  // geometry to derive it from since presets don't carry native resolution. Estimated via
-  // a local finite-difference slope of tilt(d) at the candidate (cheap, and exact roots make
-  // the analytic derivative fiddlier than it's worth for a rule-of-thumb number anyway).
-  const DETECT_THRESHOLD_DEG = 0.3;
+  // before the residual keystone grows past roughly what a viewer would notice (see
+  // DETECT_THRESHOLD_DEG in state.js). Estimated via a local finite-difference slope of
+  // tilt(d) at the candidate (cheap, and exact roots make the analytic derivative fiddlier
+  // than it's worth for a rule-of-thumb number anyway).
   const MARGIN_CAP_CM = 500;
   const tiltAtDist = (d) => -((Math.atan2(C1, d) - Math.atan2(C2, d)) * 180 / Math.PI) / mirrorFactor;
   const withMargin = (c) => {
