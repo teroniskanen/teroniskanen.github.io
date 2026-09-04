@@ -257,6 +257,18 @@
   .ideal-msg { font-size: 10px; line-height: 1.35; flex: 1; color: var(--color-text-primary); }
   .ideal-apply { flex-shrink: 0; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--color-border-info); background: var(--color-background-primary); color: var(--color-text-info); cursor: pointer; }
   .ideal-apply:hover { background: var(--color-background-info); }
+  .ks-box { margin-bottom: 6px; flex-shrink: 0; }
+  .ks-details { border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-sm); padding: 5px 7px; }
+  .ks-details summary { font-size: 10px; font-weight: 600; color: var(--color-text-secondary); cursor: pointer; }
+  .ks-details[open] summary { margin-bottom: 5px; }
+  .ks-note { font-size: 9px; line-height: 1.35; color: var(--color-text-tertiary); margin-bottom: 5px; }
+  .ks-table { display: flex; flex-direction: column; gap: 2px; }
+  .ks-row { display: flex; align-items: center; gap: 6px; font-size: 10px; }
+  .ks-tilt { width: 32px; flex-shrink: 0; color: var(--color-text-secondary); font-weight: 600; }
+  .ks-d { cursor: pointer; padding: 2px 6px; border-radius: var(--border-radius-sm); border: 1px solid var(--color-border-tertiary); color: var(--color-text-info); }
+  .ks-d:hover { border-color: var(--color-border-info); background: var(--color-background-info); }
+  .ks-d.ks-oor { cursor: default; color: var(--color-text-tertiary); border-style: dashed; text-decoration: line-through; }
+  .ks-d.ks-oor:hover { background: none; border-color: var(--color-border-tertiary); }
   .bright-readout {
     display: flex;
     justify-content: space-between;
@@ -607,6 +619,7 @@
   <div class="sec">Tilt</div>
   <div class="f"><label>Tilt angle (down −)</label><input type="number" id="tiltDeg" value="0" step="0.5" min="-45" max="45"><span class="u">°</span></div>
   <div class="f"><label>Max keystone limit</label><input type="number" id="maxKS" value="30" step="1" min="0" max="90"><span class="u">°</span></div>
+  <div id="ksBox" class="ks-box" style="display:none;"></div>
 
   <div class="sec">Brightness</div>
   <div class="f"><label>Projector lumens</label><input type="number" id="lumens" value="3000" step="100" min="0" class="ro" readonly><span class="u">lm</span></div>

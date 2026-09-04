@@ -2,7 +2,7 @@ import { g, S, store } from './state.js';
 import { PRESETS, LSVG, USVG, ASPECT_NAMES } from './data.js';
 import { compute } from './compute.js';
 import { draw, drawForPrint } from './draw.js';
-import { pLock, buildRoomSel, updateDropModeLabel, renderRes, updateSolverPanel, renderMatches } from './ui.js';
+import { pLock, buildRoomSel, updateDropModeLabel, renderRes, updateSolverPanel, renderMatches, renderKeystoneTable } from './ui.js';
 import { APP_VERSION } from './version.js';
 
 const LAYOUT_HIDE_KEY = 'proj_hide_visuals';
@@ -384,6 +384,7 @@ function refresh() {
   draw(r);
   renderRes(r);
   _idealDrop = updateSolverPanel(r);
+  renderKeystoneTable(computeKeystoneDistances(r), onKeystoneDistPick);
   updateShiftSliders();
   drawBrightnessBar(r);
   syncNudgeVisibility();
@@ -1046,6 +1047,100 @@ function autoSolvePosition() {
   g('tiltDeg').value  = tiltDeg.toFixed(1);
   store.dropDriver    = true;
   updateDropModeLabel();
+}
+
+// ─── Keystone-exact distance finder ────────────────────────────────────────────
+// When keystone correction can only be dialed in whole degrees, only specific throw
+// distances give a perfectly straight (zero residual trapezoid) image — the rest leave
+// a fractional-degree error no correction menu can remove. This solves for those
+// distances, holding the CURRENT image size fixed (not the current zoom ratio) since
+// that's what's normally fixed on site (a known screen). With size fixed, the shift (in
+// cm) needed to hit the target is a constant — independent of distance — so whether
+// 0° tilt is achievable is a single yes/no, not a per-distance answer. Each nonzero
+// achievable tilt maps to up to two distances (required tilt magnitude rises from 0°,
+// peaks, then falls back toward 0° as distance grows), so both are returned when real.
+//
+// Derivation: with dropDriver's lH fixed and nativeH held at its current value H0,
+//   baseAngle(d) = atan2(C1, d),  reqAngle(d) = atan2(C2, d)
+//   C1 = naturalOffsetM + clamp(shiftPctRaw, -maxDn, maxUp)/100 * H0   (physical shift used, cm)
+//   C2 = cH_goal - lH                                                  (physical offset needed, cm)
+// tan(baseAngle - reqAngle) reduces (angle-difference identity) to a rational function of d:
+//   tan(angleDelta(d)) = (C1-C2)*d / (d² + C1*C2)
+// Setting this equal to tan(mirrorFactor * tr_old) for a target old-convention tilt N_old
+// gives a quadratic in d: T*d² - (C1-C2)*d + T*C1*C2 = 0, T = tan(mirrorFactor*N_old*π/180).
+// N_old = -N (this app's shipped convention is +tilt = up, opposite of the old solver math).
+function computeKeystoneDistances(r) {
+  const p = store.activePreset;
+  const maxKS = S.maxKS;
+  if (!(r.nativeH > 0) || !(maxKS > 0)) return null;
+  // A fixed-throw-ratio lens can't hold image size fixed across distances at all —
+  // width is strictly proportional to distance, so there's nothing to solve for.
+  if (p && p.fixed) return { fixedLens: true };
+  // lH must be a fixed quantity for the derivation below to hold — only true while
+  // drop/pedestal height (not target position) is the driver.
+  if (!store.dropDriver) return { needsDropDriver: true };
+
+  const H0 = r.nativeH;
+  const nativeAspect = p ? parseFloat(p.aspectVal) : S.aspect;
+  const cH_goal = S.posType === 'bottom' ? S.targetH + r.mediaH / 2
+                : S.posType === 'top'    ? S.targetH - r.mediaH / 2
+                :                          S.targetH;
+  const lH = r.lH;
+  const C2 = cH_goal - lH;
+
+  const vOffsetPct = p ? (p.vOffset || 0) : 0;
+  const naturalOffsetM = (store.floorMode ? vOffsetPct : -vOffsetPct) / 100 * H0;
+  const { up: maxUp, dn: maxDn } = getShiftLimits();
+  const shiftPctRaw  = ((C2 - naturalOffsetM) / H0) * 100;
+  const shiftPctUsed = Math.max(-maxDn, Math.min(maxUp, shiftPctRaw));
+  const C1 = naturalOffsetM + (shiftPctUsed / 100) * H0;
+
+  const mirrorFactor = (p && p.ustMirror) ? 2 : 1;
+  const distMin = p ? p.dMin : +g('dist').min;
+  const distMax = p ? p.dMax : +g('dist').max;
+  const rMin = p ? p.rMin : +g('ratio').min;
+  const rMax = p ? p.rMax : +g('ratio').max;
+
+  const checkValid = (d) => {
+    if (!(d > 0)) return null;
+    const ratio = d / (H0 * nativeAspect);
+    const inLens = d >= distMin - 0.5 && d <= distMax + 0.5 && ratio >= rMin - 0.001 && ratio <= rMax + 0.001;
+    return { d, ratio, inLens };
+  };
+
+  const rows = [];
+  for (let N = -maxKS; N <= maxKS; N++) {
+    if (N === 0) continue; // handled separately as zeroFeasible
+    if (Math.abs(mirrorFactor * N) >= 89) continue; // tan() blows up approaching 90°
+    const T = Math.tan(mirrorFactor * (-N) * Math.PI / 180);
+    const a = T, b = -(C1 - C2), c = T * C1 * C2;
+    const disc = b * b - 4 * a * c;
+    if (disc < 0) continue;
+    const sq = Math.sqrt(disc);
+    const near = checkValid((-b + sq) / (2 * a));
+    const far  = checkValid((-b - sq) / (2 * a));
+    const lo = near && far ? (near.d <= far.d ? near : far) : (near || far);
+    const hi = near && far ? (near.d <= far.d ? far : near) : null;
+    if (!lo) continue;
+    rows.push({ tilt: N, near: lo, far: hi });
+  }
+
+  return { fixedLens: false, zeroFeasible: Math.abs(C1 - C2) < 0.05, rows };
+}
+
+// Click handler for a row in the keystone-exact distance table: jump to that distance
+// (and the matching zoom ratio, already computed alongside it) with the exact tilt set.
+function onKeystoneDistPick(d, ratio, tiltN) {
+  S.dist = d;
+  g('dist').value = d.toFixed(1);
+  if (!g('ratio').readOnly && !store.lkState.ratio) {
+    S.ratio = ratio;
+    g('ratio').value = ratio.toFixed(2);
+    if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = ratio.toFixed(2);
+  }
+  S.tiltDeg = tiltN;
+  g('tiltDeg').value = tiltN.toFixed(0);
+  refresh();
 }
 
 function imageEdit() {

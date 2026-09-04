@@ -154,6 +154,62 @@ export function updateSolverPanel(r) {
   return dropIdeal;
 }
 
+// Tracks the <details> open/closed state across re-renders — renderKeystoneTable rebuilds
+// the panel's innerHTML on every refresh() (dozens of times per session), and a plain
+// rebuild would silently re-collapse it the moment the user touches any other field.
+let ksOpen = false;
+
+// Renders the collapsible "distances for exact keystone" table (see app.js's
+// computeKeystoneDistances for the derivation). Collapsed by default via <details>.
+export function renderKeystoneTable(data, onPick) {
+  const box = g('ksBox');
+  if (!box) return;
+
+  if (!data) { box.style.display = 'none'; box.innerHTML = ''; return; }
+
+  if (data.fixedLens || data.needsDropDriver) {
+    box.style.display = '';
+    const note = data.fixedLens
+      ? 'Fixed-throw-ratio lens — image size and distance are locked together, so there\'s nothing to solve for.'
+      : 'Lock the drop/pedestal height to see which distances give an exact keystone value.';
+    box.innerHTML = `<details class="ks-details"${ksOpen ? ' open' : ''}>
+      <summary>Distances for exact keystone values</summary>
+      <div class="ks-note">${note}</div>
+    </details>`;
+    box.querySelector('details').addEventListener('toggle', e => { ksOpen = e.target.open; });
+    return;
+  }
+
+  // Zero tilt already reaches the target at the current mount position — no keystone
+  // needed at all, so there's nothing this table can usefully add.
+  if (data.zeroFeasible || !data.rows || !data.rows.length) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
+
+  box.style.display = '';
+  const rowsHtml = data.rows
+    .sort((a, b) => a.tilt - b.tilt)
+    .map(row => {
+      const cells = [row.near, row.far].filter(Boolean).map(c => {
+        const cls = c.inLens ? '' : ' ks-oor';
+        const title = c.inLens ? '' : ' title="Outside this lens\'s throw-ratio/focus range"';
+        return `<span class="ks-d${cls}"${title} data-d="${c.d}" data-r="${c.ratio}" data-t="${row.tilt}">${c.d.toFixed(0)} cm</span>`;
+      }).join('');
+      return `<div class="ks-row"><span class="ks-tilt">${row.tilt > 0 ? '+' : ''}${row.tilt}°</span>${cells}</div>`;
+    }).join('');
+  box.innerHTML = `<details class="ks-details"${ksOpen ? ' open' : ''}>
+    <summary>Distances for exact keystone values</summary>
+    <div class="ks-note">At the current image size, only these distances land the required tilt on a whole degree — everything between them leaves a fractional-degree trapezoid your correction menu can't remove.</div>
+    <div class="ks-table">${rowsHtml}</div>
+  </details>`;
+  box.querySelector('details').addEventListener('toggle', e => { ksOpen = e.target.open; });
+  box.querySelectorAll('.ks-d:not(.ks-oor)').forEach(el => {
+    el.addEventListener('click', () => onPick(+el.dataset.d, +el.dataset.r, +el.dataset.t));
+  });
+}
+
 // Render the results bar at the bottom
 export function renderRes(r) {
   const card = (label, value, cls, badge, wide) =>
