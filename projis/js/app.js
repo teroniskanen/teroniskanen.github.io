@@ -7,11 +7,34 @@ import { APP_VERSION } from './version.js';
 
 const LAYOUT_HIDE_KEY = 'proj_hide_visuals';
 const THEME_KEY = 'proj_theme';
+const LIVE_CALC_KEY = 'proj_live_calc';
 const LAST_SESSION_NAME = 'Last session';
 
 // ─── Initialise lock button icons ────────────────────────────────────────────
 ['lkDist','lkRatio','lkDrop','lkImgW','lkTargetH'].forEach(id => g(id).innerHTML = USVG);
 g('appVer').textContent = `v${APP_VERSION}`;
+
+// ─── Live calculate toggle ──────────────────────────────────────────────────
+// Off by default: numeric fields only recalc on blur (leave the field). When on, fields
+// bound via bindCalc() below also recalc on every keystroke. Deliberately NOT wired to
+// every field: refresh() reformats some fields' own values right back into themselves
+// (imgW, imgH, dist, ratio, slantDist, dropV, targetH, sPct, maxUp, maxH) — an 'input'
+// listener there would fight the caret every keystroke, so those stay blur-only regardless
+// of this toggle. Live calculate only covers fields refresh() never writes back into.
+store.liveCalc = localStorage.getItem(LIVE_CALC_KEY) === '1';
+g('liveCalc').checked = store.liveCalc;
+g('liveCalc').addEventListener('change', function() {
+  store.liveCalc = this.checked;
+  localStorage.setItem(LIVE_CALC_KEY, store.liveCalc ? '1' : '0');
+});
+
+function bindCalc(el, fn) {
+  if (!el) return;
+  el.addEventListener('blur', fn);
+  el.addEventListener('input', function(e) {
+    if (store.liveCalc) fn.call(this, e);
+  });
+}
 
 // ─── Build projector preset dropdown ─────────────────────────────────────────
 const psel = g('psel');
@@ -980,6 +1003,10 @@ document.querySelectorAll('input[name="mount"]').forEach(el => el.addEventListen
 }));
 
 // ─── Drop mode ────────────────────────────────────────────────────────────────
+// dropV, and every other field refresh() writes back into (imgW, imgH, dist, ratio,
+// slantDist, targetH, sPct, maxUp, maxH below), stays blur-only even with Live calculate
+// on — an 'input' handler here would fight the user's typing every keystroke, since
+// refresh() reformats the field's own value right back into it.
 g('dropV').addEventListener('blur', function() {
   if (!store.dropDriver) { store.dropDriver = true; updateDropModeLabel(); }
   refresh();
@@ -1280,15 +1307,20 @@ g('pi-upd').addEventListener('click', () => {
 g('aspect').addEventListener('change', function() { tri('aspect'); refresh(); });
 
 // ─── Other inputs ─────────────────────────────────────────────────────────────
-['maxUp','maxDn','maxH'].forEach(id => {
-  const el = g(id); if (el) el.addEventListener('blur', function() {
-    this.dataset.raw = this.value;
-    if (this.id === 'maxUp') { g('maxDn').dataset.raw = g('maxDn').value = this.value; }
-    refresh();
-  });
-});
+// maxUp and maxH get written back into themselves by updateShiftSliders() whenever a
+// preset is active, so — like dropV/imgW/etc. above — they stay blur-only. maxDn is only
+// ever written as a side effect of editing maxUp (a different field), never itself, so it's
+// safe to go live.
+function maxShiftHandler() {
+  this.dataset.raw = this.value;
+  if (this.id === 'maxUp') { g('maxDn').dataset.raw = g('maxDn').value = this.value; }
+  refresh();
+}
+g('maxUp').addEventListener('blur', maxShiftHandler);
+bindCalc(g('maxDn'), maxShiftHandler);
+g('maxH').addEventListener('blur', maxShiftHandler);
 ['ceilH','wallH','hPct','bodyH','tiltDeg','maxKS','personDist','gain','mCeilToExt','mExtToTop'].forEach(id => {
-  const el = g(id); if (el) el.addEventListener('blur', refresh);
+  bindCalc(g(id), refresh);
 });
 g('personOn').addEventListener('change', refresh);
 
