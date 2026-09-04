@@ -1133,7 +1133,25 @@ function computeKeystoneDistances(r) {
     if (c.d > S.dist && (!above || c.d < above.d)) above = c;
   });
 
-  return { fixedLens: false, zeroFeasible: Math.abs(C1 - C2) < 0.05, below, above };
+  // "Exact" is a geometric fiction — nobody measures a throw distance to the millimetre
+  // on site. Attach a ± placement tolerance: how far off that distance can you actually be
+  // before the residual keystone grows past roughly what a viewer would notice. 0.3° is a
+  // rule-of-thumb "imperceptible trapezoid" threshold, not a spec value — there's no pixel
+  // geometry to derive it from since presets don't carry native resolution. Estimated via
+  // a local finite-difference slope of tilt(d) at the candidate (cheap, and exact roots make
+  // the analytic derivative fiddlier than it's worth for a rule-of-thumb number anyway).
+  const DETECT_THRESHOLD_DEG = 0.3;
+  const MARGIN_CAP_CM = 500;
+  const tiltAtDist = (d) => -((Math.atan2(C1, d) - Math.atan2(C2, d)) * 180 / Math.PI) / mirrorFactor;
+  const withMargin = (c) => {
+    if (!c) return null;
+    const h = Math.max(0.5, c.d * 0.005);
+    const deriv = (tiltAtDist(c.d + h) - tiltAtDist(c.d - h)) / (2 * h);
+    const marginCm = deriv !== 0 ? Math.min(MARGIN_CAP_CM, Math.abs(DETECT_THRESHOLD_DEG / deriv)) : MARGIN_CAP_CM;
+    return { ...c, marginCm };
+  };
+
+  return { fixedLens: false, zeroFeasible: Math.abs(C1 - C2) < 0.05, below: withMargin(below), above: withMargin(above) };
 }
 
 // Click handler for a row in the keystone-exact distance table: jump to that distance
@@ -1142,9 +1160,13 @@ function onKeystoneDistPick(d, ratio, tiltN) {
   S.dist = d;
   g('dist').value = d.toFixed(1);
   if (!g('ratio').readOnly && !store.lkState.ratio) {
-    S.ratio = ratio;
-    g('ratio').value = ratio.toFixed(2);
-    if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = ratio.toFixed(2);
+    // Candidate ratios are already filtered against the lens's rMin/rMax, but with a small
+    // floating-point tolerance — clamp here so what actually lands in the field can never
+    // read as slightly out of the lens's real zoom range.
+    const p = store.activePreset;
+    S.ratio = p && !p.fixed ? Math.min(p.rMax, Math.max(p.rMin, ratio)) : ratio;
+    g('ratio').value = S.ratio.toFixed(2);
+    if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = S.ratio.toFixed(2);
   }
   S.tiltDeg = tiltN;
   g('tiltDeg').value = tiltN.toFixed(0);

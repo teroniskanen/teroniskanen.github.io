@@ -194,12 +194,13 @@ export function renderKeystoneTable(data, onPick) {
     return;
   }
 
+  const marginTxt = (m) => m >= 500 ? '±500+ cm' : `±${m.toFixed(0)} cm`;
   const row = (label, c) => {
     if (!c) return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-none">none within this lens's range</span></div>`;
-    return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-d" data-d="${c.d}" data-r="${c.ratio}" data-t="${c.tilt}">${c.d.toFixed(0)} cm @ ${c.tilt > 0 ? '+' : ''}${c.tilt}°</span></div>`;
+    return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-d" data-d="${c.d}" data-r="${c.ratio}" data-t="${c.tilt}">${c.d.toFixed(0)} cm @ ${c.tilt > 0 ? '+' : ''}${c.tilt}°</span><span class="ks-margin">${marginTxt(c.marginCm)}</span></div>`;
   };
   wrap(`
-    <div class="ks-note">At the current image size, only these distances land the required tilt on a whole degree — everything between leaves a fractional-degree trapezoid your correction menu can't remove.</div>
+    <div class="ks-note">At the current image size, only these distances land the required tilt on a whole degree — everything between leaves a fractional-degree trapezoid your correction menu can't remove. The ± figure is roughly how far off that placement can be before the residual keystone becomes noticeable.</div>
     <div class="ks-table">${row('Shorter', data.below)}${row('Longer', data.above)}</div>
   `);
   box.querySelectorAll('.ks-d').forEach(el => {
