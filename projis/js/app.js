@@ -1108,7 +1108,12 @@ function computeKeystoneDistances(r) {
     return { d, ratio, inLens };
   };
 
-  const rows = [];
+  // Collect every buildable (distance, tilt) candidate across all achievable integer
+  // tilts, then keep only the two nearest to the current throw distance — one shorter,
+  // one longer — rather than the full per-degree table. That's what's actually
+  // actionable on site: "which real distance near where I already am gives me a
+  // perfectly straight image."
+  const candidates = [];
   for (let N = -maxKS; N <= maxKS; N++) {
     if (N === 0) continue; // handled separately as zeroFeasible
     if (Math.abs(mirrorFactor * N) >= 89) continue; // tan() blows up approaching 90°
@@ -1117,15 +1122,18 @@ function computeKeystoneDistances(r) {
     const disc = b * b - 4 * a * c;
     if (disc < 0) continue;
     const sq = Math.sqrt(disc);
-    const near = checkValid((-b + sq) / (2 * a));
-    const far  = checkValid((-b - sq) / (2 * a));
-    const lo = near && far ? (near.d <= far.d ? near : far) : (near || far);
-    const hi = near && far ? (near.d <= far.d ? far : near) : null;
-    if (!lo) continue;
-    rows.push({ tilt: N, near: lo, far: hi });
+    [checkValid((-b + sq) / (2 * a)), checkValid((-b - sq) / (2 * a))].forEach(pt => {
+      if (pt && pt.inLens) candidates.push({ tilt: N, d: pt.d, ratio: pt.ratio });
+    });
   }
 
-  return { fixedLens: false, zeroFeasible: Math.abs(C1 - C2) < 0.05, rows };
+  let below = null, above = null;
+  candidates.forEach(c => {
+    if (c.d < S.dist && (!below || c.d > below.d)) below = c;
+    if (c.d > S.dist && (!above || c.d < above.d)) above = c;
+  });
+
+  return { fixedLens: false, zeroFeasible: Math.abs(C1 - C2) < 0.05, below, above };
 }
 
 // Click handler for a row in the keystone-exact distance table: jump to that distance

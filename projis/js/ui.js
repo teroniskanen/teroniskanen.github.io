@@ -159,53 +159,50 @@ export function updateSolverPanel(r) {
 // rebuild would silently re-collapse it the moment the user touches any other field.
 let ksOpen = false;
 
-// Renders the collapsible "distances for exact keystone" table (see app.js's
+// Renders the collapsible "nearest exact-keystone distances" readout (see app.js's
 // computeKeystoneDistances for the derivation). Collapsed by default via <details>.
+// Shows just the closest buildable distance shorter than, and longer than, the current
+// throw distance that each land the required tilt on a whole degree.
 export function renderKeystoneTable(data, onPick) {
   const box = g('ksBox');
   if (!box) return;
 
+  const wrap = (bodyHtml) => {
+    box.style.display = '';
+    box.innerHTML = `<details class="ks-details"${ksOpen ? ' open' : ''}>
+      <summary>Nearest exact-keystone distances</summary>
+      ${bodyHtml}
+    </details>`;
+    box.querySelector('details').addEventListener('toggle', e => { ksOpen = e.target.open; });
+  };
+
   if (!data) { box.style.display = 'none'; box.innerHTML = ''; return; }
 
   if (data.fixedLens || data.needsDropDriver) {
-    box.style.display = '';
     const note = data.fixedLens
       ? 'Fixed-throw-ratio lens — image size and distance are locked together, so there\'s nothing to solve for.'
-      : 'Lock the drop/pedestal height to see which distances give an exact keystone value.';
-    box.innerHTML = `<details class="ks-details"${ksOpen ? ' open' : ''}>
-      <summary>Distances for exact keystone values</summary>
-      <div class="ks-note">${note}</div>
-    </details>`;
-    box.querySelector('details').addEventListener('toggle', e => { ksOpen = e.target.open; });
+      : 'Lock the drop/pedestal height to see the nearest exact-keystone distances.';
+    wrap(`<div class="ks-note">${note}</div>`);
     return;
   }
 
   // Zero tilt already reaches the target at the current mount position — no keystone
-  // needed at all, so there's nothing this table can usefully add.
-  if (data.zeroFeasible || !data.rows || !data.rows.length) {
+  // needed at all, so there's nothing this readout can usefully add.
+  if (data.zeroFeasible || (!data.below && !data.above)) {
     box.style.display = 'none';
     box.innerHTML = '';
     return;
   }
 
-  box.style.display = '';
-  const rowsHtml = data.rows
-    .sort((a, b) => a.tilt - b.tilt)
-    .map(row => {
-      const cells = [row.near, row.far].filter(Boolean).map(c => {
-        const cls = c.inLens ? '' : ' ks-oor';
-        const title = c.inLens ? '' : ' title="Outside this lens\'s throw-ratio/focus range"';
-        return `<span class="ks-d${cls}"${title} data-d="${c.d}" data-r="${c.ratio}" data-t="${row.tilt}">${c.d.toFixed(0)} cm</span>`;
-      }).join('');
-      return `<div class="ks-row"><span class="ks-tilt">${row.tilt > 0 ? '+' : ''}${row.tilt}°</span>${cells}</div>`;
-    }).join('');
-  box.innerHTML = `<details class="ks-details"${ksOpen ? ' open' : ''}>
-    <summary>Distances for exact keystone values</summary>
-    <div class="ks-note">At the current image size, only these distances land the required tilt on a whole degree — everything between them leaves a fractional-degree trapezoid your correction menu can't remove.</div>
-    <div class="ks-table">${rowsHtml}</div>
-  </details>`;
-  box.querySelector('details').addEventListener('toggle', e => { ksOpen = e.target.open; });
-  box.querySelectorAll('.ks-d:not(.ks-oor)').forEach(el => {
+  const row = (label, c) => {
+    if (!c) return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-none">none within this lens's range</span></div>`;
+    return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-d" data-d="${c.d}" data-r="${c.ratio}" data-t="${c.tilt}">${c.d.toFixed(0)} cm @ ${c.tilt > 0 ? '+' : ''}${c.tilt}°</span></div>`;
+  };
+  wrap(`
+    <div class="ks-note">At the current image size, only these distances land the required tilt on a whole degree — everything between leaves a fractional-degree trapezoid your correction menu can't remove.</div>
+    <div class="ks-table">${row('Shorter', data.below)}${row('Longer', data.above)}</div>
+  `);
+  box.querySelectorAll('.ks-d').forEach(el => {
     el.addEventListener('click', () => onPick(+el.dataset.d, +el.dataset.r, +el.dataset.t));
   });
 }
