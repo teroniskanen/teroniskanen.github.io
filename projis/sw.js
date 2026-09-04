@@ -1,5 +1,5 @@
 // Increment version string to force cache refresh on update
-const CACHE = 'projis-v35';
+const CACHE = 'projis-v36';
 
 const ASSETS = [
   '/projis/',

@@ -216,7 +216,15 @@
   .psel { width: 100%; font-size: 12px; padding: 4px 6px; height: 26px; margin-bottom: 6px; flex-shrink: 0; }
   .tog { display: flex; align-items: center; gap: 6px; height: 24px; margin-bottom: 4px; flex-shrink: 0; }
   .tog label { font-size: 11px; color: var(--color-text-secondary); flex: 1; }
-  
+
+  .switch { position: relative; display: inline-block; width: 30px; height: 17px; flex-shrink: 0; }
+  .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .switch .slider { position: absolute; inset: 0; background: var(--color-background-secondary); border: 1px solid var(--color-border-tertiary); border-radius: 999px; transition: background var(--transition-speed), border-color var(--transition-speed); }
+  .switch .slider::before { content: ''; position: absolute; width: 11px; height: 11px; left: 2px; top: 2px; background: var(--color-background-primary); border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,0.3); transition: transform var(--transition-speed); }
+  .switch input:checked + .slider { background: var(--color-border-info); border-color: var(--color-border-info); }
+  .switch input:checked + .slider::before { transform: translateX(13px); }
+  .switch input:focus-visible + .slider { outline: 2px solid var(--color-border-info); outline-offset: 2px; }
+
   .rname-inp { width:100%; font-size:11px; height:24px; padding:2px 6px; margin-bottom:3px; flex-shrink:0; font-family:var(--font-sans); background:var(--color-background-primary); border:1px solid var(--color-border-tertiary); color:var(--color-text-primary); border-radius:var(--border-radius-sm); outline:none; box-sizing:border-box; }
   .rname-inp:focus { border-color:var(--color-border-info); }
   .rp-btns { display:flex; gap:4px; margin:0 auto 4px; width:calc(100% - 24px); flex-shrink:0; }
@@ -468,7 +476,7 @@
 <div class="g">
  <div class="lp">
   <div class="appver" id="appVer">v0.9</div>
-  <div class="tog" title="Room dimensions and limits update as you type instead of waiting until you leave the field. Geometry fields (distance, ratio, image size, drop, shift, target height) always wait for you to leave the field, since typing in them would fight the recalculated value."><label>Live calculate</label><input type="checkbox" id="liveCalc"></div>
+  <div class="tog" title="Room dimensions and limits update as you type instead of waiting until you leave the field. Geometry fields (distance, ratio, image size, drop, shift, target height) always wait for you to leave the field, since typing in them would fight the recalculated value."><label for="liveCalc">Live calculate</label><label class="switch"><input type="checkbox" id="liveCalc"><span class="slider"></span></label></div>
   <div class="sec" id="projPresetSec" style="margin-top:0">Projector preset</div>
   <select class="psel" id="psel"></select>
   <div class="pbox" id="pbox"><div class="pi-t" id="pi-t"></div><span class="pi-c" id="pi-c">Clear</span></div>
