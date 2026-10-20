@@ -43,23 +43,26 @@ const psel = g('psel');
 psel.innerHTML = '<option value="">— manual —</option>';
 const pdd = g('pdd'), pddBtn = g('pddBtn'), pddList = g('pddList');
 const fmtLm = p => p && p.lumens ? `${p.lumens} lm` : '';
+const fmtRatio = p => p.fixed || p.rMin === p.rMax ? p.rMin.toFixed(2) : `${p.rMin.toFixed(2)}–${p.rMax.toFixed(2)}`;
 
-function addPddOpt(id, name, lm) {
+function addPddOpt(id, name, ratio, lm) {
   const row = document.createElement('div');
   row.className = 'pdd-opt'; row.dataset.id = id; row.setAttribute('role', 'option');
-  row.innerHTML = `<span class="pdd-name"></span><span class="pdd-lm"></span>`;
-  row.firstChild.textContent = name; row.lastChild.textContent = lm;
+  row.innerHTML = `<span class="pdd-name"></span><span class="pdd-ratio"></span><span class="pdd-lm"></span>`;
+  row.children[0].textContent = name; row.children[1].textContent = ratio; row.children[2].textContent = lm;
   pddList.appendChild(row);
 }
-addPddOpt('', '— manual —', '');
+addPddOpt('', '— manual —', '', '');
 [['Current', false], ['Legacy', true]].forEach(([label, legacy]) => {
   const grp = document.createElement('optgroup'); grp.label = label;
-  const hdr = document.createElement('div'); hdr.className = 'pdd-grp'; hdr.textContent = label;
+  const hdr = document.createElement('div'); hdr.className = 'pdd-grp';
+  hdr.innerHTML = `<span class="pdd-name"></span><span class="pdd-ratio">Throw</span><span class="pdd-lm">lm</span>`;
+  hdr.firstChild.textContent = label;
   pddList.appendChild(hdr);
   // Short throw → tele within each group (by widest ratio, ties keep data.js order)
   PRESETS.filter(p => !!p.legacy === legacy).sort((a, b) => a.rMin - b.rMin).forEach(p => {
     const o = document.createElement('option'); o.value = p.id; o.textContent = p.name; grp.appendChild(o);
-    addPddOpt(p.id, p.name, fmtLm(p));
+    addPddOpt(p.id, p.name, fmtRatio(p), p.lumens || '');
   });
   psel.appendChild(grp);
 });
