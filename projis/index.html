@@ -214,6 +214,31 @@
   .matchItem .mi-ratio { flex-shrink: 0; color: var(--color-text-tertiary); }
 
   .psel { width: 100%; font-size: 12px; padding: 4px 6px; height: 26px; margin-bottom: 6px; flex-shrink: 0; }
+  /* Projector picker: custom listbox so lumens get their own right-aligned column */
+  .pdd { position: relative; margin-bottom: 6px; flex-shrink: 0; }
+  .pdd-btn {
+    width: 100%; height: 26px; padding: 0 22px 0 6px; display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 12px; text-align: left; cursor: pointer;
+    background: var(--color-background-primary); color: var(--color-text-primary);
+    border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-sm); outline: none;
+    position: relative; transition: border-color var(--transition-speed);
+  }
+  .pdd-btn::after { content: ''; position: absolute; right: 8px; top: 10px; border: 4px solid transparent; border-top-color: var(--color-text-tertiary); }
+  .pdd-btn:focus-visible, .pdd.open .pdd-btn { border-color: var(--color-border-info); }
+  .pdd-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pdd-lm { flex-shrink: 0; color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+  .pdd-list {
+    display: none; position: absolute; left: 0; right: 0; top: 28px; z-index: 50;
+    max-height: min(60vh, 420px); overflow-y: auto; padding: 3px 0;
+    background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-sm); box-shadow: 0 6px 18px rgba(0,0,0,0.18); outline: none;
+  }
+  .pdd.open .pdd-list { display: block; }
+  .pdd-grp { font-size: 9px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-tertiary); padding: 6px 8px 2px; }
+  .pdd-opt { display: flex; align-items: center; gap: 8px; padding: 4px 8px; font-size: 11px; cursor: pointer; color: var(--color-text-primary); }
+  .pdd-opt .pdd-lm { font-family: var(--font-mono); font-size: 10px; text-align: right; min-width: 52px; }
+  .pdd-opt.hl { background: var(--color-background-info); color: var(--color-text-info); }
+  .pdd-opt.sel { font-weight: 600; }
   .tog { display: flex; align-items: center; gap: 6px; height: 24px; margin-bottom: 4px; flex-shrink: 0; }
   .tog label { font-size: 11px; color: var(--color-text-secondary); flex: 1; }
 
@@ -478,7 +503,11 @@
   <div class="appver" id="appVer">v0.9</div>
   <div class="tog" title="Room dimensions and limits update as you type instead of waiting until you leave the field. Geometry fields (distance, ratio, image size, drop, shift, target height) always wait for you to leave the field, since typing in them would fight the recalculated value."><label for="liveCalc">Live calculate</label><label class="switch"><input type="checkbox" id="liveCalc"><span class="slider"></span></label></div>
   <div class="sec" id="projPresetSec" style="margin-top:0">Projector preset</div>
-  <select class="psel" id="psel"></select>
+  <select id="psel" hidden></select>
+  <div class="pdd" id="pdd">
+   <button type="button" class="pdd-btn" id="pddBtn" aria-haspopup="listbox" aria-expanded="false"><span class="pdd-name" id="pddName"></span><span class="pdd-lm" id="pddLm"></span></button>
+   <div class="pdd-list" id="pddList" role="listbox" tabindex="-1"></div>
+  </div>
   <div class="pbox" id="pbox"><div class="pi-t" id="pi-t"></div><span class="pi-c" id="pi-c">Clear</span></div>
   <div id="pnote" class="mini-note" style="display:none;"></div>
   <div id="matchBox" class="matchBox"></div>

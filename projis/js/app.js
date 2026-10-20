@@ -37,15 +37,78 @@ function bindCalc(el, fn) {
 }
 
 // ─── Build projector preset dropdown ─────────────────────────────────────────
+// The hidden <select id="psel"> stays the source of truth (value + 'change' event);
+// the visible picker is a custom listbox so lumens can sit in their own column.
 const psel = g('psel');
 psel.innerHTML = '<option value="">— manual —</option>';
+const pdd = g('pdd'), pddBtn = g('pddBtn'), pddList = g('pddList');
+const fmtLm = p => p && p.lumens ? `${p.lumens} lm` : '';
+
+function addPddOpt(id, name, lm) {
+  const row = document.createElement('div');
+  row.className = 'pdd-opt'; row.dataset.id = id; row.setAttribute('role', 'option');
+  row.innerHTML = `<span class="pdd-name"></span><span class="pdd-lm"></span>`;
+  row.firstChild.textContent = name; row.lastChild.textContent = lm;
+  pddList.appendChild(row);
+}
+addPddOpt('', '— manual —', '');
 [['Current', false], ['Legacy', true]].forEach(([label, legacy]) => {
   const grp = document.createElement('optgroup'); grp.label = label;
-  PRESETS.filter(p => !!p.legacy === legacy).forEach(p => {
+  const hdr = document.createElement('div'); hdr.className = 'pdd-grp'; hdr.textContent = label;
+  pddList.appendChild(hdr);
+  // Short throw → tele within each group (by widest ratio, ties keep data.js order)
+  PRESETS.filter(p => !!p.legacy === legacy).sort((a, b) => a.rMin - b.rMin).forEach(p => {
     const o = document.createElement('option'); o.value = p.id; o.textContent = p.name; grp.appendChild(o);
+    addPddOpt(p.id, p.name, fmtLm(p));
   });
   psel.appendChild(grp);
 });
+const pddOpts = [...pddList.querySelectorAll('.pdd-opt')];
+
+// Mirror psel.value into the picker button; call after any programmatic psel.value change.
+function syncPdd() {
+  const p = PRESETS.find(x => x.id === psel.value);
+  g('pddName').textContent = p ? p.name : '— manual —';
+  g('pddLm').textContent = fmtLm(p);
+  pddOpts.forEach(r => r.classList.toggle('sel', r.dataset.id === psel.value));
+}
+function pddHighlight(row) {
+  pddOpts.forEach(r => r.classList.toggle('hl', r === row));
+  if (row) row.scrollIntoView({ block: 'nearest' });
+}
+function pddOpen(open) {
+  pdd.classList.toggle('open', open);
+  pddBtn.setAttribute('aria-expanded', open);
+  if (open) pddHighlight(pddOpts.find(r => r.dataset.id === psel.value) || pddOpts[0]);
+}
+function pddPick(row) {
+  pddOpen(false);
+  pddBtn.focus();
+  if (row.dataset.id === psel.value) return;
+  psel.value = row.dataset.id;
+  syncPdd();
+  psel.dispatchEvent(new Event('change'));
+}
+pddBtn.addEventListener('click', () => pddOpen(!pdd.classList.contains('open')));
+pddList.addEventListener('click', e => { const row = e.target.closest('.pdd-opt'); if (row) pddPick(row); });
+pddList.addEventListener('mousemove', e => { const row = e.target.closest('.pdd-opt'); if (row) pddHighlight(row); });
+document.addEventListener('pointerdown', e => { if (!pdd.contains(e.target)) pddOpen(false); });
+pddBtn.addEventListener('keydown', e => {
+  const open = pdd.classList.contains('open');
+  const i = pddOpts.findIndex(r => r.classList.contains('hl'));
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (!open) { pddOpen(true); return; }
+    const n = Math.max(0, Math.min(pddOpts.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
+    pddHighlight(pddOpts[n]);
+  } else if ((e.key === 'Enter' || e.key === ' ') && open) {
+    e.preventDefault();
+    if (i >= 0) pddPick(pddOpts[i]);
+  } else if (e.key === 'Escape' || e.key === 'Tab') {
+    pddOpen(false);
+  }
+});
+syncPdd();
 
 // Read a <input type="number"> against its own min/max attributes.
 // A bare `+el.value || fallback` treats a legitimately-typed 0 as "empty" and
@@ -675,7 +738,7 @@ function tri(changed) {
 function clearPreset() {
   store.activePreset = null;
   store.activePresetOverride = null;
-  psel.value = '';
+  psel.value = ''; syncPdd();
   g('pbox').classList.remove('on');
   g('pnote').style.display = 'none';
   pLock(['ratio','maxUp','maxDn','maxH','bodyH','maxKS'], false);
@@ -741,7 +804,7 @@ function applyPreset(p) {
   g('pi-upd').disabled = false;
   g('pi-upd').textContent = 'Update';
   _presetEditing = false;
-  psel.value = p.id;
+  psel.value = p.id; syncPdd();
 
   applyPresetOverrides(p);
   tri('ratio'); refresh();
