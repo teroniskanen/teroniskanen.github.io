@@ -39,8 +39,12 @@ function bindCalc(el, fn) {
 // ─── Build projector preset dropdown ─────────────────────────────────────────
 const psel = g('psel');
 psel.innerHTML = '<option value="">— manual —</option>';
-PRESETS.forEach(p => {
-  const o = document.createElement('option'); o.value = p.id; o.textContent = p.name; psel.appendChild(o);
+[['Current', false], ['Legacy', true]].forEach(([label, legacy]) => {
+  const grp = document.createElement('optgroup'); grp.label = label;
+  PRESETS.filter(p => !!p.legacy === legacy).forEach(p => {
+    const o = document.createElement('option'); o.value = p.id; o.textContent = p.name; grp.appendChild(o);
+  });
+  psel.appendChild(grp);
 });
 
 // Read a <input type="number"> against its own min/max attributes.
