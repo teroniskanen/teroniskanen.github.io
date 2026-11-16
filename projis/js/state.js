@@ -7,6 +7,11 @@ export const g = id => document.getElementById(id);
 // (residual-keystone badge at the current tilt) so both use one number.
 export const DETECT_THRESHOLD_DEG = 0.3;
 
+// Minimum clear gap (cm, measured at the projector) between the body and the viewer's rays to
+// the image edges before the solver treats a spot as "clear". Eye position varies a few cm
+// between viewers, so a razor-thin miss isn't a real clear view.
+export const SIGHT_MARGIN_CM = 15;
+
 // --- Input state (mutated by rd() in app.js) ---
 export const S = {
   viewW:500, ceilH:500, wallH:300, dist:405, aspect:1.77777778,

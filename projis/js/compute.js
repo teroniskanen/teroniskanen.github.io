@@ -29,11 +29,19 @@ export function sightCheck(dist, lH, effTop, effBot) {
   out.blockLo = Math.min(lo(t0), lo(t1));
   out.blockHi = Math.max(hi(t0), hi(t1));
   out.hidden = Math.max(0, Math.min(out.blockHi, effTop) - Math.max(out.blockLo, effBot));
-  // Signed margin at the screen: negative = cm of image hidden, positive = gap between the
-  // hidden band and the image (cm on the wall, nearest edge).
-  if (out.hidden > 0) out.clear = -out.hidden;
-  else if (out.blockLo >= effTop) out.clear = out.blockLo - effTop;
-  else out.clear = effBot - out.blockHi;
+  // Signed margin: negative = cm of image hidden (measured on the screen); positive = the
+  // gap, in cm AT THE PROJECTOR, between the body and the nearest viewer ray to an image
+  // edge. Measured there (not on the wall) so it's the real physical clearance.
+  if (out.hidden > 0) { out.clear = -out.hidden; }
+  else {
+    const rayAt = (yImg, x) => yImg + (eyeH - yImg) * (x / eyeX);
+    if (out.blockLo >= effTop) {
+      // Body projects above the image: rays to the image top must pass below the body bottom.
+      out.clear = yBot - Math.max(rayAt(effTop, x0), rayAt(effTop, x1));
+    } else {
+      out.clear = Math.min(rayAt(effBot, x0), rayAt(effBot, x1)) - yTop;
+    }
+  }
   return out;
 }
 

@@ -344,7 +344,8 @@ function refresh() {
 
   // Auto-fit drawing width to encompass throw distance (+ person if shown)
   const personEnd = S.personOn && S.personDist > 0 ? S.personDist : 0;
-  const eyeEnd = S.viewerOn && S.eyeDist ? Math.ceil(S.eyeDist * 1.05) : 0;
+  // Auto viewer sits just behind the projector body (see sightCheck), so include it too.
+  const eyeEnd = S.viewerOn ? Math.ceil((S.eyeDist || S.dist + (S.chassisDepth > 0 ? S.chassisDepth : 30) + 50) * 1.04) : 0;
   S.viewW = Math.max(Math.ceil(S.dist + 10), personEnd > 0 ? Math.ceil(personEnd * 1.1) : 0, eyeEnd, 280);
 
   // Apply shift limits for all presets (handles zoom curves + ceiling-mount inversion for fixed-shift presets too).
@@ -884,12 +885,17 @@ g('lkTargetH').addEventListener('click', () => setDriveMode(store.dropDriver ? f
 g('idealApply').addEventListener('click', () => {
   if (_idealDrop == null) return;
   setDriveMode(true);
-  S.drop = _idealDrop;
-  g('dropV').value = _idealDrop.toFixed(1);
-  S.shiftPct = 0;
-  g('sPct').value = '0';
-  S.tiltDeg = 0;
-  g('tiltDeg').value = '0';
+  S.drop = _idealDrop.drop;
+  g('dropV').value = _idealDrop.drop.toFixed(1);
+  if (_idealDrop.compromise) {
+    // Not the zero-shift spot (it blocks the viewer): solve the shift/tilt needed from here.
+    autoSolvePosition();
+  } else {
+    S.shiftPct = 0;
+    g('sPct').value = '0';
+    S.tiltDeg = 0;
+    g('tiltDeg').value = '0';
+  }
   refresh();
 });
 

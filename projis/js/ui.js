@@ -1,5 +1,6 @@
-import { g, S, store, DETECT_THRESHOLD_DEG } from './state.js';
+import { g, S, store, DETECT_THRESHOLD_DEG, SIGHT_MARGIN_CM } from './state.js';
 import { ASPECT_NAMES, LSVG, USVG, PRESETS } from './data.js';
+import { sightCheck } from './compute.js';
 
 // Lock input fields visually (preset-locked fields get warning style)
 export const pLock = (ids, on) => ids.forEach(id => {
@@ -138,7 +139,38 @@ export function updateSolverPanel(r) {
     return null;
   }
 
-  const delta = dropIdeal - r.drop;
+  // Viewer sightline: the zero-shift position puts the lens at image height, which can put
+  // the projector body between the viewer's eye and the image. Check it, and if it blocks,
+  // look for the drop closest to ideal that keeps the view clear and is still reachable with
+  // the available lens shift (image bounds stay at the goal either way).
+  const goalTop = cH_goal + r.mediaH / 2, goalBot = cH_goal - r.mediaH / 2;
+  const lHOf = d => store.floorMode ? d + S.bodyH : S.ceilH - d;
+  let compromise = false;
+  let dropTarget = dropIdeal;
+  let sgIdeal = sightCheck(S.dist, lHIdeal, goalTop, goalBot);
+  if (sgIdeal && sgIdeal.applicable && sgIdeal.clear < SIGHT_MARGIN_CM) {
+    const hidden = Math.max(0, -sgIdeal.clear);
+    const tight = hidden === 0;
+    let best = null;
+    for (let d = 0; d <= maxDrop + 0.01; d += 0.5) {
+      const lHc = lHOf(d);
+      const sc = sightCheck(S.dist, lHc, goalTop, goalBot);
+      if (!sc || sc.clear < SIGHT_MARGIN_CM) continue;
+      const needPct = r.nativeH > 0 ? ((cH_goal - lHc - naturalOffsetM) / r.nativeH) * 100 : 0;
+      if (needPct > S.maxUp + 0.01 || needPct < -S.maxDn - 0.01) continue;
+      if (!best || Math.abs(d - dropIdeal) < Math.abs(best.d - dropIdeal)) best = { d, needPct };
+    }
+    if (!best) {
+      panel.classList.add('st-warn');
+      msgEl.textContent = `Zero-shift position ${tight ? 'passes the viewer\'s line of sight with under ' + SIGHT_MARGIN_CM + ' cm to spare' : 'would hide ' + hidden.toFixed(0) + ' cm of the image from the viewer'}, and no clearer position is reachable with this lens shift`;
+      applyBtn.style.display = 'none';
+      return null;
+    }
+    dropTarget = best.d;
+    compromise = { hidden, needPct: best.needPct };
+  }
+
+  const delta = dropTarget - r.drop;
   if (Math.abs(delta) < 0.5) {
     panel.classList.add('st-ok');
     msgEl.textContent = 'Already at the optimal mount position — reduce shift/tilt toward 0 to use it';
@@ -149,9 +181,13 @@ export function updateSolverPanel(r) {
   const dir = store.floorMode
     ? (delta > 0 ? 'Raise' : 'Lower')
     : (delta > 0 ? 'Lower' : 'Raise');
-  msgEl.textContent = `${dir} ${mountWord} by ${Math.abs(delta).toFixed(1)} cm → ~0% shift, 0° tilt`;
+  if (compromise) {
+    msgEl.textContent = `${dir} ${mountWord} by ${Math.abs(delta).toFixed(1)} cm → ~${Math.abs(compromise.needPct).toFixed(0)}% shift. The zero-shift spot ${compromise.hidden > 0 ? 'would hide ' + compromise.hidden.toFixed(0) + ' cm of the image from the viewer' : 'passes the viewer\'s line of sight with under ' + SIGHT_MARGIN_CM + ' cm to spare'}`;
+  } else {
+    msgEl.textContent = `${dir} ${mountWord} by ${Math.abs(delta).toFixed(1)} cm → ~0% shift, 0° tilt`;
+  }
   applyBtn.style.display = '';
-  return dropIdeal;
+  return { drop: dropTarget, compromise: !!compromise };
 }
 
 // Tracks the <details> open/closed state across re-renders — renderKeystoneTable rebuilds
@@ -198,6 +234,7 @@ export function renderKeystoneTable(data, onPick) {
   const clearTxt = (v) => {
     if (v == null || !isFinite(v)) return '';
     return v < 0 ? `<span class="ks-clear bad">hides ${(-v).toFixed(0)} cm</span>`
+                 : v < SIGHT_MARGIN_CM ? `<span class="ks-clear bad">view tight +${v.toFixed(0)} cm</span>`
                  : `<span class="ks-clear">${v >= 100 ? 'view clear' : 'view clear +' + v.toFixed(0) + ' cm'}</span>`;
   };
   const row = (label, c) => {
@@ -319,7 +356,7 @@ export function renderRes(r) {
     } else if (sg.clear < 0) {
       h += card('View of image', `Hides ${(-sg.clear).toFixed(1)} cm`, 'warn', `Projector body blocks the image (${who})`, true);
     } else {
-      h += card('View of image', sg.clear >= 100 ? 'Clear' : `Clear by ${sg.clear.toFixed(1)} cm`, 'ok', `${sg.clear >= 100 ? 'Not close to blocking' : 'Margin at the screen'} (${who})`, true);
+      h += card('View of image', sg.clear >= 100 ? 'Clear' : `Clear by ${sg.clear.toFixed(1)} cm`, sg.clear < SIGHT_MARGIN_CM ? 'warn' : 'ok', `${sg.clear < SIGHT_MARGIN_CM ? 'Tight — body is close to the line of sight' : 'Gap at the projector'} (${who})`, true);
     }
   } else if (store.floorMode) {
     const belowBot = r.effBot - r.lH;
