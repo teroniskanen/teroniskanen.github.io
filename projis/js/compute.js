@@ -1,6 +1,42 @@
 import { S, store } from './state.js';
 import { PERSON_H } from './data.js';
 
+
+// Viewer sightline: does the projector body hide part of the image from a viewer's eye?
+// Side view, wall at x=0, projector at x=dist. A viewer at (eyeX, eyeH) sees wall point y along
+// the ray whose height at x is  y + (eyeH - y)·x/eyeX.  The body (rectangle x0..x1, yBot..yTop)
+// blocks that ray if the ray's height over [x0,x1] overlaps [yBot,yTop]. For one x the blocked
+// wall-y range is [(yBot - eyeH·t)/(1-t), (yTop - eyeH·t)/(1-t)], t = x/eyeX, monotonic in t,
+// so the union over x0..x1 is bounded by its two end values. Viewers in front of the projector
+// (eyeX <= x1) look away from it and can never be blocked.
+export function sightCheck(dist, lH, effTop, effBot) {
+  if (!S.viewerOn) return null;
+  const depth = S.chassisDepth > 0 ? S.chassisDepth : 30;
+  const feet  = S.feetH || 0;
+  const chH   = S.chassisH != null ? S.chassisH : 2 * S.bodyH;
+  // bodyH = lens → mounting face (floor mode: base/shelf, ceiling mode: ceiling plate).
+  // Floor: body spans (lH - (bodyH - feet)) upward by chassisH. Ceiling: mirrored downward from lH + (bodyH - feet).
+  const refOff = S.chassisH != null ? S.bodyH - feet : S.bodyH;
+  const yBot = store.floorMode ? lH - refOff : lH + refOff - chH;
+  const yTop = yBot + chH;
+  const x0 = dist, x1 = dist + depth;
+  const eyeH = S.eyeH;
+  const eyeX = S.eyeDist != null && S.eyeDist > 0 ? S.eyeDist : x1 + 50;
+  const out = { eyeX, eyeH, x0, x1, yBot, yTop, auto: !(S.eyeDist > 0), blockLo: null, blockHi: null, hidden: 0, clear: null, applicable: eyeX > x1 + 0.01 };
+  if (!out.applicable) { out.clear = Infinity; return out; }
+  const lo = t => (yBot - eyeH * t) / (1 - t), hi = t => (yTop - eyeH * t) / (1 - t);
+  const t0 = x0 / eyeX, t1 = x1 / eyeX;
+  out.blockLo = Math.min(lo(t0), lo(t1));
+  out.blockHi = Math.max(hi(t0), hi(t1));
+  out.hidden = Math.max(0, Math.min(out.blockHi, effTop) - Math.max(out.blockLo, effBot));
+  // Signed margin at the screen: negative = cm of image hidden, positive = gap between the
+  // hidden band and the image (cm on the wall, nearest edge).
+  if (out.hidden > 0) out.clear = -out.hidden;
+  else if (out.blockLo >= effTop) out.clear = out.blockLo - effTop;
+  else out.clear = effBot - out.blockHi;
+  return out;
+}
+
 export function compute() {
   const { activePreset, dropDriver, floorMode } = store;
   // In manual mode nativeAspect === S.aspect, so isPillared/isLetterboxed are always false
@@ -104,6 +140,7 @@ export function compute() {
   // the "Lens clearance" card in ui.js — a blocked pixel only matters where content is shown.
   const aboveSight = floorMode ? lH < effBot : lH > effTop;
   const wallGap    = S.wallH - effTop;
+  const sight      = sightCheck(S.dist, lH, effTop, effBot);
 
   let shadowH = null, personClears = false;
   if (S.personOn && S.personDist > 0 && S.personDist < S.dist) {
@@ -159,7 +196,7 @@ export function compute() {
     shiftOk, hShiftOk, combinedShiftOk, lensOk, bodyOk,
     tCH, hasTilt, ksN, ksOk,
     effTop, effBot, effNatTop, effNatBot,
-    aboveSight, wallGap,
+    aboveSight, wallGap, sight,
     shadowH, personClears,
     ratioOk, isLetterboxed, isPillared, nativeAspect, distOk,
     lensToScreen,

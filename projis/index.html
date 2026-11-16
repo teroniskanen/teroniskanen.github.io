@@ -302,7 +302,9 @@
   .ks-details[open] summary { margin-bottom: 5px; }
   .ks-note { font-size: 9px; line-height: 1.35; color: var(--color-text-tertiary); margin-bottom: 5px; }
   .ks-table { display: flex; flex-direction: column; gap: 2px; }
-  .ks-row { display: flex; align-items: center; gap: 6px; font-size: 10px; }
+  .ks-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; font-size: 10px; }
+  .ks-clear { font-size: 9px; color: var(--color-text-success, #16a34a); }
+  .ks-clear.bad { color: #dc2626; }
   .ks-tilt { width: 46px; flex-shrink: 0; color: var(--color-text-secondary); font-weight: 600; }
   .ks-d { cursor: pointer; padding: 2px 6px; border-radius: var(--border-radius-sm); border: 1px solid var(--color-border-tertiary); color: var(--color-text-info); }
   .ks-d:hover { border-color: var(--color-border-info); background: var(--color-background-info); }
@@ -682,6 +684,12 @@
   <div class="sec">Person / shadow check</div>
   <div class="tog"><label>Show 175 cm person</label><input type="checkbox" id="personOn"></div>
   <div class="f"><label>Person distance</label><input type="number" id="personDist" value="200" step="5" min="10"><span class="u">cm</span></div>
+
+  <div class="sec">Viewer sightline</div>
+  <div class="tog"><label>Check projector blocks view</label><input type="checkbox" id="viewerOn" checked></div>
+  <div class="f"><label>Viewer</label><select id="eyePreset"><option value="120">Seated</option><option value="165">Standing</option><option value="">Custom</option></select></div>
+  <div class="f"><label>Eye height</label><input type="number" id="eyeH" value="120" step="5" min="50" max="220"><span class="u">cm</span></div>
+  <div class="f"><label>Viewer distance</label><input type="number" id="eyeDist" placeholder="auto" step="10" min="0"><span class="u">cm</span></div>
 
  </div>
 

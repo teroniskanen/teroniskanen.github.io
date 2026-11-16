@@ -1,6 +1,6 @@
 import { g, S, store, DETECT_THRESHOLD_DEG } from './state.js';
 import { PRESETS, LSVG, USVG, ASPECT_NAMES } from './data.js';
-import { compute } from './compute.js';
+import { compute, sightCheck } from './compute.js';
 import { draw, drawForPrint } from './draw.js';
 import { pLock, buildRoomSel, updateDropModeLabel, renderRes, updateSolverPanel, renderMatches, renderKeystoneTable } from './ui.js';
 import { APP_VERSION } from './version.js';
@@ -159,6 +159,10 @@ function rd() {
   S.drop     = numVal('dropV', 200);
   S.personOn   = g('personOn').checked;
   S.personDist = numVal('personDist', 200);
+  S.viewerOn   = g('viewerOn').checked;
+  S.eyeH       = Math.max(50, parseFloat(g('eyeH').value) || 120);
+  // Blank = auto (just behind the projector); read directly so blank stays blank.
+  S.eyeDist    = parseFloat(g('eyeDist').value) > 0 ? parseFloat(g('eyeDist').value) : null;
   S.lumens     = +g('lumens').value     || 0;
   S.gain       = numVal('gain', 1.0);
   // Read directly (not via numVal) so a blank field stays blank — these are optional
@@ -340,7 +344,8 @@ function refresh() {
 
   // Auto-fit drawing width to encompass throw distance (+ person if shown)
   const personEnd = S.personOn && S.personDist > 0 ? S.personDist : 0;
-  S.viewW = Math.max(Math.ceil(S.dist + 10), personEnd > 0 ? Math.ceil(personEnd * 1.1) : 0, 280);
+  const eyeEnd = S.viewerOn && S.eyeDist ? Math.ceil(S.eyeDist * 1.05) : 0;
+  S.viewW = Math.max(Math.ceil(S.dist + 10), personEnd > 0 ? Math.ceil(personEnd * 1.1) : 0, eyeEnd, 280);
 
   // Apply shift limits for all presets (handles zoom curves + ceiling-mount inversion for fixed-shift presets too).
   // Skipped while editing preset overrides: recomputing from spec here would stomp the value the
@@ -1220,7 +1225,12 @@ function computeKeystoneDistances(r) {
     if (disc < 0) continue;
     const sq = Math.sqrt(disc);
     [checkValid((-b + sq) / (2 * a)), checkValid((-b - sq) / (2 * a))].forEach(pt => {
-      if (pt && pt.inLens) candidates.push({ tilt: N, d: pt.d, ratio: pt.ratio });
+      if (pt && pt.inLens) {
+        // Size is held fixed and the exact tilt lands the image on its goal, so the image
+        // bounds don't change — only the body's distance from the wall does.
+        const sc = sightCheck(pt.d, lH, cH_goal + r.mediaH / 2, cH_goal - r.mediaH / 2);
+        candidates.push({ tilt: N, d: pt.d, ratio: pt.ratio, clear: sc ? sc.clear : null });
+      }
     });
   }
 
@@ -1393,6 +1403,17 @@ g('maxH').addEventListener('blur', maxShiftHandler);
   bindCalc(g(id), refresh);
 });
 g('personOn').addEventListener('change', refresh);
+g('viewerOn').addEventListener('change', refresh);
+bindCalc(g('eyeH'), () => {
+  const m = { '120':'120', '165':'165' }[g('eyeH').value];
+  g('eyePreset').value = m || '';
+  refresh();
+});
+bindCalc(g('eyeDist'), refresh);
+g('eyePreset').addEventListener('change', function() {
+  if (this.value) g('eyeH').value = this.value;
+  refresh();
+});
 
 // ─── Theme toggle ─────────────────────────────────────────────────────────────
 function applyTheme(theme) {

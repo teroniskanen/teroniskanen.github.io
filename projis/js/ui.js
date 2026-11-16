@@ -195,9 +195,14 @@ export function renderKeystoneTable(data, onPick) {
   }
 
   const marginTxt = (m) => m >= 500 ? '±500+ cm' : `±${m.toFixed(0)} cm`;
+  const clearTxt = (v) => {
+    if (v == null || !isFinite(v)) return '';
+    return v < 0 ? `<span class="ks-clear bad">hides ${(-v).toFixed(0)} cm</span>`
+                 : `<span class="ks-clear">${v >= 100 ? 'view clear' : 'view clear +' + v.toFixed(0) + ' cm'}</span>`;
+  };
   const row = (label, c) => {
     if (!c) return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-none">none within this lens's range</span></div>`;
-    return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-d" data-d="${c.d}" data-r="${c.ratio}" data-t="${c.tilt}">${c.d.toFixed(0)} cm @ ${c.tilt > 0 ? '+' : ''}${c.tilt}°</span><span class="ks-margin">${marginTxt(c.marginCm)}</span></div>`;
+    return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-d" data-d="${c.d}" data-r="${c.ratio}" data-t="${c.tilt}">${c.d.toFixed(0)} cm @ ${c.tilt > 0 ? '+' : ''}${c.tilt}°</span><span class="ks-margin">${marginTxt(c.marginCm)}</span>${clearTxt(c.clear)}</div>`;
   };
   wrap(`
     <div class="ks-note">At the current image size, only these distances land the required tilt on a whole degree — everything between leaves a fractional-degree trapezoid your correction menu can't remove. The ± figure is roughly how far off that placement can be before the residual keystone becomes noticeable.</div>
@@ -306,7 +311,17 @@ export function renderRes(r) {
       h += card('Extension adjust', adjustText, adjustCls, adjustBadge, true);
     }
   }
-  if (store.floorMode) {
+  if (r.sight) {
+    const sg = r.sight;
+    const who = `${S.eyeH.toFixed(0)} cm eye${sg.auto ? ', just behind projector' : ` at ${S.eyeDist.toFixed(0)} cm`}`;
+    if (!sg.applicable) {
+      h += card('View of image', 'Not blocked', 'ok', 'Viewer is in front of the projector', true);
+    } else if (sg.clear < 0) {
+      h += card('View of image', `Hides ${(-sg.clear).toFixed(1)} cm`, 'warn', `Projector body blocks the image (${who})`, true);
+    } else {
+      h += card('View of image', sg.clear >= 100 ? 'Clear' : `Clear by ${sg.clear.toFixed(1)} cm`, 'ok', `${sg.clear >= 100 ? 'Not close to blocking' : 'Margin at the screen'} (${who})`, true);
+    }
+  } else if (store.floorMode) {
     const belowBot = r.effBot - r.lH;
     h += card('Lens clearance below image', `${belowBot >= 0 ? '+' : ''}${belowBot.toFixed(1)} cm`, belowBot < 0 ? 'warn' : '');
   } else {

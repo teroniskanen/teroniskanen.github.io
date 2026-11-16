@@ -14,6 +14,7 @@ export const S = {
   lumens:3000, gain:1.0,
   bodyH:13.6, chassisH:null, feetH:0, chassisWidth:0, chassisDepth:0, lensXOffset:0, lensZOffset:0, targetH:70, posType:'bottom', tiltDeg:0, maxKS:30,
   drop:200, personOn:false, personDist:200,
+  viewerOn:true, eyeH:120, eyeDist:null,   // eyeDist null = auto (just behind the projector)
   mCeilToExt:0, mExtToTop:0,
 };
 

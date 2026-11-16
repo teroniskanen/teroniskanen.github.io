@@ -87,6 +87,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     r.effNatTop ?? r.effTop,
     r.tCH,
     S.personOn ? PERSON_H : -Infinity,
+    r.sight ? r.sight.eyeH : -Infinity,
   );
   const contentBottom = Math.min(
     0,
@@ -201,8 +202,31 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   xctx.beginPath(); xctx.moveTo(lX, lY); xctx.lineTo(wX, aTY); xctx.stroke();
   xctx.beginPath(); xctx.moveTo(lX, lY); xctx.lineTo(wX, aBY); xctx.stroke();
 
-  // Sight line (ceiling mode: lens must be above image top; floor mode: lens below image bottom)
-  if (!store.floorMode) {
+  if (r.sight) {
+    // Viewer sightline: eye point, rays to image top/bottom, and the band of the screen the
+    // projector body hides from that eye.
+    const sg = r.sight;
+    const blocked = sg.applicable && sg.hidden > 0;
+    const sCol = blocked ? c.sightBad : c.sight;
+    const eX = sx(sg.eyeX), eY = sy(sg.eyeH);
+    if (sg.applicable) {
+      if (blocked) {
+        const hy0 = sy(Math.min(sg.blockHi, r.effTop)), hy1 = sy(Math.max(sg.blockLo, r.effBot));
+        xctx.fillStyle = 'rgba(239,68,68,.45)';
+        xctx.fillRect(wX, hy0, iSW, hy1 - hy0);
+        xctx.strokeStyle = c.sightBad; xctx.lineWidth = 3*dpr;
+        xctx.beginPath(); xctx.moveTo(wX, hy0); xctx.lineTo(wX, hy1); xctx.stroke();
+      }
+      xctx.strokeStyle = sCol; xctx.lineWidth = 1.2*dpr; xctx.setLineDash([4*dpr, 4*dpr]);
+      xctx.beginPath(); xctx.moveTo(eX, eY); xctx.lineTo(wX, aTY); xctx.stroke();
+      xctx.beginPath(); xctx.moveTo(eX, eY); xctx.lineTo(wX, aBY); xctx.stroke();
+      xctx.setLineDash([]);
+    }
+    // Eye marker
+    xctx.fillStyle = sCol; xctx.strokeStyle = sCol; xctx.lineWidth = 1.2*dpr;
+    xctx.beginPath(); xctx.ellipse(eX, eY, 6*dpr, 3.5*dpr, 0, 0, Math.PI*2); xctx.stroke();
+    xctx.beginPath(); xctx.arc(eX, eY, 1.8*dpr, 0, Math.PI*2); xctx.fill();
+  } else if (!store.floorMode) {
     const sCol = r.aboveSight ? c.sight : c.sightBad;
     xctx.strokeStyle = sCol; xctx.lineWidth = 1.2*dpr; xctx.setLineDash([4*dpr, 4*dpr]);
     xctx.beginPath(); xctx.moveTo(wX, aTY); xctx.lineTo(lX, aTY); xctx.stroke();
@@ -220,7 +244,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   // Person / shadow check
   if (S.personOn && r.shadowH !== null) {
     const pX    = sx(S.personDist);
-    const pBotY = sy(0), pTopY = sy(PERSON_H), pW = 6*dpr;
+    const pBotY = sy(0), pTopY = sy(PERSON_H);
     // The glyph below (head/body/arms/legs) is drawn at a fixed pixel size regardless of
     // scale. When the scale is small (tall room, or a fitted range much taller than
     // PERSON_H), that fixed size can be taller than the true head-to-floor gap in pixels,
@@ -229,41 +253,28 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     // for a recognizable figure, this clip is just the hard backstop for everything else.
     xctx.save();
     xctx.beginPath(); xctx.rect(0, 0, W, pBotY); xctx.clip();
-    xctx.fillStyle = c.person;
+    // Drawn to true scale: the figure spans head-top to floor (PERSON_H cm), so it matches
+    // the room, the image and the projector at any zoom.
+    const hPx = Math.max(pBotY - pTopY, 20*dpr);
+    const headR = hPx * 0.065, headCY = pTopY + headR;
+    const neckY = pTopY + headR * 2 + hPx * 0.01;
+    const shoulderY = neckY + hPx * 0.02;
+    const hipY = pTopY + hPx * 0.52;
+    const bodyHalf = hPx * 0.085;
+    xctx.fillStyle = c.person; xctx.strokeStyle = c.person;
     // Head
-    xctx.beginPath(); xctx.arc(pX, pTopY+4*dpr, 4*dpr, 0, Math.PI*2); xctx.fill();
-    // Eyes
-    xctx.fillStyle = '#ffffff';
-    xctx.beginPath(); xctx.arc(pX - 1.5*dpr, pTopY+2*dpr, 0.8*dpr, 0, Math.PI*2); xctx.fill();
-    xctx.beginPath(); xctx.arc(pX + 1.5*dpr, pTopY+2*dpr, 0.8*dpr, 0, Math.PI*2); xctx.fill();
-    // Pupils
-    xctx.fillStyle = '#000000';
-    xctx.beginPath(); xctx.arc(pX - 1.5*dpr, pTopY+2*dpr, 0.4*dpr, 0, Math.PI*2); xctx.fill();
-    xctx.beginPath(); xctx.arc(pX + 1.5*dpr, pTopY+2*dpr, 0.4*dpr, 0, Math.PI*2); xctx.fill();
-    // Smile
-    xctx.strokeStyle = '#000000'; xctx.lineWidth = 0.5*dpr;
-    xctx.beginPath(); xctx.arc(pX, pTopY+4*dpr, 2*dpr, 0, Math.PI); xctx.stroke();
-    // Body
-    xctx.fillStyle = c.person;
-    xctx.fillRect(pX-pW/2, pTopY+8*dpr, pW, 40*dpr);
+    xctx.beginPath(); xctx.arc(pX, headCY, headR, 0, Math.PI*2); xctx.fill();
+    // Torso
+    xctx.fillRect(pX - bodyHalf, shoulderY, bodyHalf*2, hipY - shoulderY);
     // Arms
-    xctx.strokeStyle = c.person; xctx.lineWidth = 1.5*dpr;
-    xctx.beginPath(); xctx.moveTo(pX - pW/2, pTopY+12*dpr); xctx.lineTo(pX - pW, pTopY+20*dpr); xctx.stroke();
-    xctx.beginPath(); xctx.moveTo(pX + pW/2, pTopY+12*dpr); xctx.lineTo(pX + pW, pTopY+20*dpr); xctx.stroke();
-    // Legs — kept a short stub, not stretched to the true floor. The room's px/cm scale can
-    // put the floor hundreds of pixels below this fixed-size glyph (a tight room fit or a
-    // person standing far from a low ceiling), which would otherwise draw the legs as a long
-    // line running through/past the floor instead of a recognizable figure.
-    const legEndY = Math.min(pBotY, pTopY + 56*dpr);
-    xctx.beginPath(); xctx.moveTo(pX - pW/4, pTopY+48*dpr); xctx.lineTo(pX - pW/4, legEndY); xctx.stroke();
-    xctx.beginPath(); xctx.moveTo(pX + pW/4, pTopY+48*dpr); xctx.lineTo(pX + pW/4, legEndY); xctx.stroke();
-    // Thin dashed line grounds the icon to the true floor when the stub legs don't reach it.
-    if (legEndY < pBotY - 2*dpr) {
-      xctx.strokeStyle = c.person; xctx.lineWidth = dpr; xctx.globalAlpha = 0.4;
-      xctx.setLineDash([2*dpr, 3*dpr]);
-      xctx.beginPath(); xctx.moveTo(pX, legEndY); xctx.lineTo(pX, pBotY); xctx.stroke();
-      xctx.setLineDash([]); xctx.globalAlpha = 1;
-    }
+    xctx.lineWidth = Math.max(1.5*dpr, hPx * 0.03); xctx.lineCap = 'round';
+    xctx.beginPath(); xctx.moveTo(pX - bodyHalf, shoulderY + hPx*0.02); xctx.lineTo(pX - bodyHalf*1.35, hipY + hPx*0.02); xctx.stroke();
+    xctx.beginPath(); xctx.moveTo(pX + bodyHalf, shoulderY + hPx*0.02); xctx.lineTo(pX + bodyHalf*1.35, hipY + hPx*0.02); xctx.stroke();
+    // Legs reach the floor
+    xctx.lineWidth = Math.max(2*dpr, hPx * 0.045);
+    xctx.beginPath(); xctx.moveTo(pX - bodyHalf*0.5, hipY); xctx.lineTo(pX - bodyHalf*0.5, pBotY); xctx.stroke();
+    xctx.beginPath(); xctx.moveTo(pX + bodyHalf*0.5, hipY); xctx.lineTo(pX + bodyHalf*0.5, pBotY); xctx.stroke();
+    xctx.lineCap = 'butt';
     xctx.restore();
 
     const rawShWY = sy(r.shadowH);
@@ -345,7 +356,9 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     xctx.rotate(-tiltRad);
     xctx.shadowColor = 'rgba(0,0,0,0.2)'; xctx.shadowBlur = 6*dpr; xctx.shadowOffsetY = 3*dpr;
     xctx.fillStyle = c.proj; xctx.strokeStyle = c.projS; xctx.lineWidth = 1.2*dpr;
-    rr(0, -bH/2, bW, bH, 3*dpr, xctx); xctx.fill(); xctx.stroke();
+    // Known chassis: body hangs from the mounting face (bodyH − feetH above the lens); else centred on lens.
+    const ceilYOff = S.chassisH != null ? -(S.bodyH - S.feetH) * scale : -bH/2;
+    rr(0, ceilYOff, bW, bH, 3*dpr, xctx); xctx.fill(); xctx.stroke();
     xctx.restore();
   }
   xctx.shadowColor = 'transparent';
