@@ -131,6 +131,15 @@ function numVal(id, fallback) {
   return v;
 }
 
+// ─── H lens shift is entered as cm on the wall ───────────────────────────────
+// H shift is never solved for — it's set by hand, often from a measurement on the wall — so
+// the field and slider are in cm of image offset. S.hShiftPct (% of native image width) stays
+// the internal unit everything else uses; the cm value is the source of truth, so changing
+// the throw distance or zoom keeps the measured offset and re-derives the percentage.
+const hNativeW = () => S.dist / S.ratio;
+const hPctToCm = pct => pct / 100 * hNativeW();
+const hCmToPct = cm  => { const w = hNativeW(); return w > 0 ? cm / w * 100 : 0; };
+
 // ─── Read DOM inputs into S ───────────────────────────────────────────────────
 function rd() {
   S.ceilH    = numVal('ceilH', 500);
@@ -149,7 +158,7 @@ function rd() {
   if (!store.activePreset || _presetEditing) {
     S.maxDn = store.rawMaxDn = S.maxUp;
   }
-  S.hShiftPct = +g('hPct').value   || 0;
+  S.hShiftPct = hCmToPct(+g('hPct').value || 0);
   S.maxH   = store.rawMaxH  = parseFloat(g('maxH').dataset.raw)  || +g('maxH').value  || 0;
   S.bodyH    = numVal('bodyH', 13.6);
   S.targetH  = numVal('targetH', 0);
@@ -249,6 +258,15 @@ function updateShiftSliders() {
   const p = store.activePreset;
   const hasH = S.maxH > 0;
 
+  // Units readouts: V shift is entered in % of image height, H in cm on the wall — show the
+  // other unit for each so both are visible. Native image height = what spec shift % refers to.
+  const nAspect = p ? parseFloat(p.aspectVal) : S.aspect;
+  const nW = S.dist / S.ratio, nH = nAspect > 0 ? nW / nAspect : 0;
+  const sgn = v => (v >= 0 ? '+' : '') + v.toFixed(1);
+  const cmOf = pct => pct / 100 * nH;
+  g('vCmDisp').textContent = `${sgn(cmOf(S.shiftPct))} cm`;
+  g('hPctDisp').textContent = `${sgn(S.hShiftPct)}%`;
+
   // ── Effective V limits given current H position ──────────────────────────
   const hFrac   = hasH ? Math.min(1, (S.hShiftPct / S.maxH) ** 2) : 0;
   const vScale  = Math.sqrt(Math.max(0, 1 - hFrac));
@@ -275,8 +293,8 @@ function updateShiftSliders() {
     sl.value = S.shiftPct.toFixed(2);
     vLimRow.style.display = '';
     g('vLimDisp').textContent = vEffUp.toFixed(0) === vEffDn.toFixed(0)
-      ? `±${vEffUp.toFixed(0)}%`
-      : `+${vEffUp.toFixed(0)}% / −${vEffDn.toFixed(0)}%`;
+      ? `±${vEffUp.toFixed(0)}% (±${cmOf(vEffUp).toFixed(0)} cm)`
+      : `+${vEffUp.toFixed(0)}% / −${vEffDn.toFixed(0)}% (+${cmOf(vEffUp).toFixed(0)} / −${cmOf(vEffDn).toFixed(0)} cm)`;
     if (store.activePreset) {
       g('maxUp').value = Math.max(vEffUp, vEffDn).toFixed(0);
     }
@@ -291,11 +309,11 @@ function updateShiftSliders() {
   } else {
     hRow.style.display = 'flex';
     const hsl = g('hShiftSlider');
-    hsl.min   = (-hEff).toFixed(1);
-    hsl.max   = hEff.toFixed(1);
-    hsl.value = S.hShiftPct.toFixed(2);
+    hsl.min   = (-hPctToCm(hEff)).toFixed(1);
+    hsl.max   = hPctToCm(hEff).toFixed(1);
+    hsl.value = hPctToCm(S.hShiftPct).toFixed(1);
     hLimRow.style.display = '';
-    g('hLimDisp').textContent = `±${hEff.toFixed(0)}%`;
+    g('hLimDisp').textContent = `±${hPctToCm(hEff).toFixed(0)} cm (${hEff.toFixed(0)}%)`;
     if (store.activePreset) {
       g('maxH').value = hEff.toFixed(0);
     }
@@ -378,8 +396,8 @@ function refresh() {
   if (store.rawMaxH > 0) {
     if (S.shiftPct > dV.up)  { S.shiftPct  =  dV.up; g('sPct').value = S.shiftPct.toFixed(2); }
     if (S.shiftPct < -dV.dn) { S.shiftPct  = -dV.dn; g('sPct').value = S.shiftPct.toFixed(2); }
-    if (S.hShiftPct >  dynH) { S.hShiftPct =  dynH;  g('hPct').value = S.hShiftPct.toFixed(2); }
-    if (S.hShiftPct < -dynH) { S.hShiftPct = -dynH;  g('hPct').value = S.hShiftPct.toFixed(2); }
+    if (S.hShiftPct >  dynH) { S.hShiftPct =  dynH;  g('hPct').value = hPctToCm(S.hShiftPct).toFixed(1); }
+    if (S.hShiftPct < -dynH) { S.hShiftPct = -dynH;  g('hPct').value = hPctToCm(S.hShiftPct).toFixed(1); }
   }
   // Show raw spec in limit fields (ceiling-flipped for preset, user-entered for manual).
   // For preset: show max(up,dn) so asymmetric presets (e.g. NEC ceiling flip) always show
@@ -929,7 +947,9 @@ function loadSetup(r) {
   }
   g('targetH').value = r.targetH;
   g('sPct').value    = r.shiftPct  ?? 0;
-  g('hPct').value    = r.hShiftPct ?? 0;
+  // Saved setups carry cm (hShiftCm); older ones only a % of image width, converted with this setup's size.
+  g('hPct').value    = r.hShiftCm != null ? r.hShiftCm
+                     : ((r.hShiftPct ?? 0) / 100 * ((+g('dist').value) / (+g('ratio').value || 1))).toFixed(1);
   g('tiltDeg').value = r.tiltDeg   ?? 0;
   g('lumens').value  = r.lumens    ?? g('lumens').value;
   g('gain').value    = r.gain      ?? g('gain').value;
@@ -977,7 +997,8 @@ g('rsave').addEventListener('click', () => {
     posType:    document.querySelector('input[name="pt"]:checked').value,
     targetH:    +g('targetH').value,
     shiftPct:   +g('sPct').value,
-    hShiftPct:  +g('hPct').value,
+    hShiftPct:  S.hShiftPct,
+    hShiftCm:   +g('hPct').value,
     tiltDeg:    +g('tiltDeg').value,
     floorMode:  store.floorMode,
     drop:       +g('dropV').value,
@@ -1021,7 +1042,8 @@ function currentSetup() {
     posType:    document.querySelector('input[name="pt"]:checked').value,
     targetH:    +g('targetH').value,
     shiftPct:   +g('sPct').value,
-    hShiftPct:  +g('hPct').value,
+    hShiftPct:  S.hShiftPct,
+    hShiftCm:   +g('hPct').value,
     tiltDeg:    +g('tiltDeg').value,
     floorMode:  store.floorMode,
     drop:       +g('dropV').value,
@@ -1355,8 +1377,8 @@ g('shiftSlider').addEventListener('input', function() {
 });
 
 g('hShiftSlider').addEventListener('input', function() {
-  S.hShiftPct = +this.value;
-  g('hPct').value = S.hShiftPct.toFixed(2);
+  S.hShiftPct = hCmToPct(+this.value);
+  g('hPct').value = (+this.value).toFixed(1);
   refresh();
 });
 

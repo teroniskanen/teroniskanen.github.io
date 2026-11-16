@@ -326,16 +326,17 @@ export function renderRes(r) {
     ? `+${S.maxUp.toFixed(0)}%/−${S.maxDn.toFixed(0)}%`
     : `${Math.abs(Math.round(r.userShiftM / (r.nativeH || 1) * 100))}%`;
   h += card('Shift V (user)',
-    `${S.shiftPct >= 0 ? '+' : ''}${S.shiftPct.toFixed(1)}% / ${r.shiftOk ? '' : '⚠ '}${shiftLimitStr}`,
+    `${S.shiftPct >= 0 ? '+' : ''}${S.shiftPct.toFixed(1)}% (${(S.shiftPct >= 0 ? '+' : '') + (S.shiftPct / 100 * r.nativeH).toFixed(1)} cm) / ${r.shiftOk ? '' : '⚠ '}${shiftLimitStr}`,
     r.shiftOk ? 'ok' : 'warn',
     r.shiftOk ? 'In range' : 'Out of range'
   );
 
   // Lens shift (H): H shift %, spec limit
   if (S.maxH > 0 || Math.abs(S.hShiftPct) > 0) {
-    const hLimitStr = S.maxH > 0 ? `±${S.maxH.toFixed(0)}%` : '—';
+    const hCm = S.hShiftPct / 100 * r.nativeW;
+    const hLimitStr = S.maxH > 0 ? `±${(S.maxH / 100 * r.nativeW).toFixed(0)} cm` : '—';
     h += card('Shift H (user)',
-      `${S.hShiftPct >= 0 ? '+' : ''}${S.hShiftPct.toFixed(1)}% / ${r.hShiftOk ? '' : '⚠ '}${hLimitStr}`,
+      `${hCm >= 0 ? '+' : ''}${hCm.toFixed(1)} cm (${S.hShiftPct.toFixed(1)}%) / ${r.hShiftOk ? '' : '⚠ '}${hLimitStr}`,
       r.hShiftOk ? (r.combinedShiftOk ? 'ok' : 'warn') : 'warn',
       r.hShiftOk ? (r.combinedShiftOk ? 'In range' : 'Combined V+H exceeds spec') : 'Out of range'
     );
