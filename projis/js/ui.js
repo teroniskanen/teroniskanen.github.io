@@ -102,7 +102,7 @@ export function renderMatches(dist, reqRatio, onMatchPick) {
 // or resolution at the lens, so this shows how much physical repositioning buys that back.
 // Returns the ideal drop value (cm) so app.js's Apply handler can use it, or null when the
 // panel has nothing actionable to offer (already optimal, or physically unreachable).
-export function updateSolverPanel(r) {
+export function updateSolverPanel(r, lim) {
   const panel = g('idealPanel');
   if (!panel) return null;
   const msgEl = g('idealMsg');
@@ -149,25 +149,43 @@ export function updateSolverPanel(r) {
   let dropTarget = dropIdeal;
   let sgIdeal = sightCheck(S.dist, lHIdeal, goalTop, goalBot);
   if (sgIdeal && sgIdeal.applicable && sgIdeal.clear < SIGHT_MARGIN_CM) {
-    const hidden = Math.max(0, -sgIdeal.clear);
-    const tight = hidden === 0;
+    const supportName = store.floorMode ? 'pedestal' : 'mount rod';
+    const why = sgIdeal.hiddenBody > 0 ? `would hide ${sgIdeal.hiddenBody.toFixed(0)} cm of the image from the viewer`
+              : sgIdeal.clear < 0 ? `puts the ${supportName} in the viewer's line of sight`
+              : `passes the viewer's line of sight with under ${SIGHT_MARGIN_CM} cm to spare`;
+    // Candidate mount heights: the available lens shift is used first (up/down limits are
+    // curve-aware and already in room coordinates), and only the remainder, if any, is
+    // covered by keystone tilt up to its limit — same split autoSolvePosition applies.
+    const limUp = lim ? lim.up : S.maxUp, limDn = lim ? lim.dn : S.maxDn;
+    const maxKS = lim && lim.maxKS != null ? lim.maxKS : S.maxKS;
+    const mirror = (store.activePreset && store.activePreset.ustMirror) ? 2 : 1;
     let best = null;
     for (let d = 0; d <= maxDrop + 0.01; d += 0.5) {
       const lHc = lHOf(d);
       const sc = sightCheck(S.dist, lHc, goalTop, goalBot);
       if (!sc || sc.clear < SIGHT_MARGIN_CM) continue;
       const needPct = r.nativeH > 0 ? ((cH_goal - lHc - naturalOffsetM) / r.nativeH) * 100 : 0;
-      if (needPct > S.maxUp + 0.01 || needPct < -S.maxDn - 0.01) continue;
-      if (!best || Math.abs(d - dropIdeal) < Math.abs(best.d - dropIdeal)) best = { d, needPct };
+      const usedPct = Math.max(-limDn, Math.min(limUp, needPct));
+      const actualShiftM = naturalOffsetM + (usedPct / 100) * r.nativeH;
+      const angleDelta = Math.atan2(actualShiftM, S.dist) - Math.atan2(cH_goal - lHc, S.dist);
+      const tilt = Math.abs(angleDelta / mirror) * 180 / Math.PI;
+      if (tilt > maxKS + 0.05) continue;
+      const cand = { d, usedPct, tilt: tilt > 0.05 ? tilt : 0 };
+      // Prefer no keystone (shift only), then the position closest to the ideal one.
+      let better;
+      if (!best) better = true;
+      else if ((cand.tilt === 0) !== (best.tilt === 0)) better = cand.tilt === 0;
+      else better = Math.abs(d - dropIdeal) < Math.abs(best.d - dropIdeal);
+      if (better) best = cand;
     }
     if (!best) {
       panel.classList.add('st-warn');
-      msgEl.textContent = `Zero-shift position ${tight ? 'passes the viewer\'s line of sight with under ' + SIGHT_MARGIN_CM + ' cm to spare' : 'would hide ' + hidden.toFixed(0) + ' cm of the image from the viewer'}, and no clearer position is reachable with this lens shift`;
+      msgEl.textContent = `Zero-shift position ${why}, and no clearer position is reachable with this lens's shift and keystone range`;
       applyBtn.style.display = 'none';
       return null;
     }
     dropTarget = best.d;
-    compromise = { hidden, needPct: best.needPct };
+    compromise = { why, shiftPct: best.usedPct, tilt: best.tilt };
   }
 
   const delta = dropTarget - r.drop;
@@ -182,7 +200,7 @@ export function updateSolverPanel(r) {
     ? (delta > 0 ? 'Raise' : 'Lower')
     : (delta > 0 ? 'Lower' : 'Raise');
   if (compromise) {
-    msgEl.textContent = `${dir} ${mountWord} by ${Math.abs(delta).toFixed(1)} cm → ~${Math.abs(compromise.needPct).toFixed(0)}% shift. The zero-shift spot ${compromise.hidden > 0 ? 'would hide ' + compromise.hidden.toFixed(0) + ' cm of the image from the viewer' : 'passes the viewer\'s line of sight with under ' + SIGHT_MARGIN_CM + ' cm to spare'}`;
+    msgEl.textContent = `${dir} ${mountWord} by ${Math.abs(delta).toFixed(1)} cm → ~${Math.abs(compromise.shiftPct).toFixed(0)}% lens shift${compromise.tilt > 0 ? ' + ' + compromise.tilt.toFixed(1) + '° keystone' : ''}. The zero-shift spot ${compromise.why}`;
   } else {
     msgEl.textContent = `${dir} ${mountWord} by ${Math.abs(delta).toFixed(1)} cm → ~0% shift, 0° tilt`;
   }
@@ -231,15 +249,15 @@ export function renderKeystoneTable(data, onPick) {
   }
 
   const marginTxt = (m) => m >= 500 ? '±500+ cm' : `±${m.toFixed(0)} cm`;
-  const clearTxt = (v) => {
+  const clearTxt = (v, supp) => {
     if (v == null || !isFinite(v)) return '';
-    return v < 0 ? `<span class="ks-clear bad">hides ${(-v).toFixed(0)} cm</span>`
+    return v < 0 ? `<span class="ks-clear bad">${supp ? (store.floorMode ? 'pedestal in view' : 'rod in view') : 'hides ' + (-v).toFixed(0) + ' cm'}</span>`
                  : v < SIGHT_MARGIN_CM ? `<span class="ks-clear bad">view tight +${v.toFixed(0)} cm</span>`
                  : `<span class="ks-clear">${v >= 100 ? 'view clear' : 'view clear +' + v.toFixed(0) + ' cm'}</span>`;
   };
   const row = (label, c) => {
     if (!c) return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-none">none within this lens's range</span></div>`;
-    return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-d" data-d="${c.d}" data-r="${c.ratio}" data-t="${c.tilt}">${c.d.toFixed(0)} cm @ ${c.tilt > 0 ? '+' : ''}${c.tilt}°</span><span class="ks-margin">${marginTxt(c.marginCm)}</span>${clearTxt(c.clear)}</div>`;
+    return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-d" data-d="${c.d}" data-r="${c.ratio}" data-t="${c.tilt}">${c.d.toFixed(0)} cm @ ${c.tilt > 0 ? '+' : ''}${c.tilt}°</span><span class="ks-margin">${marginTxt(c.marginCm)}</span>${clearTxt(c.clear, c.supp)}</div>`;
   };
   wrap(`
     <div class="ks-note">At the current image size, only these distances land the required tilt on a whole degree — everything between leaves a fractional-degree trapezoid your correction menu can't remove. The ± figure is roughly how far off that placement can be before the residual keystone becomes noticeable.</div>
@@ -354,7 +372,14 @@ export function renderRes(r) {
     if (!sg.applicable) {
       h += card('View of image', 'Not blocked', 'ok', 'Viewer is in front of the projector', true);
     } else if (sg.clear < 0) {
-      h += card('View of image', `Hides ${(-sg.clear).toFixed(1)} cm`, 'warn', `Projector body blocks the image (${who})`, true);
+      const support = store.floorMode ? 'pedestal' : 'mount rod';
+      if (sg.hiddenBody > 0) {
+        h += card('View of image', `Hides ${sg.hiddenBody.toFixed(1)} cm`, 'warn',
+          `${sg.supportInView ? 'Projector body + ' + support : 'Projector body'} in the line of sight (${who})`, true);
+      } else {
+        h += card('View of image', store.floorMode ? 'Pedestal in view' : 'Mount rod in view', 'warn',
+          `Appears ~${sg.supportOnScreenW.toFixed(0)} cm wide on the screen (${who})`, true);
+      }
     } else {
       h += card('View of image', sg.clear >= 100 ? 'Clear' : `Clear by ${sg.clear.toFixed(1)} cm`, sg.clear < SIGHT_MARGIN_CM ? 'warn' : 'ok', `${sg.clear < SIGHT_MARGIN_CM ? 'Tight — body is close to the line of sight' : 'Gap at the projector'} (${who})`, true);
     }

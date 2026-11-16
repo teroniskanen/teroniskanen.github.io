@@ -482,7 +482,12 @@ function refresh() {
   renderMatches(S.dist, S.dist / r.mediaW, onMatchPick);
   draw(r);
   renderRes(r);
-  _idealDrop = updateSolverPanel(r);
+  {
+    // Same elliptical V/H envelope autoSolvePosition applies, so Apply lands where the message says.
+    const l = getShiftLimits();
+    const f = l.h > 0 ? Math.sqrt(Math.max(0, 1 - Math.min(1, Math.abs(S.hShiftPct) / l.h) ** 2)) : 1;
+    _idealDrop = updateSolverPanel(r, { up: l.up * f, dn: l.dn * f, maxKS: S.maxKS });
+  }
   renderKeystoneTable(computeKeystoneDistances(r), onKeystoneDistPick);
   updateShiftSliders();
   drawBrightnessBar(r);
@@ -1235,7 +1240,7 @@ function computeKeystoneDistances(r) {
         // Size is held fixed and the exact tilt lands the image on its goal, so the image
         // bounds don't change — only the body's distance from the wall does.
         const sc = sightCheck(pt.d, lH, cH_goal + r.mediaH / 2, cH_goal - r.mediaH / 2);
-        candidates.push({ tilt: N, d: pt.d, ratio: pt.ratio, clear: sc ? sc.clear : null });
+        candidates.push({ tilt: N, d: pt.d, ratio: pt.ratio, clear: sc ? sc.clear : null, supp: sc ? (sc.hiddenBody === 0 && sc.clear < 0) : false });
       }
     });
   }

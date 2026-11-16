@@ -210,13 +210,15 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     const sCol = blocked ? c.sightBad : c.sight;
     const eX = sx(sg.eyeX), eY = sy(sg.eyeH);
     if (sg.applicable) {
-      if (blocked) {
-        const hy0 = sy(Math.min(sg.blockHi, r.effTop)), hy1 = sy(Math.max(sg.blockLo, r.effBot));
-        xctx.fillStyle = 'rgba(239,68,68,.45)';
-        xctx.fillRect(wX, hy0, iSW, hy1 - hy0);
-        xctx.strokeStyle = c.sightBad; xctx.lineWidth = 3*dpr;
-        xctx.beginPath(); xctx.moveTo(wX, hy0); xctx.lineTo(wX, hy1); xctx.stroke();
-      }
+      const band = (lo, hi, fill, bar) => {
+        const y0 = sy(Math.min(hi, r.effTop)), y1 = sy(Math.max(lo, r.effBot));
+        if (!(y1 > y0)) return;
+        xctx.fillStyle = fill; xctx.fillRect(wX, y0, iSW, y1 - y0);
+        if (bar) { xctx.strokeStyle = c.sightBad; xctx.lineWidth = 3*dpr; xctx.beginPath(); xctx.moveTo(wX, y0); xctx.lineTo(wX, y1); xctx.stroke(); }
+      };
+      // Mount rod / pedestal: thin strip on screen, so only a light wash; the body is solid.
+      if (sg.supportInView) band(sg.blockLo, sg.blockHi, 'rgba(239,68,68,.14)', false);
+      if (sg.hiddenBody > 0) band(sg.bodyLo, sg.bodyHi, 'rgba(239,68,68,.45)', true);
       xctx.strokeStyle = sCol; xctx.lineWidth = 1.2*dpr; xctx.setLineDash([4*dpr, 4*dpr]);
       xctx.beginPath(); xctx.moveTo(eX, eY); xctx.lineTo(wX, aTY); xctx.stroke();
       xctx.beginPath(); xctx.moveTo(eX, eY); xctx.lineTo(wX, aBY); xctx.stroke();

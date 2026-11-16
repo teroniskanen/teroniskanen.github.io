@@ -1,6 +1,9 @@
 import { S, store } from './state.js';
 import { PERSON_H } from './data.js';
 
+// Thickness (cm, side view) of the support in the sightline: ceiling extension rod / floor pedestal.
+const SUPPORT_W_ROD = 5, SUPPORT_W_PEDESTAL = 15;
+
 
 // Viewer sightline: does the projector body hide part of the image from a viewer's eye?
 // Side view, wall at x=0, projector at x=dist. A viewer at (eyeX, eyeH) sees wall point y along
@@ -22,13 +25,31 @@ export function sightCheck(dist, lH, effTop, effBot) {
   const x0 = dist, x1 = dist + depth;
   const eyeH = S.eyeH;
   const eyeX = S.eyeDist != null && S.eyeDist > 0 ? S.eyeDist : x1 + 50;
-  const out = { eyeX, eyeH, x0, x1, yBot, yTop, auto: !(S.eyeDist > 0), blockLo: null, blockHi: null, hidden: 0, clear: null, applicable: eyeX > x1 + 0.01 };
+  const out = { eyeX, eyeH, x0, x1, yBot, yTop, auto: !(S.eyeDist > 0), blockLo: null, blockHi: null, hidden: 0, hiddenBody: 0, clear: null, applicable: eyeX > x1 + 0.01 };
   if (!out.applicable) { out.clear = Infinity; return out; }
-  const lo = t => (yBot - eyeH * t) / (1 - t), hi = t => (yTop - eyeH * t) / (1 - t);
-  const t0 = x0 / eyeX, t1 = x1 / eyeX;
-  out.blockLo = Math.min(lo(t0), lo(t1));
-  out.blockHi = Math.max(hi(t0), hi(t1));
-  out.hidden = Math.max(0, Math.min(out.blockHi, effTop) - Math.max(out.blockLo, effBot));
+  // The projector isn't floating: it hangs from a rod to the ceiling (ceiling mount) or stands
+  // on a pedestal to the floor (floor mode), and that support sits in the same sightline.
+  // Modelled as a thin rectangle at the chassis centre, attached to the body.
+  const xc = dist + depth / 2, sw = (store.floorMode ? SUPPORT_W_PEDESTAL : SUPPORT_W_ROD) / 2;
+  const sY0 = store.floorMode ? 0 : yTop, sY1 = store.floorMode ? yBot : Math.max(S.ceilH, yTop);
+  // Blocked wall-y range for one rectangle (see derivation above): bounded by its two end values.
+  const band = (xa, xb, ya, yb) => {
+    const lo = t => (ya - eyeH * t) / (1 - t), hi = t => (yb - eyeH * t) / (1 - t);
+    const ta = xa / eyeX, tb = xb / eyeX;
+    return [Math.min(lo(ta), lo(tb)), Math.max(hi(ta), hi(tb))];
+  };
+  const [bLo, bHi] = band(x0, x1, yBot, yTop);
+  const [sLo, sHi] = sY1 > sY0 ? band(xc - sw, xc + sw, sY0, sY1) : [bLo, bHi];
+  out.blockLo = Math.min(bLo, sLo);
+  out.blockHi = Math.max(bHi, sHi);
+  const overlap = (lo, hi) => Math.max(0, Math.min(hi, effTop) - Math.max(lo, effBot));
+  out.hidden = overlap(out.blockLo, out.blockHi);
+  out.hiddenBody = overlap(bLo, bHi);
+  out.bodyLo = bLo; out.bodyHi = bHi;
+  // The rod/pedestal is a thin strip on screen, not a full-width wall: report it separately
+  // from the body so the UI doesn't claim the whole image is hidden.
+  out.supportInView = out.hidden > out.hiddenBody + 0.01;
+  out.supportOnScreenW = sw * 2 * eyeX / (eyeX - xc);
   // Signed margin: negative = cm of image hidden (measured on the screen); positive = the
   // gap, in cm AT THE PROJECTOR, between the body and the nearest viewer ray to an image
   // edge. Measured there (not on the wall) so it's the real physical clearance.
