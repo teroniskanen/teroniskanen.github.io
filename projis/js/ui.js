@@ -1,6 +1,6 @@
-import { g, S, store, DETECT_THRESHOLD_DEG, SIGHT_MARGIN_CM } from './state.js';
+import { g, S, store, DETECT_THRESHOLD_DEG, SIGHT_MARGIN_CM, MIN_CEILING_BODY_BOTTOM_CM } from './state.js';
 import { ASPECT_NAMES, LSVG, USVG, PRESETS } from './data.js';
-import { sightCheck } from './compute.js';
+import { sightCheck, bodyBox } from './compute.js';
 
 // Lock input fields visually (preset-locked fields get warning style)
 export const pLock = (ids, on) => ids.forEach(id => {
@@ -147,12 +147,19 @@ export function updateSolverPanel(r, lim) {
   const lHOf = d => store.floorMode ? d + S.bodyH : S.ceilH - d;
   let compromise = false;
   let dropTarget = dropIdeal;
-  let sgIdeal = sightCheck(S.dist, lHIdeal, goalTop, goalBot);
-  if (sgIdeal && sgIdeal.applicable && sgIdeal.clear < SIGHT_MARGIN_CM) {
+  const sgIdeal = sightCheck(S.dist, lHIdeal, goalTop, goalBot);
+  // Ceiling mounts must stay out of reach: never propose a body hanging lower than the minimum.
+  const tooLow = lH => !store.floorMode && bodyBox(lH).yBot < MIN_CEILING_BODY_BOTTOM_CM;
+  const idealTooLow = tooLow(lHIdeal);
+  const idealBlocks = !!(sgIdeal && sgIdeal.applicable && sgIdeal.clear < SIGHT_MARGIN_CM);
+  if (idealBlocks || idealTooLow) {
     const supportName = store.floorMode ? 'pedestal' : 'mount rod';
-    const why = sgIdeal.hiddenBody > 0 ? `would hide ${sgIdeal.hiddenBody.toFixed(0)} cm of the image from the viewer`
+    const reasons = [];
+    if (idealTooLow) reasons.push(`would hang the projector at ${bodyBox(lHIdeal).yBot.toFixed(0)} cm, within reach (minimum ${MIN_CEILING_BODY_BOTTOM_CM} cm)`);
+    if (idealBlocks) reasons.push(sgIdeal.hiddenBody > 0 ? `would hide ${sgIdeal.hiddenBody.toFixed(0)} cm of the image from the viewer`
               : sgIdeal.clear < 0 ? `puts the ${supportName} in the viewer's line of sight`
-              : `passes the viewer's line of sight with under ${SIGHT_MARGIN_CM} cm to spare`;
+              : `passes the viewer's line of sight with under ${SIGHT_MARGIN_CM} cm to spare`);
+    const why = reasons.join(' and ');
     // Candidate mount heights: the available lens shift is used first (up/down limits are
     // curve-aware and already in room coordinates), and only the remainder, if any, is
     // covered by keystone tilt up to its limit — same split autoSolvePosition applies.
@@ -162,8 +169,9 @@ export function updateSolverPanel(r, lim) {
     let best = null;
     for (let d = 0; d <= maxDrop + 0.01; d += 0.5) {
       const lHc = lHOf(d);
+      if (tooLow(lHc)) continue;
       const sc = sightCheck(S.dist, lHc, goalTop, goalBot);
-      if (!sc || sc.clear < SIGHT_MARGIN_CM) continue;
+      if (sc && sc.applicable && sc.clear < SIGHT_MARGIN_CM) continue;
       const needPct = r.nativeH > 0 ? ((cH_goal - lHc - naturalOffsetM) / r.nativeH) * 100 : 0;
       const usedPct = Math.max(-limDn, Math.min(limUp, needPct));
       const actualShiftM = naturalOffsetM + (usedPct / 100) * r.nativeH;
@@ -180,7 +188,7 @@ export function updateSolverPanel(r, lim) {
     }
     if (!best) {
       panel.classList.add('st-warn');
-      msgEl.textContent = `Zero-shift position ${why}, and no clearer position is reachable with this lens's shift and keystone range`;
+      msgEl.textContent = `Zero-shift position ${why}, and no better position is reachable with this lens's shift and keystone range`;
       applyBtn.style.display = 'none';
       return null;
     }
@@ -364,6 +372,12 @@ export function renderRes(r) {
       h += card('Measured lens drop', `${measuredDrop.toFixed(1)} cm`, '');
       h += card('Floor to extension bottom', `${floorToExtBottom.toFixed(1)} cm`, '');
       h += card('Extension adjust', adjustText, adjustCls, adjustBadge, true);
+    }
+  }
+  if (!store.floorMode) {
+    const bot = bodyBox(r.lH).yBot;
+    if (bot < MIN_CEILING_BODY_BOTTOM_CM) {
+      h += card('Projector height', `${bot.toFixed(0)} cm`, 'warn', `Within reach — keep the body above ${MIN_CEILING_BODY_BOTTOM_CM} cm`, true);
     }
   }
   if (r.sight) {

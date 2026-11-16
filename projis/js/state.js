@@ -12,6 +12,11 @@ export const DETECT_THRESHOLD_DEG = 0.3;
 // between viewers, so a razor-thin miss isn't a real clear view.
 export const SIGHT_MARGIN_CM = 15;
 
+// Ceiling mounts: lowest allowed height (cm) for the underside of the projector body. Below
+// this it hangs within reach of people, so the solver never proposes it (security/safety:
+// a projector at head height is easy to knock, steal or walk into).
+export const MIN_CEILING_BODY_BOTTOM_CM = 210;
+
 // --- Input state (mutated by rd() in app.js) ---
 export const S = {
   viewW:500, ceilH:500, wallH:300, dist:405, aspect:1.77777778,

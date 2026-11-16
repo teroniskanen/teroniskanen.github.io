@@ -12,16 +12,21 @@ const SUPPORT_W_ROD = 5, SUPPORT_W_PEDESTAL = 15;
 // wall-y range is [(yBot - eyeH·t)/(1-t), (yTop - eyeH·t)/(1-t)], t = x/eyeX, monotonic in t,
 // so the union over x0..x1 is bounded by its two end values. Viewers in front of the projector
 // (eyeX <= x1) look away from it and can never be blocked.
+// Vertical extent of the projector body (side view) for a given lens height.
+// bodyH = lens → mounting face (floor mode: base/shelf, ceiling mode: ceiling plate).
+// Floor: body spans (lH - (bodyH - feet)) upward by chassisH. Ceiling: mirrored downward from lH + (bodyH - feet).
+export function bodyBox(lH) {
+  const feet = S.feetH || 0;
+  const chH  = S.chassisH != null ? S.chassisH : 2 * S.bodyH;
+  const refOff = S.chassisH != null ? S.bodyH - feet : S.bodyH;
+  const yBot = store.floorMode ? lH - refOff : lH + refOff - chH;
+  return { yBot, yTop: yBot + chH };
+}
+
 export function sightCheck(dist, lH, effTop, effBot) {
   if (!S.viewerOn) return null;
   const depth = S.chassisDepth > 0 ? S.chassisDepth : 30;
-  const feet  = S.feetH || 0;
-  const chH   = S.chassisH != null ? S.chassisH : 2 * S.bodyH;
-  // bodyH = lens → mounting face (floor mode: base/shelf, ceiling mode: ceiling plate).
-  // Floor: body spans (lH - (bodyH - feet)) upward by chassisH. Ceiling: mirrored downward from lH + (bodyH - feet).
-  const refOff = S.chassisH != null ? S.bodyH - feet : S.bodyH;
-  const yBot = store.floorMode ? lH - refOff : lH + refOff - chH;
-  const yTop = yBot + chH;
+  const { yBot, yTop } = bodyBox(lH);
   const x0 = dist, x1 = dist + depth;
   const eyeH = S.eyeH;
   const eyeX = S.eyeDist != null && S.eyeDist > 0 ? S.eyeDist : x1 + 50;

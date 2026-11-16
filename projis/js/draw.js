@@ -93,19 +93,22 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     0,
     r.effBot,
     r.effNatBot ?? r.effBot,
-    r.shadowH != null ? r.shadowH : Infinity,
+    // The person's shadow is deliberately NOT part of the fit: it only matters when it lands on
+    // the wall above the floor, and a person standing near the projector throws it enormously
+    // far (shadowH ~ 1/(dist - personDist)), which used to stretch the view thousands of cm down.
   );
 
   // Pedestal/floor mount: the ceiling has no structural role in the drawing, so only fold it
   // into the fitted range when it's actually close to the content — otherwise show it as a
   // labeled break above the fitted view instead of stretching the whole scene to reach it.
-  // Ceiling mount: the extension rod is real structure connecting lens to ceiling, so ceilH
-  // always stays in the fit there, same as before.
+  // Ceiling mount: the extension rod does connect lens to ceiling, but a tall room would
+  // stretch the whole scene to reach it. Same treatment as the pedestal case: when the ceiling
+  // is far above everything that matters, show a labelled break and draw the rod up to it.
   const CEIL_NEAR = 60; // cm
-  const showCeilBreak = store.floorMode && (S.ceilH - contentTop) > CEIL_NEAR;
+  const showCeilBreak = (S.ceilH - contentTop) > CEIL_NEAR;
   const fitTop = showCeilBreak ? contentTop : Math.max(contentTop, S.ceilH);
 
-  const sceneTop = fitTop + 12, sceneBottom = contentBottom - 12;
+  const sceneTop = fitTop + (showCeilBreak && !store.floorMode ? 30 : 12), sceneBottom = contentBottom - 12;
   const scH = sceneTop - sceneBottom;
   // One uniform px/cm scale on both axes — never distort the beam angle. Fit whichever axis
   // is tighter; the other sits inside its full box without stretching to fill it.
@@ -113,6 +116,8 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   const sx = m => PL + m * scale;
   const sy = m => (H - PB) - (m - sceneBottom) * scale;
   const wX = PL, lX = sx(S.dist), lY = sy(r.lH);
+  // Where the ceiling is drawn: true position, or the break line when it's out of the fitted view.
+  const ceilDrawY = showCeilBreak ? PT + 8*dpr : sy(S.ceilH);
 
   // Grid
   xctx.strokeStyle = c.grid; xctx.lineWidth = dpr;
@@ -352,7 +357,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     xctx.restore();
   } else {
     xctx.fillStyle = c.rod;
-    xctx.fillRect(lX + bW/2 - 1.5*dpr, sy(S.ceilH), 3*dpr, lY - sy(S.ceilH));
+    xctx.fillRect(lX + bW/2 - 1.5*dpr, ceilDrawY, 3*dpr, lY - ceilDrawY);
     xctx.save();
     xctx.translate(lX, lY);
     xctx.rotate(-tiltRad);
@@ -516,7 +521,7 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     }
 
     if (!store.floorMode && r.rod > 0) {
-      const y0 = sy(S.ceilH), y1 = sy(S.ceilH - r.rod);
+      const y0 = ceilDrawY, y1 = showCeilBreak ? lY - bH/2 : sy(S.ceilH - r.rod);
       if (y0 < y1 - 4*dpr) {
         xctx.beginPath(); xctx.moveTo(rx, y0); xctx.lineTo(rx, y1); xctx.stroke();
         [y0, y1].forEach(y => {
@@ -526,8 +531,8 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
       }
     }
 
-    if (sy(S.ceilH) < lY - 4*dpr) {
-      const y0 = sy(S.ceilH), y1 = lY;
+    if (ceilDrawY < lY - 4*dpr) {
+      const y0 = ceilDrawY, y1 = lY;
       xctx.beginPath(); xctx.moveTo(rx, y0); xctx.lineTo(rx, y1); xctx.stroke();
       [y0, y1].forEach(y => {
         xctx.beginPath(); xctx.moveTo(rx - 4*dpr, y); xctx.lineTo(rx + 4*dpr, y); xctx.stroke();

@@ -616,7 +616,10 @@ function applyNudge(input, dir) {
   if (!input || input.readOnly || input.disabled) return;
   const min = parseFloat(input.min);
   const max = parseFloat(input.max);
-  const cur = parseFloat(input.value);
+  let cur = parseFloat(input.value);
+  // Blank "auto" viewer distance: start nudging from where the auto viewer actually is, not
+  // from 0 (which would pin the field to a tiny value in front of the projector).
+  if (input.id === 'eyeDist' && !Number.isFinite(cur) && lastR && lastR.sight) cur = Math.round(lastR.sight.eyeX);
   const safe = Number.isFinite(cur) ? cur : (Number.isFinite(min) ? min : 0);
   const step = calcAdaptiveStep(input, safe);
   let next = safe + dir * step;
@@ -625,6 +628,8 @@ function applyNudge(input, dir) {
 
   const prec = Math.max(fracDigits(input.step), fracDigits(step));
   input.value = next.toFixed(prec);
+  // Nudging the viewer distance down to 0 returns to "auto" (blank) instead of sticking at 0.
+  if (input.id === 'eyeDist' && next <= 0) input.value = '';
   input.dispatchEvent(new Event('input', { bubbles: true }));
   input.dispatchEvent(new Event('blur'));
 }
