@@ -396,7 +396,7 @@ export function renderRes(r) {
           `Appears ~${sg.supportOnScreenW.toFixed(0)} cm wide on the screen (${who})`, true);
       }
     } else {
-      h += card('View of image', sg.clear >= 100 ? 'Clear' : `Clear by ${sg.clear.toFixed(1)} cm`, sg.clear < SIGHT_MARGIN_CM ? 'warn' : 'ok', `${sg.clear < SIGHT_MARGIN_CM ? 'Tight — body is close to the line of sight' : 'Gap at the projector'} (${who})`, true);
+      h += card('View of image', sg.clear >= 100 ? 'Clear' : `Clear by ${sg.clear.toFixed(1)} cm`, sg.clear < SIGHT_MARGIN_CM ? 'warn' : 'ok', sg.clear < SIGHT_MARGIN_CM ? 'Tight' : '', true);
     }
   } else if (store.floorMode) {
     const belowBot = r.effBot - r.lH;
