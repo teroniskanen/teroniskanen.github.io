@@ -224,6 +224,8 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
       // Mount rod / pedestal: thin strip on screen, so only a light wash; the body is solid.
       if (sg.supportInView) band(sg.blockLo, sg.blockHi, 'rgba(239,68,68,.14)', false);
       if (sg.hiddenBody > 0) band(sg.bodyLo, sg.bodyHi, 'rgba(239,68,68,.45)', true);
+    }
+    if (sg.eyeX > 0) {
       xctx.strokeStyle = sCol; xctx.lineWidth = 1.2*dpr; xctx.setLineDash([4*dpr, 4*dpr]);
       xctx.beginPath(); xctx.moveTo(eX, eY); xctx.lineTo(wX, aTY); xctx.stroke();
       xctx.beginPath(); xctx.moveTo(eX, eY); xctx.lineTo(wX, aBY); xctx.stroke();

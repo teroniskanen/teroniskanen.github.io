@@ -169,7 +169,7 @@ function rd() {
   S.personOn   = g('personOn').checked;
   S.personDist = numVal('personDist', 200);
   S.viewerOn   = g('viewerOn').checked;
-  S.eyeH       = Math.max(50, parseFloat(g('eyeH').value) || 120);
+  S.eyeH       = Math.max(50, parseFloat(g('eyeH').value) || 165);
   // Blank = auto (just behind the projector); read directly so blank stays blank.
   S.eyeDist    = parseFloat(g('eyeDist').value) > 0 ? parseFloat(g('eyeDist').value) : null;
   S.lumens     = +g('lumens').value     || 0;
