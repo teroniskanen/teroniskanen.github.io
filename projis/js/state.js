@@ -25,7 +25,7 @@ export const S = {
   bodyH:13.6, chassisH:null, feetH:0, chassisWidth:0, chassisDepth:0, lensXOffset:0, lensZOffset:0, targetH:70, posType:'bottom', tiltDeg:0, maxKS:30,
   drop:200, personOn:false, personDist:200,
   viewerOn:true, eyeH:165, eyeDist:null,   // eyeDist null = auto (just behind the projector)
-  mCeilToExt:0, mExtToTop:0,
+  mCeilToExt:0, mExtToTop:0, mountId:'',
 };
 
 // --- App-level flags (wrapped in object so cross-module mutation works) ---
@@ -34,7 +34,7 @@ export const store = {
   activePresetOverride: null,
   dropDriver:   false,
   floorMode:    false,
-  lkState:      { dist:false, ratio:false, drop:false, imgW:false },
+  lkState:      { dist:false, ratio:false, drop:false, imgW:false, tilt:false },
   roomPresets:  [],
   rawMaxUp: 50, rawMaxDn: 50, rawMaxH: 0,
 };

@@ -91,3 +91,9 @@ export const ASPECT_NAMES = {
   '1.33333333': '4:3',
   '2.37037037': '21:9',
 };
+
+// Ceiling mounts with an adjustable extension column. extMin/extMax = extension length in cm
+// (ceiling to mount plate); tiltMax = ± mount tilt range in degrees.
+export const MOUNTS = [
+  { id: 'chief-ext', name: 'Chief ceiling extension', extMin: 110, extMax: 170, tiltMax: 18 },
+];

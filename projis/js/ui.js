@@ -1,5 +1,5 @@
 import { g, S, store, DETECT_THRESHOLD_DEG, SIGHT_MARGIN_CM, MIN_CEILING_BODY_BOTTOM_CM } from './state.js';
-import { ASPECT_NAMES, LSVG, USVG, PRESETS } from './data.js';
+import { ASPECT_NAMES, LSVG, USVG, PRESETS, MOUNTS } from './data.js';
 import { sightCheck, bodyBox } from './compute.js';
 
 // Lock input fields visually (preset-locked fields get warning style)
@@ -56,6 +56,7 @@ export function updateDropModeLabel() {
   // Ceiling-extension-rod verification fields have no meaning on a pedestal/table mount.
   const msRows = g('measuredStackRows');
   if (msRows) msRows.style.display = store.floorMode ? 'none' : '';
+  const mr = g('mountRow'); if (mr) mr.style.display = store.floorMode ? 'none' : '';
 
   const dtPos = g('dtPos'), dtDrop = g('dtDrop');
   if (dtPos)  { dtPos.textContent  = `Position → ${dropWord}`; dtPos.classList.toggle('active', !store.dropDriver); }
@@ -374,6 +375,15 @@ export function renderRes(r) {
       h += card('Floor to extension bottom', `${floorToExtBottom.toFixed(1)} cm`, '');
       h += card('Extension adjust', adjustText, adjustCls, adjustBadge, true);
     }
+  }
+  const mount = !store.floorMode && S.mountId ? MOUNTS.find(m => m.id === S.mountId) : null;
+  if (mount) {
+    const ext = r.drop - S.bodyH;   // ceiling to mount plate
+    const extOk = ext >= mount.extMin - 0.05 && ext <= mount.extMax + 0.05;
+    h += card('Extension length', `${ext.toFixed(1)} cm`, extOk ? 'ok' : 'warn',
+      extOk ? `Within ${mount.extMin}–${mount.extMax} cm` : (ext < mount.extMin ? `Too short — min ${mount.extMin} cm` : `Too long — max ${mount.extMax} cm`), true);
+    const tOk = Math.abs(S.tiltDeg) <= mount.tiltMax + 0.05;
+    h += card('Mount tilt', `${S.tiltDeg.toFixed(1)}°`, tOk ? 'ok' : 'warn', tOk ? `Within ±${mount.tiltMax}°` : `Exceeds ±${mount.tiltMax}°`, true);
   }
   if (!store.floorMode) {
     const bot = bodyBox(r.lH).yBot;

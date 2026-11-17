@@ -11,7 +11,7 @@ const LIVE_CALC_KEY = 'proj_live_calc';
 const LAST_SESSION_NAME = 'Last session';
 
 // ─── Initialise lock button icons ────────────────────────────────────────────
-['lkDist','lkRatio','lkDrop','lkImgW','lkTargetH'].forEach(id => g(id).innerHTML = USVG);
+['lkDist','lkRatio','lkDrop','lkImgW','lkTargetH','lkTilt'].forEach(id => g(id).innerHTML = USVG);
 g('appVer').textContent = `v${APP_VERSION}`;
 
 // ─── Live calculate toggle ──────────────────────────────────────────────────
@@ -179,6 +179,7 @@ function rd() {
   // marking them as "activated" the moment refresh() first runs.
   S.mCeilToExt = Math.max(0, parseFloat(g('mCeilToExt').value) || 0);
   S.mExtToTop  = Math.max(0, parseFloat(g('mExtToTop').value) || 0);
+  S.mountId    = g('mountSel').value || '';
 }
 
 // ─── Shift curve helpers ──────────────────────────────────────────────────────
@@ -871,8 +872,8 @@ g('pi-c').addEventListener('click', () => { clearPreset(); refresh(); });
 function toggleLock(key) {
   if (key === 'ratio' && store.activePreset && store.activePreset.fixed) return;
   store.lkState[key] = !store.lkState[key];
-  const ids    = { dist:'lkDist', ratio:'lkRatio', drop:'lkDrop', imgW:'lkImgW' };
-  const inpIds = { dist:'dist',   ratio:'ratio',   imgW:'imgW' };
+  const ids    = { dist:'lkDist', ratio:'lkRatio', drop:'lkDrop', imgW:'lkImgW', tilt:'lkTilt' };
+  const inpIds = { dist:'dist',   ratio:'ratio',   imgW:'imgW', tilt:'tiltDeg' };
   const btn    = g(ids[key]);
   btn.classList.toggle('on', store.lkState[key]);
   btn.innerHTML = store.lkState[key] ? LSVG : USVG;
@@ -886,8 +887,8 @@ function toggleLock(key) {
   if (key === 'dist' || key === 'ratio' || key === 'imgW') syncWidthHeightLockability();
 }
 
-['lkDist','lkRatio','lkDrop','lkImgW'].forEach(id => {
-  const key = { lkDist:'dist', lkRatio:'ratio', lkDrop:'drop', lkImgW:'imgW' }[id];
+['lkDist','lkRatio','lkDrop','lkImgW','lkTilt'].forEach(id => {
+  const key = { lkDist:'dist', lkRatio:'ratio', lkDrop:'drop', lkImgW:'imgW', lkTilt:'tilt' }[id];
   g(id).addEventListener('click', () => toggleLock(key));
 });
 
@@ -921,8 +922,8 @@ g('idealApply').addEventListener('click', () => {
   } else {
     S.shiftPct = 0;
     g('sPct').value = '0';
-    S.tiltDeg = 0;
-    g('tiltDeg').value = '0';
+    if (store.lkState.tilt) { autoSolvePosition(); }
+    else { S.tiltDeg = 0; g('tiltDeg').value = '0'; }
   }
   refresh();
 });
@@ -1162,6 +1163,20 @@ function autoSolvePosition() {
     effDn = maxDn * f;
   }
 
+  // Tilt locked: keep the tilt as entered and solve the lens shift alone (exact inverse of
+  // compute.js: tCH - lH = dist·tan(atan2(shiftM, dist) - mirrorFactor·tr), tr = -tiltDeg).
+  if (store.lkState.tilt) {
+    const mf = (store.activePreset && store.activePreset.ustMirror) ? 2 : 1;
+    const trFwd = -S.tiltDeg * Math.PI / 180;
+    const ang = Math.atan2(cH_goal - lH, S.dist) + mf * trFwd;
+    const totalShiftM = S.dist * Math.tan(Math.max(-1.5, Math.min(1.5, ang)));
+    const pctLocked = nativeH > 0 ? ((totalShiftM - naturalOffsetM) / nativeH) * 100 : 0;
+    g('sPct').value = Math.max(-effDn, Math.min(effUp, pctLocked)).toFixed(2);
+    store.dropDriver = true;
+    updateDropModeLabel();
+    return;
+  }
+
   // Use as much shift as possible first (prefer no-keystone)
   const shiftPctRaw  = nativeH > 0 ? (delta / nativeH) * 100 : 0;
   const shiftPct     = Math.max(-effDn, Math.min(effUp, shiftPctRaw));
@@ -1311,8 +1326,10 @@ function onKeystoneDistPick(d, ratio, tiltN) {
     g('ratio').value = S.ratio.toFixed(2);
     if (g('zoomRow').style.display !== 'none') g('zoomSlider').value = S.ratio.toFixed(2);
   }
-  S.tiltDeg = tiltN;
-  g('tiltDeg').value = tiltN.toFixed(0);
+  if (!store.lkState.tilt) {
+    S.tiltDeg = tiltN;
+    g('tiltDeg').value = tiltN.toFixed(0);
+  }
   refresh();
 }
 
@@ -1448,6 +1465,7 @@ bindCalc(g('eyeH'), () => {
   refresh();
 });
 bindCalc(g('eyeDist'), refresh);
+g('mountSel').addEventListener('change', refresh);
 g('eyePreset').addEventListener('change', function() {
   if (this.value) g('eyeH').value = this.value;
   refresh();
