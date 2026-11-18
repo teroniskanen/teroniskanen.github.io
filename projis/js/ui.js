@@ -140,6 +140,71 @@ export function updateSolverPanel(r, lim) {
     return null;
   }
 
+  // Locked drop and/or tilt: don't propose moving what the user pinned. Solve with the rest and
+  // say what is reachable (or which limit stops it).
+  if (store.lkState.tilt || store.lkState.drop) {
+    const tiltLocked = store.lkState.tilt, dropLocked = store.lkState.drop;
+    const limUp = lim ? lim.up : S.maxUp, limDn = lim ? lim.dn : S.maxDn;
+    const maxKS = lim && lim.maxKS != null ? lim.maxKS : S.maxKS;
+    const mirror = (store.activePreset && store.activePreset.ustMirror) ? 2 : 1;
+    const trFwd = -S.tiltDeg * Math.PI / 180;
+    const goalTop2 = cH_goal + r.mediaH / 2, goalBot2 = cH_goal - r.mediaH / 2;
+    const lHOf2 = d => store.floorMode ? d + S.bodyH : S.ceilH - d;
+    const tooLow2 = lH => !store.floorMode && bodyBox(lH).yBot < MIN_CEILING_BODY_BOTTOM_CM;
+    // Returns {pct, tilt, why} for a drop: shift needed, keystone left over, and the first blocker.
+    const trial = d => {
+      const lHc = lHOf2(d);
+      let pct, tilt = 0, why = null;
+      if (tiltLocked) {
+        const ang = Math.atan2(cH_goal - lHc, S.dist) + mirror * trFwd;
+        const tot = S.dist * Math.tan(Math.max(-1.5, Math.min(1.5, ang)));
+        pct = r.nativeH > 0 ? ((tot - naturalOffsetM) / r.nativeH) * 100 : 0;
+        if (pct > limUp + 0.05) why = `needs ${pct.toFixed(0)}% shift, limit ${limUp.toFixed(0)}%`;
+        else if (pct < -limDn - 0.05) why = `needs ${Math.abs(pct).toFixed(0)}% shift down, limit ${limDn.toFixed(0)}%`;
+      } else {
+        const need = r.nativeH > 0 ? ((cH_goal - lHc - naturalOffsetM) / r.nativeH) * 100 : 0;
+        pct = Math.max(-limDn, Math.min(limUp, need));
+        const am = naturalOffsetM + (pct / 100) * r.nativeH;
+        tilt = Math.abs((Math.atan2(am, S.dist) - Math.atan2(cH_goal - lHc, S.dist)) / mirror) * 180 / Math.PI;
+        if (tilt > maxKS + 0.05) why = `needs ${tilt.toFixed(1)}° keystone, limit ${maxKS}°`;
+      }
+      if (!why && tooLow2(lHc)) why = `body would hang at ${bodyBox(lHc).yBot.toFixed(0)} cm (minimum ${MIN_CEILING_BODY_BOTTOM_CM} cm)`;
+      if (!why) {
+        const sc = sightCheck(S.dist, lHc, goalTop2, goalBot2);
+        if (sc && sc.applicable && sc.clear < SIGHT_MARGIN_CM) why = sc.clear < 0 ? 'blocks the viewer\'s view' : `view clear by only ${sc.clear.toFixed(0)} cm`;
+      }
+      return { d, pct, tilt, why };
+    };
+    const pinned = [dropLocked ? 'drop' : null, tiltLocked ? `tilt ${S.tiltDeg.toFixed(1)}°` : null].filter(Boolean).join(' and ');
+    let pick = null, firstWhy = null;
+    if (dropLocked) {
+      pick = trial(r.drop);
+      if (pick.why) { firstWhy = pick.why; pick = null; }
+    } else {
+      const maxD = Math.max(0, store.floorMode ? S.ceilH - S.bodyH : S.ceilH);
+      for (let d = 0; d <= maxD + 0.01; d += 0.5) {
+        const t = trial(d);
+        if (t.why) { if (!firstWhy && Math.abs(d - r.drop) < 1) firstWhy = t.why; continue; }
+        if (!pick || Math.abs(d - r.drop) < Math.abs(pick.d - r.drop)) pick = t;
+      }
+    }
+    if (!pick) {
+      panel.classList.add('st-warn');
+      msgEl.textContent = `With ${pinned} locked this can't be reached${firstWhy ? ': ' + firstWhy : ''}. Unlock one to let the solver work.`;
+      applyBtn.style.display = 'none';
+      return null;
+    }
+    const dd = pick.d - r.drop;
+    const dirL = store.floorMode ? (dd > 0 ? 'Raise' : 'Lower') : (dd > 0 ? 'Lower' : 'Raise');
+    const move = Math.abs(dd) < 0.5 ? 'Keep the current position' : `${dirL} ${mountWord} by ${Math.abs(dd).toFixed(1)} cm`;
+    const done = Math.abs(dd) < 0.5 && Math.abs(pick.pct - S.shiftPct) < 0.5 && (tiltLocked || Math.abs(pick.tilt - Math.abs(S.tiltDeg)) < 0.2);
+    panel.classList.add('st-ok');
+    msgEl.textContent = `${pinned.charAt(0).toUpperCase() + pinned.slice(1)} locked: ${move} → ${pick.pct.toFixed(0)}% shift${tiltLocked ? '' : (pick.tilt > 0.05 ? ' + ' + pick.tilt.toFixed(1) + '° keystone' : ', 0° tilt')}`;
+    if (done) { applyBtn.style.display = 'none'; return null; }
+    applyBtn.style.display = '';
+    return { drop: pick.d, compromise: true, locked: true };
+  }
+
   // Viewer sightline: the zero-shift position puts the lens at image height, which can put
   // the projector body between the viewer's eye and the image. Check it, and if it blocks,
   // look for the drop closest to ideal that keeps the view clear and is still reachable with
@@ -240,6 +305,11 @@ export function renderKeystoneTable(data, onPick) {
   };
 
   if (!data) { box.style.display = 'none'; box.innerHTML = ''; return; }
+
+  if (data.locked) {
+    wrap(`<div class="ks-note">Unlock ${data.locked === 'tilt' ? 'the tilt angle' : 'the throw distance'} to see exact-keystone distances.</div>`);
+    return;
+  }
 
   if (data.fixedLens || data.needsDropDriver) {
     const note = data.fixedLens

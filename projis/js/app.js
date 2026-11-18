@@ -507,7 +507,7 @@ function refresh() {
     const f = l.h > 0 ? Math.sqrt(Math.max(0, 1 - Math.min(1, Math.abs(S.hShiftPct) / l.h) ** 2)) : 1;
     _idealDrop = updateSolverPanel(r, { up: l.up * f, dn: l.dn * f, maxKS: S.maxKS });
   }
-  renderKeystoneTable(computeKeystoneDistances(r), onKeystoneDistPick);
+  renderKeystoneTable(store.lkState.dist ? { locked: 'distance' } : store.lkState.tilt ? { locked: 'tilt' } : computeKeystoneDistances(r), onKeystoneDistPick);
   updateShiftSliders();
   drawBrightnessBar(r);
   syncNudgeVisibility();
@@ -913,9 +913,12 @@ g('lkTargetH').addEventListener('click', () => setDriveMode(store.dropDriver ? f
 // the current target), making drop the driver so that value actually sticks.
 g('idealApply').addEventListener('click', () => {
   if (_idealDrop == null) return;
+  const dropWasLocked = store.lkState.drop;   // setDriveMode(true) locks it, so read first
   setDriveMode(true);
-  S.drop = _idealDrop.drop;
-  g('dropV').value = _idealDrop.drop.toFixed(1);
+  if (!dropWasLocked) {   // a locked drop is never moved
+    S.drop = _idealDrop.drop;
+    g('dropV').value = _idealDrop.drop.toFixed(1);
+  }
   if (_idealDrop.compromise) {
     // Not the zero-shift spot (it blocks the viewer): solve the shift/tilt needed from here.
     autoSolvePosition();
