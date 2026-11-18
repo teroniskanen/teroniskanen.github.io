@@ -69,11 +69,15 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
     ? Math.round(24 * dpr)                              // 18pt at 96 dpi
     : Math.max(18, Math.round(cssW / 27)) * dpr) * sizeMult;
 
-  const WW = 16*dpr;
-  const PL = 54*dpr + WW;
-  const PR = (isPrint ? 34 : 50) * dpr;
+  let WW = 16*dpr;
+  let PL = 54*dpr + WW;
+  let PR = (isPrint ? 34 : 50) * dpr;
   const PT = 18*dpr, PB = 24*dpr;
+  // On a very narrow canvas the fixed margins can exceed the canvas itself, which would give the
+  // room a negative width and flip the drawing. Let the margins give way first.
+  if (PL + PR > 0.4 * W) { const k = 0.4 * W / (PL + PR); WW *= k; PL *= k; PR *= k; }
   const dW = W - PL - PR, dH = H - PT - PB;
+  if (!(dW > 0) || !(dH > 0)) return;
 
   const roomW = S.viewW;
 

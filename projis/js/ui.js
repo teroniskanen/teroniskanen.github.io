@@ -6,7 +6,7 @@ import { sightCheck, bodyBox } from './compute.js';
 // mount needs the body (bodyH) plus the extension between ceiling and lens; a selected mount
 // also bounds the extension to its range.
 function dropRange() {
-  if (store.floorMode) return { lo: 0, hi: Math.max(0, S.ceilH - S.bodyH) };
+  if (store.floorMode) return { lo: 0, hi: Math.max(0, Math.min(S.ceilH - S.bodyH, S.ceilH - bodyBox(S.bodyH).yTop)) };
   const mount = S.mountId ? MOUNTS.find(m => m.id === S.mountId) : null;
   const lo = S.bodyH + (mount ? mount.extMin : 0);
   const hi = mount ? Math.min(S.ceilH, S.bodyH + mount.extMax) : S.ceilH;
@@ -21,23 +21,19 @@ export const pLock = (ids, on) => ids.forEach(id => {
 });
 
 // Rebuild room select dropdown and persist to localStorage
-export function buildRoomSel() {
+// `selected`: the room object to keep selected (pass null for none). Omitted = whatever is
+// selected now, by position in the unchanged list. Identity, not name: names can repeat.
+export function buildRoomSel(selected) {
   const rs = g('rsel');
-  const prevValue = rs.value;
-  const prevName = prevValue !== '' && store.roomPresets[+prevValue]
-    ? store.roomPresets[+prevValue].name
-    : '';
+  const keep = selected !== undefined ? selected
+             : (rs.value !== '' ? store.roomPresets[+rs.value] : null);
   rs.innerHTML = '<option value="">— select —</option>';
   store.roomPresets.forEach((r, i) => {
     const o = document.createElement('option');
     o.value = i; o.textContent = r.name; rs.appendChild(o);
   });
-  if (prevName) {
-    const nextIdx = store.roomPresets.findIndex(r => r && r.name === prevName);
-    rs.value = nextIdx >= 0 ? String(nextIdx) : '';
-  } else {
-    rs.value = '';
-  }
+  const idx = keep ? store.roomPresets.indexOf(keep) : -1;
+  rs.value = idx >= 0 ? String(idx) : '';
   localStorage.setItem('proj_rooms', JSON.stringify(store.roomPresets));
 }
 
@@ -135,7 +131,9 @@ export function updateSolverPanel(r, lim) {
 
   // The image centre compute() actually produced: equals the typed target in position mode, and
   // the current centre in drop mode (where S.targetH is the previous refresh's readout).
-  const cH_goal = r.tCH;
+  // A target the user typed that the lens/keystone limits couldn't deliver stays the goal, so the
+  // panel reports the shortfall instead of treating the clamped result as the request.
+  const cH_goal = store.requestedCH ?? r.tCH;
   const vOffsetPct = store.activePreset ? (store.activePreset.vOffset || 0) : 0;
   const naturalOffsetM = (store.floorMode ? vOffsetPct : -vOffsetPct) / 100 * r.opticalH;
   const lHIdeal = cH_goal - naturalOffsetM;
@@ -352,7 +350,7 @@ export function renderKeystoneTable(data, onPick) {
   };
   const row = (label, c) => {
     if (!c) return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-none">none within this lens's range</span></div>`;
-    return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-d" data-d="${c.d}" data-r="${c.ratio}" data-t="${c.tilt}" data-s="${data.shiftPct}">${c.d.toFixed(0)} cm @ ${c.tilt > 0 ? '+' : ''}${c.tilt}°</span><span class="ks-margin">${marginTxt(c.marginCm)}</span>${clearTxt(c.clear, c.supp)}</div>`;
+    return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-d" data-d="${c.d}" data-r="${c.ratio}" data-t="${c.tilt}" data-s="${c.shiftPct}">${c.d.toFixed(0)} cm @ ${c.tilt > 0 ? '+' : ''}${c.tilt}°</span><span class="ks-margin">${marginTxt(c.marginCm)}</span>${clearTxt(c.clear, c.supp)}</div>`;
   };
   wrap(`
     <div class="ks-note">At the current image size, only these distances land the required tilt on a whole degree — everything between leaves a fractional-degree trapezoid your correction menu can't remove. The ± figure is roughly how far off that placement can be before the residual keystone becomes noticeable.</div>
@@ -374,7 +372,7 @@ export function renderRes(r) {
 
   const measuredDrop = S.mCeilToExt + S.mExtToTop + S.bodyH;
   const floorToExtBottom = S.ceilH - S.mCeilToExt;
-  const hasMeasuredStack = S.mCeilToExt > 0 && S.mExtToTop > 0;
+  const hasMeasuredStack = S.mStackSet;   // both entered; 0 is a valid measurement
 
   let h = '';
 
@@ -445,10 +443,18 @@ export function renderRes(r) {
   // drop/pedestal value itself already shown live in its sidebar field.
   h += card('Lens height', `${r.lH.toFixed(1)} cm`, r.lensOk ? '' : 'warn');
   if (!r.bodyOk) {
+    const why = r.bodyBelowFloor ? 'Base would be below the floor'
+      : store.floorMode ? `Chassis would reach ${r.bodyTop.toFixed(1)} cm, above the ${S.ceilH.toFixed(0)} cm ceiling`
+      : `Lens closer to the ceiling than the body (${S.bodyH.toFixed(1)} cm)`;
     h += card('Projector body',
-      store.floorMode ? `${r.drop.toFixed(1)} cm base` : `${r.rod.toFixed(1)} cm`,
-      'warn',
-      store.floorMode ? 'Base would be below the floor' : `Lens closer to the ceiling than the body (${S.bodyH.toFixed(1)} cm)`,
+      r.bodyBelowFloor ? `${r.drop.toFixed(1)} cm base` : store.floorMode ? `${r.bodyTop.toFixed(1)} cm top` : `${r.rod.toFixed(1)} cm`,
+      'warn', why, true);
+  }
+  if (store.requestedCH != null && Math.abs(r.tCH - store.requestedCH) > 0.5) {
+    const miss = store.requestedCH - r.tCH;
+    h += card('Target height not reachable',
+      `${r.tCH.toFixed(1)} cm`, 'warn',
+      `Requested image centre ${store.requestedCH.toFixed(1)} cm — ${Math.abs(miss).toFixed(1)} cm ${miss > 0 ? 'short' : 'too low'} with the locked drop and keystone limit`,
       true);
   }
   if (!store.floorMode) {
@@ -598,8 +604,10 @@ export function renderLaserTargets(r) {
     ? `Flat bottom of projector (feet included); lens center is ${S.bodyH.toFixed(1)} cm above`
     : `Top of projector body; lens center is ${S.bodyH.toFixed(1)} cm below`;
   h += card(yBodyLabel, `${r.targetYBody.toFixed(1)} cm`,
-    r.bodyOk ? yBodyInfo : (store.floorMode ? 'NOT BUILDABLE: base would be below the floor. Raise the lens or the image.'
-                                            : 'NOT BUILDABLE: lens is closer to the ceiling than the body allows. Lower the lens.'));
+    r.bodyOk ? yBodyInfo
+      : r.bodyBelowFloor ? 'NOT BUILDABLE: base would be below the floor. Raise the lens or the image.'
+      : store.floorMode ? 'NOT BUILDABLE: the chassis would reach above the ceiling. Lower the lens or the image.'
+      : 'NOT BUILDABLE: lens is closer to the ceiling than the body allows. Lower the lens.');
 
   const yImgAbsLabel = store.floorMode
     ? 'Height: Floor → Image Bottom'

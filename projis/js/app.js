@@ -189,6 +189,7 @@ function rd() {
   // marking them as "activated" the moment refresh() first runs.
   S.mCeilToExt = Math.max(0, parseFloat(g('mCeilToExt').value) || 0);
   S.mExtToTop  = Math.max(0, parseFloat(g('mExtToTop').value) || 0);
+  S.mStackSet  = g('mCeilToExt').value.trim() !== '' && g('mExtToTop').value.trim() !== '';
   S.mountId    = g('mountSel').value || '';
 }
 
@@ -213,7 +214,7 @@ function interpolateShiftCurve(curve, ratio) {
 // Returns {up, dn, h} shift limits in % for the current throw ratio, in room coordinates.
 // Positive = image moves UP in room. In ceiling mode the projector is physically inverted, so
 // the mechanical sUp/sDn swap: what was "shift up" on the body now moves the image downward.
-function getShiftLimits() {
+function getShiftLimits(ratio = S.ratio) {
   const p = store.activePreset;
   if (!p) return { up: S.maxUp, dn: S.maxDn, h: S.maxH };
   const ovr = store.activePresetOverride;
@@ -221,7 +222,7 @@ function getShiftLimits() {
   const specDn = ovr?.sDn  ?? p.sDn;
   let up, dn, h = ovr?.hMax ?? p.hMax ?? 0;
   if (p.shiftCurve) {
-    const v = interpolateShiftCurve(p.shiftCurve, S.ratio);
+    const v = interpolateShiftCurve(p.shiftCurve, ratio);
     if (v) { up = v.up; dn = v.dn; }
     else   { up = specUp; dn = specDn; }
   } else {
@@ -229,8 +230,8 @@ function getShiftLimits() {
   }
 
   // Digital zoom allows "panning" the cropped image within the full panel
-  if (p.digitalZoom && S.ratio > p.rMin) {
-    const zoomFactor = S.ratio / p.rMin;
+  if (p.digitalZoom && ratio > p.rMin) {
+    const zoomFactor = ratio / p.rMin;
     const slackPct = (zoomFactor - 1) / 2 * 100;
     up += slackPct;
     dn += slackPct;
@@ -306,7 +307,7 @@ function updateShiftSliders() {
     g('vLimDisp').textContent = vEffUp.toFixed(0) === vEffDn.toFixed(0)
       ? `±${vEffUp.toFixed(0)}% (±${cmOf(vEffUp).toFixed(0)} cm)`
       : `+${vEffUp.toFixed(0)}% / −${vEffDn.toFixed(0)}% (+${cmOf(vEffUp).toFixed(0)} / −${cmOf(vEffDn).toFixed(0)} cm)`;
-    if (store.activePreset) {
+    if (store.activePreset && !_presetEditing) {
       g('maxUp').value = Math.max(vEffUp, vEffDn).toFixed(0);
     }
   }
@@ -325,7 +326,7 @@ function updateShiftSliders() {
     hsl.value = hPctToCm(S.hShiftPct).toFixed(1);
     hLimRow.style.display = '';
     g('hLimDisp').textContent = `±${hPctToCm(hEff).toFixed(0)} cm (${hEff.toFixed(0)}%)`;
-    if (store.activePreset) {
+    if (store.activePreset && !_presetEditing) {
       g('maxH').value = hEff.toFixed(0);
     }
   }
@@ -405,10 +406,10 @@ function refresh() {
   // Elliptical cross-clamping: enforce 2D lens shift envelope.
   // Clamp V first (using current H), then clamp H using the updated V.
   const dV = getDynamicVLimits();
-  const dynH = getDynamicHLimit();
   if (store.rawMaxH > 0) {
     if (S.shiftPct > dV.up)  { S.shiftPct  =  dV.up; g('sPct').value = S.shiftPct.toFixed(2); }
     if (S.shiftPct < -dV.dn) { S.shiftPct  = -dV.dn; g('sPct').value = S.shiftPct.toFixed(2); }
+    const dynH = getDynamicHLimit();   // after V is settled, as the comment above says
     if (S.hShiftPct >  dynH) { S.hShiftPct =  dynH;  g('hPct').value = hPctToCm(S.hShiftPct).toFixed(1); }
     if (S.hShiftPct < -dynH) { S.hShiftPct = -dynH;  g('hPct').value = hPctToCm(S.hShiftPct).toFixed(1); }
   }
@@ -454,6 +455,8 @@ function refresh() {
   }
 
   syncWidthHeightLockability();
+  // Slant is derived from dist; while dist can't move, an edit here would be shown but ignored.
+  g('slantDist').readOnly = g('dist').readOnly || store.lkState.dist;
 
   // If media width is locked, back-calculate ratio (or dist if ratio is fixed) to maintain locked width
   if (store.lkState.imgW && S.imgW > 0) {
@@ -977,8 +980,10 @@ function loadSetup(r) {
   g('lumens').value  = r.lumens    ?? g('lumens').value;
   g('gain').value    = r.gain      ?? g('gain').value;
   g('dropV').value   = r.drop;
-  g('mCeilToExt').value = r.mCeilToExt ?? 0;
-  g('mExtToTop').value  = r.mExtToTop  ?? 0;
+  // Blank means "not measured". Old saves wrote a numeric 0 for blank; new saves keep the raw text.
+  const mStr = v => (v == null || v === 0) ? '' : String(v);
+  g('mCeilToExt').value = mStr(r.mCeilToExt);
+  g('mExtToTop').value  = mStr(r.mExtToTop);
   if (r.mountId != null) g('mountSel').value = r.mountId;
   if (r.viewerOn != null) g('viewerOn').checked = r.viewerOn;
   if (r.eyeH != null && r.eyeH !== '') g('eyeH').value = r.eyeH;
@@ -1038,7 +1043,7 @@ g('rdel').addEventListener('click', () => {
   const val = g('rsel').value;
   if (!val) return;
   const i = +val;
-  if (!isNaN(i) && i >= 0) { store.roomPresets.splice(i, 1); buildRoomSel(); }
+  if (!isNaN(i) && i >= 0) { store.roomPresets.splice(i, 1); buildRoomSel(null); }
 });
 
 function currentSetup() {
@@ -1071,8 +1076,8 @@ function currentSetup() {
     maxH:       parseFloat(g('maxH').dataset.raw)  || 0,
     lumens:     +g('lumens').value,
     gain:       +g('gain').value,
-    mCeilToExt: +g('mCeilToExt').value,
-    mExtToTop:  +g('mExtToTop').value,
+    mCeilToExt: g('mCeilToExt').value,
+    mExtToTop:  g('mExtToTop').value,
     personOn:   g('personOn').checked,
     personDist: +g('personDist').value,
     mountId:    g('mountSel').value,
@@ -1086,6 +1091,10 @@ function currentSetup() {
 function upsertLastSession() {
   const snapshot = { name: LAST_SESSION_NAME, ...currentSetup() };
   const idx = store.roomPresets.findIndex(r => r && r.name === LAST_SESSION_NAME);
+  // Keep the user's selection by object, not name (rooms can share a name, and this entry moves).
+  const rv = g('rsel').value;
+  const prevSel = rv !== '' ? store.roomPresets[+rv] : null;
+  const wasLast = idx >= 0 && prevSel === store.roomPresets[idx];
   if (idx === 0) {
     store.roomPresets[0] = snapshot;
   } else if (idx > 0) {
@@ -1094,7 +1103,7 @@ function upsertLastSession() {
   } else {
     store.roomPresets.unshift(snapshot);
   }
-  buildRoomSel();
+  buildRoomSel(wasLast ? snapshot : prevSel);
 }
 
 let _lastSessionTimer = null;
@@ -1155,6 +1164,9 @@ function autoSolvePosition(goalOverride) {
                 : S.posType === 'bottom' ? S.targetH + mediaH / 2
                 : S.posType === 'top'    ? S.targetH - mediaH / 2
                 :                          S.targetH;
+  // Remember what was actually asked for: shift/tilt limits may clamp the result, and the
+  // target field gets overwritten with the achieved value afterwards.
+  if (goalOverride == null) store.requestedCH = cH_goal;
 
   const lH = store.floorMode ? S.drop + S.bodyH : S.ceilH - S.drop;
 
@@ -1265,49 +1277,58 @@ function computeKeystoneDistances(r) {
   const C2 = cH_goal - lH;
 
   const vOffsetPct = p ? (p.vOffset || 0) : 0;
-  const naturalOffsetM = (store.floorMode ? vOffsetPct : -vOffsetPct) / 100 * r.opticalH;
-  const kl = getShiftLimits();
-  const kf = hEllipseFactor(kl);
-  const maxUp = kl.up * kf, maxDn = kl.dn * kf;
-  const shiftPctRaw  = ((C2 - naturalOffsetM) / H0) * 100;
-  const shiftPctUsed = Math.max(-maxDn, Math.min(maxUp, shiftPctRaw));
-  const C1 = naturalOffsetM + (shiftPctUsed / 100) * H0;
-
+  const vSign = store.floorMode ? 1 : -1;
   const mirrorFactor = (p && p.ustMirror) ? 2 : 1;
+  const nativeW0 = H0 * nativeAspect;        // image size is held, so this is fixed
   const distMin = p ? p.dMin : +g('dist').min;
   const distMax = p ? p.dMax : +g('dist').max;
   const rMin = p ? p.rMin : +g('ratio').min;
   const rMax = p ? p.rMax : +g('ratio').max;
 
-  const checkValid = (d) => {
-    if (!(d > 0)) return null;
-    const ratio = d / (H0 * nativeAspect);
-    const inLens = d >= distMin - 0.5 && d <= distMax + 0.5 && ratio >= rMin - 0.001 && ratio <= rMax + 0.001;
-    return { d, ratio, inLens };
+  // Everything that depends on the throw distance d, at the held image size: the zoom ratio, the
+  // built-in offset (digital-zoom lenses scale their optical panel with d), the shift limits at
+  // that ratio, hence the shift actually available, and the tilt left over to reach the goal.
+  const stateAt = (d) => {
+    const ratio = d / nativeW0;
+    const opticalH = (p && p.digitalZoom && p.rMin > 0) ? (d / p.rMin) / nativeAspect : H0;
+    const nat = vSign * vOffsetPct / 100 * opticalH;
+    const l = getShiftLimits(ratio), f = hEllipseFactor(l);
+    const raw = ((C2 - nat) / H0) * 100;
+    const used = Math.max(-l.dn * f, Math.min(l.up * f, raw));
+    const C1 = nat + (used / 100) * H0;
+    const tilt = -((Math.atan2(C1, d) - Math.atan2(C2, d)) * 180 / Math.PI) / mirrorFactor;
+    return { ratio, C1, used, tilt };
   };
 
-  // Collect every buildable (distance, tilt) candidate across all achievable integer
-  // tilts, then keep only the two nearest to the current throw distance — one shorter,
-  // one longer — rather than the full per-degree table. That's what's actually
-  // actionable on site: "which real distance near where I already am gives me a
-  // perfectly straight image."
+  // Every buildable (distance, whole-degree tilt) pair: scan the lens's valid distance range for
+  // where tilt(d) crosses an integer, then bisect. No closed form: with digital zoom the shift
+  // offset itself moves with d.
   const candidates = [];
-  for (let N = -maxKS; N <= maxKS; N++) {
-    if (N === 0) continue; // handled separately as zeroFeasible
-    if (Math.abs(mirrorFactor * N) >= 89) continue; // tan() blows up approaching 90°
-    const T = Math.tan(mirrorFactor * (-N) * Math.PI / 180);
-    const a = T, b = -(C1 - C2), c = T * C1 * C2;
-    const disc = b * b - 4 * a * c;
-    if (disc < 0) continue;
-    const sq = Math.sqrt(disc);
-    [checkValid((-b + sq) / (2 * a)), checkValid((-b - sq) / (2 * a))].forEach(pt => {
-      if (pt && pt.inLens) {
+  const dLo = Math.max(distMin, rMin * nativeW0), dHi = Math.min(distMax, rMax * nativeW0);
+  if (dHi > dLo) {
+    const step = Math.max(0.25, (dHi - dLo) / 3000);
+    let d0 = dLo, s0 = stateAt(d0);
+    for (let d1 = dLo + step; d0 < dHi; d1 = Math.min(dHi, d1 + step)) {
+      const s1 = stateAt(d1);
+      const lo = Math.min(s0.tilt, s1.tilt), hi = Math.max(s0.tilt, s1.tilt);
+      for (let N = Math.ceil(lo); N <= Math.floor(hi); N++) {
+        if (N === 0 || Math.abs(N) > maxKS || Math.abs(mirrorFactor * N) >= 89) continue;
+        if (!(s0.tilt < N && N <= s1.tilt) && !(s1.tilt < N && N <= s0.tilt)) continue;
+        let a = d0, b = d1;
+        const upward = s1.tilt > s0.tilt;
+        for (let i = 0; i < 40; i++) {
+          const m = (a + b) / 2, tm = stateAt(m).tilt;
+          if ((tm < N) === upward) a = m; else b = m;
+        }
+        const d = (a + b) / 2, st = stateAt(d);
         // Size is held fixed and the exact tilt lands the image on its goal, so the image
         // bounds don't change — only the body's distance from the wall does.
-        const sc = sightCheck(pt.d, lH, cH_goal + r.mediaH / 2, cH_goal - r.mediaH / 2);
-        candidates.push({ tilt: N, d: pt.d, ratio: pt.ratio, clear: sc ? sc.clear : null, supp: sc ? (sc.hiddenBody === 0 && sc.clear < 0) : false });
+        const sc = sightCheck(d, lH, cH_goal + r.mediaH / 2, cH_goal - r.mediaH / 2);
+        candidates.push({ tilt: N, d, ratio: st.ratio, shiftPct: st.used, clear: sc ? sc.clear : null, supp: sc ? (sc.hiddenBody === 0 && sc.clear < 0) : false });
       }
-    });
+      d0 = d1; s0 = s1;
+      if (d1 >= dHi) break;
+    }
   }
 
   let below = null, above = null;
@@ -1319,20 +1340,18 @@ function computeKeystoneDistances(r) {
   // "Exact" is a geometric fiction — nobody measures a throw distance to the millimetre
   // on site. Attach a ± placement tolerance: how far off that distance can you actually be
   // before the residual keystone grows past roughly what a viewer would notice (see
-  // DETECT_THRESHOLD_DEG in state.js). Estimated via a local finite-difference slope of
-  // tilt(d) at the candidate (cheap, and exact roots make the analytic derivative fiddlier
-  // than it's worth for a rule-of-thumb number anyway).
+  // DETECT_THRESHOLD_DEG in state.js). Estimated via a local finite-difference slope of tilt(d).
   const MARGIN_CAP_CM = 500;
-  const tiltAtDist = (d) => -((Math.atan2(C1, d) - Math.atan2(C2, d)) * 180 / Math.PI) / mirrorFactor;
   const withMargin = (c) => {
     if (!c) return null;
     const h = Math.max(0.5, c.d * 0.005);
-    const deriv = (tiltAtDist(c.d + h) - tiltAtDist(c.d - h)) / (2 * h);
+    const deriv = (stateAt(c.d + h).tilt - stateAt(c.d - h).tilt) / (2 * h);
     const marginCm = deriv !== 0 ? Math.min(MARGIN_CAP_CM, Math.abs(DETECT_THRESHOLD_DEG / deriv)) : MARGIN_CAP_CM;
     return { ...c, marginCm };
   };
 
-  return { fixedLens: false, shiftPct: shiftPctUsed, zeroFeasible: Math.abs(C1 - C2) < 0.05, below: withMargin(below), above: withMargin(above) };
+  const here = stateAt(S.dist);
+  return { fixedLens: false, zeroFeasible: Math.abs(here.C1 - C2) < 0.05, below: withMargin(below), above: withMargin(above) };
 }
 
 // Click handler for a row in the keystone-exact distance table: jump to that distance
@@ -1369,6 +1388,7 @@ function imageEdit() {
     autoSolvePosition();
   } else {
     // Drop free: let compute() derive drop from target position
+    store.requestedCH = null;
     store.dropDriver = false;
     updateDropModeLabel();
   }
@@ -1376,6 +1396,11 @@ function imageEdit() {
 }
 
 g('targetH').addEventListener('blur', imageEdit);
+// Any other edit makes the remembered request stale. Capturing so it runs before the field's
+// own handlers; programmatic value writes fire no events, so refresh() can't trip it.
+['input', 'change'].forEach(t => document.addEventListener(t, e => {
+  if (e.target && e.target.id !== 'targetH') store.requestedCH = null;
+}, true));
 
 document.querySelectorAll('input[name="pt"]').forEach(el => el.addEventListener('change', function() {
   g('posLbl').textContent = { bottom:'Media bottom height', center:'Center height', top:'Top edge height' }[this.value];
@@ -1395,9 +1420,10 @@ g('dist').addEventListener('blur', function() {
   if (!this.readOnly) { tri('dist'); refresh(); }
 });
 g('slantDist').addEventListener('blur', function() {
-  if (g('dist').readOnly) return;
+  const restore = () => { if (lastR) this.value = lastR.lensToScreen.toFixed(1); };
+  if (g('dist').readOnly || store.lkState.dist) { restore(); return; }
   const slant = +this.value;
-  if (slant <= 0) return;
+  if (slant <= 0) { restore(); return; }
   // Height difference depends on dist when tilted, so iterate on dist until the
   // slant distance computed by refresh() matches the entered value.
   let d = Math.sqrt(Math.max(1, slant * slant - _lastHeightDiff * _lastHeightDiff));

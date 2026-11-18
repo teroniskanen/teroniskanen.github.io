@@ -41,14 +41,20 @@ export function sightCheck(dist, lH, effTop, effBot) {
   // The eye can sit beside the rear of the chassis; only the part of the body in front of the
   // eye (x < eyeX) can block, and band() divides by 1 - x/eyeX.
   const clip = x => Math.min(x, eyeX - 1);
+  // Null when the rectangle lies entirely behind the eye: it can't be between eye and image.
   const band = (xa, xb, ya, yb) => {
-    xa = clip(xa); xb = clip(xb);
+    if (xa >= eyeX - 1) return null;
+    xb = clip(xb);
     const lo = t => (ya - eyeH * t) / (1 - t), hi = t => (yb - eyeH * t) / (1 - t);
     const ta = xa / eyeX, tb = xb / eyeX;
     return [Math.min(lo(ta), lo(tb)), Math.max(hi(ta), hi(tb))];
   };
-  const [bLo, bHi] = band(x0, x1, yBot, yTop);
-  const [sLo, sHi] = sY1 > sY0 ? band(xc - sw, xc + sw, sY0, sY1) : [bLo, bHi];
+  const bodyBand = band(x0, x1, yBot, yTop);
+  if (!bodyBand) { out.applicable = false; out.clear = Infinity; return out; }
+  const [bLo, bHi] = bodyBand;
+  // The rod/pedestal hangs at the chassis centre; if that is at or behind the eye it is not in view.
+  const supBand = (sY1 > sY0 && xc < eyeX - 1) ? band(xc - sw, xc + sw, sY0, sY1) : null;
+  const [sLo, sHi] = supBand || [bLo, bHi];
   out.blockLo = Math.min(bLo, sLo);
   out.blockHi = Math.max(bHi, sHi);
   const overlap = (lo, hi) => Math.max(0, Math.min(hi, effTop) - Math.max(lo, effBot));
@@ -57,8 +63,8 @@ export function sightCheck(dist, lH, effTop, effBot) {
   out.bodyLo = bLo; out.bodyHi = bHi;
   // The rod/pedestal is a thin strip on screen, not a full-width wall: report it separately
   // from the body so the UI doesn't claim the whole image is hidden.
-  out.supportInView = out.hidden > out.hiddenBody + 0.01;
-  out.supportOnScreenW = sw * 2 * eyeX / (eyeX - xc);
+  out.supportInView = !!supBand && out.hidden > out.hiddenBody + 0.01;
+  out.supportOnScreenW = supBand ? sw * 2 * eyeX / (eyeX - xc) : 0;
   // Signed margin: negative = cm of image hidden (measured on the screen); positive = the
   // gap, in cm AT THE PROJECTOR, between the body and the nearest viewer ray to an image
   // edge. Measured there (not on the wall) so it's the real physical clearance.
@@ -159,7 +165,10 @@ export function compute() {
     : shiftOk && hShiftOk;
   const lensOk  = lH > -EPS && lH < S.ceilH + EPS;
   // Floor: body base (drop) must be at or above floor. Ceiling: rod must be ≥ 0 (body fits between ceiling and lens).
-  const bodyOk  = floorMode ? drop >= -EPS : rod >= -EPS;
+  // Floor mode also has to fit under the ceiling: the chassis rises above the lens, not just the base above the floor.
+  const bodyBelowFloor = floorMode && drop < -EPS;
+  const bodyAboveCeil  = floorMode ? bodyBox(lH).yTop > S.ceilH + EPS : rod < -EPS;
+  const bodyOk  = !bodyBelowFloor && !bodyAboveCeil;
 
   // Base optical angle from the lens to the un-tilted center
   const baseAngle = Math.atan2(cH - lH, S.dist);
@@ -246,7 +255,7 @@ export function compute() {
   return {
     mediaW, mediaH, nativeW, nativeH, opticalW: optical.w, opticalH: optical.h, shiftM, userShiftM,
     cH, lH, drop, rod,
-    shiftOk, hShiftOk, combinedShiftOk, lensOk, bodyOk,
+    shiftOk, hShiftOk, combinedShiftOk, lensOk, bodyOk, bodyBelowFloor, bodyAboveCeil, bodyTop: bodyBox(lH).yTop,
     tCH, hasTilt, ksN, ksOk,
     effTop, effBot, effNatTop, effNatBot,
     aboveSight, wallGap, sight,
