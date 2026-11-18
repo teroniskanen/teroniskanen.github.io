@@ -1,6 +1,6 @@
 import { g, S, store, DETECT_THRESHOLD_DEG } from './state.js';
 import { PRESETS, LSVG, USVG, ASPECT_NAMES } from './data.js';
-import { compute, sightCheck } from './compute.js';
+import { compute, sightCheck, opticalPanel } from './compute.js';
 import { draw, drawForPrint } from './draw.js';
 import { pLock, buildRoomSel, updateDropModeLabel, renderRes, updateSolverPanel, renderMatches, renderKeystoneTable } from './ui.js';
 import { APP_VERSION } from './version.js';
@@ -329,6 +329,10 @@ let lastR = null;
 let _presetEditing = false;
 // Ideal drop value (cm) from the solver panel, refreshed each frame; null when not actionable
 let _idealDrop = null;
+// V shift is derated by the H shift in use (elliptical envelope); shared by refresh and the keystone table.
+function hEllipseFactor(l) {
+  return l.h > 0 ? Math.sqrt(Math.max(0, 1 - Math.min(1, Math.abs(S.hShiftPct) / l.h) ** 2)) : 1;
+}
 
 // Media width/height have nothing left to solve for once both Throw distance and Throw
 // ratio are fixed (locked, or ratio pinned by a fixed-lens preset) — tri()'s 'width'/'height'
@@ -498,13 +502,13 @@ function refresh() {
   updateDropModeLabel();
   // No preset active → dist + image width imply a required throw ratio; show which
   // real projectors could deliver it at this distance.
-  renderMatches(S.dist, S.dist / r.mediaW, onMatchPick);
+  renderMatches(S.dist, r.mediaW, r.mediaH, S.aspect, onMatchPick);
   draw(r);
   renderRes(r);
   {
     // Same elliptical V/H envelope autoSolvePosition applies, so Apply lands where the message says.
     const l = getShiftLimits();
-    const f = l.h > 0 ? Math.sqrt(Math.max(0, 1 - Math.min(1, Math.abs(S.hShiftPct) / l.h) ** 2)) : 1;
+    const f = hEllipseFactor(l);
     _idealDrop = updateSolverPanel(r, { up: l.up * f, dn: l.dn * f, maxKS: S.maxKS });
   }
   renderKeystoneTable(store.lkState.dist ? { locked: 'distance' } : store.lkState.tilt ? { locked: 'tilt' } : computeKeystoneDistances(r), onKeystoneDistPick);
@@ -524,7 +528,7 @@ function drawBrightnessBar(r) {
   const tc = isDark ? '#a1a1aa' : '#71717a';
 
   // 1 sq ft = 929.03 cm²
-  const areaSqFt = (r.nativeW * r.nativeH) / 929.03;   // light spreads over the full panel, not the letterboxed content
+  const areaSqFt = (r.opticalW * r.opticalH) / 929.03;   // light spreads over the full panel, not the letterboxed content
   if (!S.lumens || areaSqFt <= 0) {
     svg.innerHTML = '';
     if (brightVal) {
@@ -852,15 +856,18 @@ function applyPreset(p) {
 // ratio the room needed (clamped to the lens's range) instead of resetting to its rMin,
 // so the dist/width the user already dialed in survives the switch.
 function onMatchPick(p, reqRatio) {
+  // Keep the user's media aspect: applyPreset() would otherwise reset it to the projector's native one.
+  const aspect = g('aspect').value;
   applyPreset(p);
+  g('aspect').value = aspect;
   if (!p.fixed) {
     const ratio = Math.min(p.rMax, Math.max(p.rMin, reqRatio));
     g('ratio').value = ratio.toFixed(2);
     g('zoomSlider').value = ratio;
     g('zoomVal').textContent = ratio.toFixed(2) + ':1';
-    tri('ratio');
-    refresh();
   }
+  tri('ratio');
+  refresh();
 }
 
 psel.addEventListener('change', function() {
@@ -889,7 +896,7 @@ function toggleLock(key) {
 
 ['lkDist','lkRatio','lkDrop','lkImgW','lkTilt'].forEach(id => {
   const key = { lkDist:'dist', lkRatio:'ratio', lkDrop:'drop', lkImgW:'imgW', lkTilt:'tilt' }[id];
-  g(id).addEventListener('click', () => toggleLock(key));
+  g(id).addEventListener('click', () => { toggleLock(key); refresh(); });
 });
 
 // ─── Drive toggle (Position → Drop / Drop → Position) ────────────────────────
@@ -939,6 +946,7 @@ function loadSetup(r) {
   const proj = r.presetId ? PRESETS.find(p => p.id === r.presetId) : null;
   applyPreset(proj);
   g('ceilH').value   = r.ceilH;
+  g('wallH').max     = r.ceilH;   // refresh() sets this, but rd() clamps against the previous room's value
   g('wallH').value   = r.wallH;
   g('dist').value    = r.dist;
   g('aspect').value  = r.aspect  ?? g('aspect').value;
@@ -1125,7 +1133,8 @@ function autoSolvePosition() {
   // Subtract the projector's built-in vertical offset from the target so we only solve for
   // the user-adjustable portion of shift (see compute.js for the same offset logic).
   const vOffsetPct = store.activePreset ? (store.activePreset.vOffset || 0) : 0;
-  const naturalOffsetM = store.floorMode ? (vOffsetPct / 100) * nativeH : -(vOffsetPct / 100) * nativeH;
+  const opticalH = opticalPanel(nativeW, nativeH, nativeAspect).h;
+  const naturalOffsetM = store.floorMode ? (vOffsetPct / 100) * opticalH : -(vOffsetPct / 100) * opticalH;
 
   // Need: tCH = lH + naturalOffsetM + userShiftM - dist·tan(tilt) = cH_goal
   // → userShiftM - dist·tan(tilt) = delta
@@ -1216,18 +1225,22 @@ function computeKeystoneDistances(r) {
   // lH must be a fixed quantity for the derivation below to hold — only true while
   // drop/pedestal height (not target position) is the driver.
   if (!store.dropDriver) return { needsDropDriver: true };
+  // The picked distance has to keep the image size, which needs the ratio free to move.
+  if (store.lkState.ratio || g('ratio').readOnly) return { locked: 'ratio' };
 
   const H0 = r.nativeH;
   const nativeAspect = p ? parseFloat(p.aspectVal) : S.aspect;
-  const cH_goal = S.posType === 'bottom' ? S.targetH + r.mediaH / 2
-                : S.posType === 'top'    ? S.targetH - r.mediaH / 2
-                :                          S.targetH;
+  // Drop drives the position, so the target is where the image centre is now. S.targetH is the
+  // value from the previous refresh (the field is only rewritten afterwards), which lags behind.
+  const cH_goal = r.tCH;
   const lH = r.lH;
   const C2 = cH_goal - lH;
 
   const vOffsetPct = p ? (p.vOffset || 0) : 0;
-  const naturalOffsetM = (store.floorMode ? vOffsetPct : -vOffsetPct) / 100 * H0;
-  const { up: maxUp, dn: maxDn } = getShiftLimits();
+  const naturalOffsetM = (store.floorMode ? vOffsetPct : -vOffsetPct) / 100 * r.opticalH;
+  const kl = getShiftLimits();
+  const kf = hEllipseFactor(kl);
+  const maxUp = kl.up * kf, maxDn = kl.dn * kf;
   const shiftPctRaw  = ((C2 - naturalOffsetM) / H0) * 100;
   const shiftPctUsed = Math.max(-maxDn, Math.min(maxUp, shiftPctRaw));
   const C1 = naturalOffsetM + (shiftPctUsed / 100) * H0;
@@ -1291,12 +1304,14 @@ function computeKeystoneDistances(r) {
     return { ...c, marginCm };
   };
 
-  return { fixedLens: false, zeroFeasible: Math.abs(C1 - C2) < 0.05, below: withMargin(below), above: withMargin(above) };
+  return { fixedLens: false, shiftPct: shiftPctUsed, zeroFeasible: Math.abs(C1 - C2) < 0.05, below: withMargin(below), above: withMargin(above) };
 }
 
 // Click handler for a row in the keystone-exact distance table: jump to that distance
 // (and the matching zoom ratio, already computed alongside it) with the exact tilt set.
-function onKeystoneDistPick(d, ratio, tiltN) {
+function onKeystoneDistPick(d, ratio, tiltN, shiftPct) {
+  // The table is stale for a frame after a lock; never overwrite a locked distance.
+  if (store.lkState.dist || g('dist').readOnly) return;
   S.dist = d;
   g('dist').value = d.toFixed(1);
   if (!g('ratio').readOnly && !store.lkState.ratio) {
@@ -1311,6 +1326,11 @@ function onKeystoneDistPick(d, ratio, tiltN) {
   if (!store.lkState.tilt) {
     S.tiltDeg = tiltN;
     g('tiltDeg').value = tiltN.toFixed(0);
+  }
+  // The table's tilt assumes this much lens shift; without applying it the image lands elsewhere.
+  if (Number.isFinite(shiftPct) && !g('sPct').readOnly) {
+    S.shiftPct = shiftPct;
+    g('sPct').value = shiftPct.toFixed(2);
   }
   refresh();
 }
@@ -1399,6 +1419,11 @@ function applyPresetOverrides(p) {
   if (ovr.ks   != null) { g('maxKS').value = ovr.ks; }
 }
 
+let _presetDirty = {};
+['maxUp','maxDn','maxH','bodyH','maxKS'].forEach(id => {
+  g(id).addEventListener('input', () => { if (_presetEditing) _presetDirty[id] = true; });
+});
+
 g('pi-upd').addEventListener('click', () => {
   const p = store.activePreset;
   if (!p) return;
@@ -1407,15 +1432,20 @@ g('pi-upd').addEventListener('click', () => {
     pLock(['maxUp','maxDn','maxH','bodyH','maxKS'], false);
     g('pi-upd').textContent = 'Save';
     _presetEditing = true;
+    _presetDirty = {};
   } else {
     // Save current values to localStorage
     const ovrs = loadPresetOverrides();
+    // The displayed limits are derated for the current shift (refresh writes them back), so only
+    // fields the user actually typed in are saved; the rest keep their stored spec value.
+    const prev = ovrs[p.id] || {};
+    const pick = (id, key, specVal) => _presetDirty[id] ? +g(id).value : (prev[key] ?? specVal);
     ovrs[p.id] = {
-      sUp:  +g('maxUp').value,
-      sDn:  +g('maxDn').value,
-      hMax: +g('maxH').value,
-      bodyH:+g('bodyH').value,
-      ks:   +g('maxKS').value,
+      sUp:  pick('maxUp', 'sUp', p.sUp),
+      sDn:  pick('maxDn', 'sDn', p.sDn),
+      hMax: pick('maxH', 'hMax', p.hMax ?? 0),
+      bodyH:pick('bodyH', 'bodyH', p.bodyH),
+      ks:   pick('maxKS', 'ks', p.ks),
     };
     localStorage.setItem(PRESET_OVR_KEY, JSON.stringify(ovrs));
     store.activePresetOverride = ovrs[p.id];

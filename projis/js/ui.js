@@ -2,6 +2,17 @@ import { g, S, store, DETECT_THRESHOLD_DEG, SIGHT_MARGIN_CM, MIN_CEILING_BODY_BO
 import { ASPECT_NAMES, LSVG, USVG, PRESETS, MOUNTS } from './data.js';
 import { sightCheck, bodyBox } from './compute.js';
 
+// Buildable drop range, matching compute's bodyOk and the mount extension check: a ceiling
+// mount needs the body (bodyH) plus the extension between ceiling and lens; a selected mount
+// also bounds the extension to its range.
+function dropRange() {
+  if (store.floorMode) return { lo: 0, hi: Math.max(0, S.ceilH - S.bodyH) };
+  const mount = S.mountId ? MOUNTS.find(m => m.id === S.mountId) : null;
+  const lo = S.bodyH + (mount ? mount.extMin : 0);
+  const hi = mount ? Math.min(S.ceilH, S.bodyH + mount.extMax) : S.ceilH;
+  return { lo, hi: Math.max(lo, hi) };
+}
+
 // Lock input fields visually (preset-locked fields get warning style)
 export const pLock = (ids, on) => ids.forEach(id => {
   const e = g(id); if (!e) return;
@@ -68,16 +79,22 @@ export function updateDropModeLabel() {
 // distance, so the user can shop for a projector instead of just reading the raw number.
 // Clicking an entry hands off to app.js's onMatchPick to load the preset at this ratio.
 const RATIO_EPS = 0.005;
-export function renderMatches(dist, reqRatio, onMatchPick) {
+export function renderMatches(dist, mediaW, mediaH, aspect, onMatchPick) {
   const box = g('matchBox');
   if (!box) return;
-  if (store.activePreset || !(dist > 0) || !(reqRatio > 0) || !isFinite(reqRatio)) {
+  if (store.activePreset || !(dist > 0) || !(mediaW > 0) || !(mediaH > 0)) {
     box.classList.remove('on');
     box.innerHTML = '';
     return;
   }
-  const matches = PRESETS.filter(p =>
-    reqRatio >= p.rMin - RATIO_EPS && reqRatio <= p.rMax + RATIO_EPS &&
+  // Each projector has its own native aspect, so the throw ratio it needs for this exact
+  // image differs: letterboxed content fills the panel width, pillarboxed fills its height.
+  const matches = PRESETS.map(p => {
+    const pa = parseFloat(p.aspectVal);
+    const nativeW = aspect >= pa ? mediaW : mediaH * pa;
+    return { p, req: dist / nativeW };
+  }).filter(({ p, req }) =>
+    isFinite(req) && req >= p.rMin - RATIO_EPS && req <= p.rMax + RATIO_EPS &&
     dist >= p.dMin && dist <= p.dMax
   );
   if (!matches.length) {
@@ -86,13 +103,13 @@ export function renderMatches(dist, reqRatio, onMatchPick) {
     return;
   }
   box.classList.add('on');
-  box.innerHTML = `<div class="matchHdr">Needs ${reqRatio.toFixed(2)}:1 throw ratio — matching projectors:</div>`;
-  matches.forEach(p => {
+  box.innerHTML = `<div class="matchHdr">Projectors that can throw this image from here (ratio needed):</div>`;
+  matches.forEach(({ p, req }) => {
     const row = document.createElement('div');
     row.className = 'matchItem';
     const rangeTxt = p.fixed ? `${p.rMin.toFixed(2)}:1 fix` : `${p.rMin.toFixed(2)}-${p.rMax.toFixed(2)}:1`;
-    row.innerHTML = `<span>${p.name}</span><span class="mi-ratio">${rangeTxt}</span>`;
-    row.addEventListener('click', () => onMatchPick(p, reqRatio));
+    row.innerHTML = `<span>${p.name}</span><span class="mi-ratio">needs ${req.toFixed(2)}:1 (${rangeTxt})</span>`;
+    row.addEventListener('click', () => onMatchPick(p, req));
     box.appendChild(row);
   });
 }
@@ -120,17 +137,17 @@ export function updateSolverPanel(r, lim) {
                  : S.posType === 'top'    ? S.targetH - r.mediaH / 2
                  :                          S.targetH;
   const vOffsetPct = store.activePreset ? (store.activePreset.vOffset || 0) : 0;
-  const naturalOffsetM = (store.floorMode ? vOffsetPct : -vOffsetPct) / 100 * r.nativeH;
+  const naturalOffsetM = (store.floorMode ? vOffsetPct : -vOffsetPct) / 100 * r.opticalH;
   const lHIdeal = cH_goal - naturalOffsetM;
   const dropIdeal = store.floorMode ? lHIdeal - S.bodyH : S.ceilH - lHIdeal;
-  const maxDrop = Math.max(0, store.floorMode ? S.ceilH - S.bodyH : S.ceilH);
-  const feasible = dropIdeal > -0.5 && dropIdeal < maxDrop + 0.5;
+  const { lo: minDrop, hi: maxDrop } = dropRange();
+  const feasible = dropIdeal > minDrop - 0.5 && dropIdeal < maxDrop + 0.5;
   const mountWord = store.floorMode ? 'pedestal' : 'mount';
 
   if (!feasible) {
     // Don't report an unbuildable number — clamp to the physical bound and report the
     // shift the installer is actually stuck with at that boundary.
-    const dropClamped = Math.max(0, Math.min(maxDrop, dropIdeal));
+    const dropClamped = Math.max(minDrop, Math.min(maxDrop, dropIdeal));
     const lHClamped = store.floorMode ? dropClamped + S.bodyH : S.ceilH - dropClamped;
     const shiftMResidual = cH_goal - lHClamped - naturalOffsetM;
     const shiftPctResidual = r.nativeH > 0 ? (shiftMResidual / r.nativeH) * 100 : 0;
@@ -181,8 +198,7 @@ export function updateSolverPanel(r, lim) {
       pick = trial(r.drop);
       if (pick.why) { firstWhy = pick.why; pick = null; }
     } else {
-      const maxD = Math.max(0, store.floorMode ? S.ceilH - S.bodyH : S.ceilH);
-      for (let d = 0; d <= maxD + 0.01; d += 0.5) {
+      for (let d = minDrop; d <= maxDrop + 0.01; d += 0.5) {
         const t = trial(d);
         if (t.why) { if (!firstWhy && Math.abs(d - r.drop) < 1) firstWhy = t.why; continue; }
         if (!pick || Math.abs(d - r.drop) < Math.abs(pick.d - r.drop)) pick = t;
@@ -233,7 +249,7 @@ export function updateSolverPanel(r, lim) {
     const maxKS = lim && lim.maxKS != null ? lim.maxKS : S.maxKS;
     const mirror = (store.activePreset && store.activePreset.ustMirror) ? 2 : 1;
     let best = null;
-    for (let d = 0; d <= maxDrop + 0.01; d += 0.5) {
+    for (let d = minDrop; d <= maxDrop + 0.01; d += 0.5) {
       const lHc = lHOf(d);
       if (tooLow(lHc)) continue;
       const sc = sightCheck(S.dist, lHc, goalTop, goalBot);
@@ -307,7 +323,7 @@ export function renderKeystoneTable(data, onPick) {
   if (!data) { box.style.display = 'none'; box.innerHTML = ''; return; }
 
   if (data.locked) {
-    wrap(`<div class="ks-note">Unlock ${data.locked === 'tilt' ? 'the tilt angle' : 'the throw distance'} to see exact-keystone distances.</div>`);
+    wrap(`<div class="ks-note">Unlock ${data.locked === 'tilt' ? 'the tilt angle' : data.locked === 'ratio' ? 'the throw ratio' : 'the throw distance'} to see exact-keystone distances.</div>`);
     return;
   }
 
@@ -336,14 +352,14 @@ export function renderKeystoneTable(data, onPick) {
   };
   const row = (label, c) => {
     if (!c) return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-none">none within this lens's range</span></div>`;
-    return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-d" data-d="${c.d}" data-r="${c.ratio}" data-t="${c.tilt}">${c.d.toFixed(0)} cm @ ${c.tilt > 0 ? '+' : ''}${c.tilt}°</span><span class="ks-margin">${marginTxt(c.marginCm)}</span>${clearTxt(c.clear, c.supp)}</div>`;
+    return `<div class="ks-row"><span class="ks-tilt">${label}</span><span class="ks-d" data-d="${c.d}" data-r="${c.ratio}" data-t="${c.tilt}" data-s="${data.shiftPct}">${c.d.toFixed(0)} cm @ ${c.tilt > 0 ? '+' : ''}${c.tilt}°</span><span class="ks-margin">${marginTxt(c.marginCm)}</span>${clearTxt(c.clear, c.supp)}</div>`;
   };
   wrap(`
     <div class="ks-note">At the current image size, only these distances land the required tilt on a whole degree — everything between leaves a fractional-degree trapezoid your correction menu can't remove. The ± figure is roughly how far off that placement can be before the residual keystone becomes noticeable.</div>
     <div class="ks-table">${row('Shorter', data.below)}${row('Longer', data.above)}</div>
   `);
   box.querySelectorAll('.ks-d').forEach(el => {
-    el.addEventListener('click', () => onPick(+el.dataset.d, +el.dataset.r, +el.dataset.t));
+    el.addEventListener('click', () => onPick(+el.dataset.d, +el.dataset.r, +el.dataset.t, +el.dataset.s));
   });
 }
 
@@ -369,6 +385,15 @@ export function renderRes(r) {
       `${store.activePreset.dMin}–${store.activePreset.dMax} cm`,
       'warn',
       'Out of focus range',
+      true
+    );
+  }
+
+  if (!r.ratioOk && store.activePreset) {
+    h += card('Throw ratio',
+      `${S.ratio.toFixed(2)}:1`,
+      'warn',
+      `Outside lens range ${store.activePreset.rMin.toFixed(2)}–${store.activePreset.rMax.toFixed(2)}:1`,
       true
     );
   }

@@ -71,6 +71,18 @@ export function sightCheck(dist, lH, effTop, effBot) {
   return out;
 }
 
+// Panel the lens actually images. Digital-zoom projectors (EB-800F) crop a centred window
+// out of a fixed optical image, so the built-in vOffset and the light output belong to that
+// optical panel (throw ratio = preset.rMin), not to the cropped window S.ratio describes.
+export function opticalPanel(nativeW, nativeH, nativeAspect) {
+  const p = store.activePreset;
+  if (p && p.digitalZoom && p.rMin > 0) {
+    const w = S.dist / p.rMin;
+    return { w, h: w / nativeAspect };
+  }
+  return { w: nativeW, h: nativeH };
+}
+
 export function compute() {
   const { activePreset, dropDriver, floorMode } = store;
   // In manual mode nativeAspect === S.aspect, so isPillared/isLetterboxed are always false
@@ -82,6 +94,7 @@ export function compute() {
   // where the optical axis stays horizontal regardless of lens height.
   const nativeW = S.dist / S.ratio;
   const nativeH = nativeW / nativeAspect;
+  const optical = opticalPanel(nativeW, nativeH, nativeAspect);
 
   let mediaW, mediaH;
   if (S.aspect >= nativeAspect) {   // letterbox or exact fit
@@ -103,7 +116,7 @@ export function compute() {
   const userShiftM = (S.shiftPct / 100) * nativeH;
 
   // Total shift from lens to image centre (built-in offset + user adjustment)
-  const shiftM = ((naturalShiftPct + S.shiftPct) / 100) * nativeH;
+  const shiftM = (naturalShiftPct / 100) * optical.h + (S.shiftPct / 100) * nativeH;
 
   const tr      = -S.tiltDeg * Math.PI / 180;
   const hasTilt = Math.abs(S.tiltDeg) > 0.01;
@@ -221,11 +234,13 @@ export function compute() {
   // against the native panel width (matches how hMax/vertical shift specs are defined).
   const lensFromScreenCenter = -(S.hShiftPct / 100) * nativeW;
   // lensXOffset: signed offset from chassis physical center to lens (+ve = lens right of chassis center)
-  const chassisLeftFromScreenCenter  = lensFromScreenCenter - (S.chassisWidth / 2 + S.lensXOffset);
-  const chassisRightFromScreenCenter = lensFromScreenCenter + (S.chassisWidth / 2 - S.lensXOffset);
+  // A ceiling-mounted projector is inverted, which mirrors left/right as seen from the screen.
+  const lensXOff = floorMode ? S.lensXOffset : -S.lensXOffset;
+  const chassisLeftFromScreenCenter  = lensFromScreenCenter - (S.chassisWidth / 2 + lensXOff);
+  const chassisRightFromScreenCenter = lensFromScreenCenter + (S.chassisWidth / 2 - lensXOff);
 
   return {
-    mediaW, mediaH, nativeW, nativeH, shiftM, userShiftM,
+    mediaW, mediaH, nativeW, nativeH, opticalW: optical.w, opticalH: optical.h, shiftM, userShiftM,
     cH, lH, drop, rod,
     shiftOk, hShiftOk, combinedShiftOk, lensOk, bodyOk,
     tCH, hasTilt, ksN, ksOk,
