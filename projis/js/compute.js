@@ -30,7 +30,7 @@ export function sightCheck(dist, lH, effTop, effBot) {
   const x0 = dist, x1 = dist + depth;
   const eyeH = S.eyeH;
   const eyeX = S.eyeDist != null && S.eyeDist > 0 ? S.eyeDist : x1 + 50;
-  const out = { eyeX, eyeH, x0, x1, yBot, yTop, auto: !(S.eyeDist > 0), blockLo: null, blockHi: null, hidden: 0, hiddenBody: 0, clear: null, applicable: eyeX > x1 + 0.01 };
+  const out = { eyeX, eyeH, x0, x1, yBot, yTop, auto: !(S.eyeDist > 0), blockLo: null, blockHi: null, hidden: 0, hiddenBody: 0, clear: null, applicable: eyeX > x0 + 0.01 };
   if (!out.applicable) { out.clear = Infinity; return out; }
   // The projector isn't floating: it hangs from a rod to the ceiling (ceiling mount) or stands
   // on a pedestal to the floor (floor mode), and that support sits in the same sightline.
@@ -38,7 +38,11 @@ export function sightCheck(dist, lH, effTop, effBot) {
   const xc = dist + depth / 2, sw = (store.floorMode ? SUPPORT_W_PEDESTAL : SUPPORT_W_ROD) / 2;
   const sY0 = store.floorMode ? 0 : yTop, sY1 = store.floorMode ? yBot : Math.max(S.ceilH, yTop);
   // Blocked wall-y range for one rectangle (see derivation above): bounded by its two end values.
+  // The eye can sit beside the rear of the chassis; only the part of the body in front of the
+  // eye (x < eyeX) can block, and band() divides by 1 - x/eyeX.
+  const clip = x => Math.min(x, eyeX - 1);
   const band = (xa, xb, ya, yb) => {
+    xa = clip(xa); xb = clip(xb);
     const lo = t => (ya - eyeH * t) / (1 - t), hi = t => (yb - eyeH * t) / (1 - t);
     const ta = xa / eyeX, tb = xb / eyeX;
     return [Math.min(lo(ta), lo(tb)), Math.max(hi(ta), hi(tb))];
@@ -60,7 +64,7 @@ export function sightCheck(dist, lH, effTop, effBot) {
   // edge. Measured there (not on the wall) so it's the real physical clearance.
   if (out.hidden > 0) { out.clear = -out.hidden; }
   else {
-    const rayAt = (yImg, x) => yImg + (eyeH - yImg) * (x / eyeX);
+    const rayAt = (yImg, x) => yImg + (eyeH - yImg) * (clip(x) / eyeX);
     if (out.blockLo >= effTop) {
       // Body projects above the image: rays to the image top must pass below the body bottom.
       out.clear = yBot - Math.max(rayAt(effTop, x0), rayAt(effTop, x1));

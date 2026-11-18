@@ -133,9 +133,9 @@ export function updateSolverPanel(r, lim) {
   panel.style.display = '';
   panel.classList.remove('st-ok', 'st-warn');
 
-  const cH_goal = S.posType === 'bottom' ? S.targetH + r.mediaH / 2
-                 : S.posType === 'top'    ? S.targetH - r.mediaH / 2
-                 :                          S.targetH;
+  // The image centre compute() actually produced: equals the typed target in position mode, and
+  // the current centre in drop mode (where S.targetH is the previous refresh's readout).
+  const cH_goal = r.tCH;
   const vOffsetPct = store.activePreset ? (store.activePreset.vOffset || 0) : 0;
   const naturalOffsetM = (store.floorMode ? vOffsetPct : -vOffsetPct) / 100 * r.opticalH;
   const lHIdeal = cH_goal - naturalOffsetM;
@@ -218,7 +218,7 @@ export function updateSolverPanel(r, lim) {
     msgEl.textContent = `${pinned.charAt(0).toUpperCase() + pinned.slice(1)} locked: ${move} → ${pick.pct.toFixed(0)}% shift${tiltLocked ? '' : (pick.tilt > 0.05 ? ' + ' + pick.tilt.toFixed(1) + '° keystone' : ', 0° tilt')}`;
     if (done) { applyBtn.style.display = 'none'; return null; }
     applyBtn.style.display = '';
-    return { drop: pick.d, compromise: true, locked: true };
+    return { drop: pick.d, compromise: true, locked: true, goal: cH_goal };
   }
 
   // Viewer sightline: the zero-shift position puts the lens at image height, which can put
@@ -295,7 +295,7 @@ export function updateSolverPanel(r, lim) {
     msgEl.textContent = `${dir} ${mountWord} by ${Math.abs(delta).toFixed(1)} cm → ~0% shift, 0° tilt`;
   }
   applyBtn.style.display = '';
-  return { drop: dropTarget, compromise: !!compromise };
+  return { drop: dropTarget, compromise: !!compromise, goal: cH_goal };
 }
 
 // Tracks the <details> open/closed state across re-renders — renderKeystoneTable rebuilds
@@ -444,6 +444,13 @@ export function renderRes(r) {
   // Projector mounting: Ceiling/Pedestal, Drop/Pedestal height, mount-plate offsets — the
   // drop/pedestal value itself already shown live in its sidebar field.
   h += card('Lens height', `${r.lH.toFixed(1)} cm`, r.lensOk ? '' : 'warn');
+  if (!r.bodyOk) {
+    h += card('Projector body',
+      store.floorMode ? `${r.drop.toFixed(1)} cm base` : `${r.rod.toFixed(1)} cm`,
+      'warn',
+      store.floorMode ? 'Base would be below the floor' : `Lens closer to the ceiling than the body (${S.bodyH.toFixed(1)} cm)`,
+      true);
+  }
   if (!store.floorMode) {
     h += card('Extension rod', r.rod > 0 ? `${r.rod.toFixed(1)} cm` : '— (none)', r.rod < 0 ? 'warn' : '');
     if (hasMeasuredStack) {
@@ -590,7 +597,9 @@ export function renderLaserTargets(r) {
   const yBodyInfo = store.floorMode
     ? `Flat bottom of projector (feet included); lens center is ${S.bodyH.toFixed(1)} cm above`
     : `Top of projector body; lens center is ${S.bodyH.toFixed(1)} cm below`;
-  h += card(yBodyLabel, `${r.targetYBody.toFixed(1)} cm`, yBodyInfo);
+  h += card(yBodyLabel, `${r.targetYBody.toFixed(1)} cm`,
+    r.bodyOk ? yBodyInfo : (store.floorMode ? 'NOT BUILDABLE: base would be below the floor. Raise the lens or the image.'
+                                            : 'NOT BUILDABLE: lens is closer to the ceiling than the body allows. Lower the lens.'));
 
   const yImgAbsLabel = store.floorMode
     ? 'Height: Floor → Image Bottom'

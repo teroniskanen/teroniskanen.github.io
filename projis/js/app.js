@@ -28,11 +28,16 @@ g('liveCalc').addEventListener('change', function() {
   localStorage.setItem(LIVE_CALC_KEY, store.liveCalc ? '1' : '0');
 });
 
+// While a keystroke is being live-calculated the field holds a half-typed value ("6" on the way
+// to "600"). numVal() and the dependent clamps must not rewrite fields then; blur commits.
+let _typing = false;
 function bindCalc(el, fn) {
   if (!el) return;
   el.addEventListener('blur', fn);
   el.addEventListener('input', function(e) {
-    if (store.liveCalc) fn.call(this, e);
+    if (!store.liveCalc) return;
+    _typing = true;
+    try { fn.call(this, e); } finally { _typing = false; }
   });
 }
 
@@ -127,7 +132,7 @@ function numVal(id, fallback) {
   // (e.g. 0 against min="10") would otherwise bypass the clamp this function exists to enforce.
   const clampedFallback = Math.min(Math.max(fallback, min), max);
   const v = Number.isFinite(raw) ? Math.min(Math.max(raw, min), max) : clampedFallback;
-  if (parseFloat(el.value) !== v) el.value = v;
+  if (!_typing && parseFloat(el.value) !== v) el.value = v;
   return v;
 }
 
@@ -143,8 +148,12 @@ const hCmToPct = cm  => { const w = hNativeW(); return w > 0 ? cm / w * 100 : 0;
 // ─── Read DOM inputs into S ───────────────────────────────────────────────────
 function rd() {
   S.ceilH    = numVal('ceilH', 500);
+  // Dynamic limits live here (not in refresh) so every read below, including loadSetup's,
+  // clamps against the room being read, not the previous one.
+  g('wallH').max = S.ceilH;
   S.wallH    = numVal('wallH', 300);
   S.dist     = numVal('dist', 200);
+  g('personDist').max = S.dist - 1;
   S.aspect   = +g('aspect').value;
   S.ratio    = numVal('ratio', 1.35);
   S.imgW     = numVal('imgW', 148);
@@ -164,6 +173,7 @@ function rd() {
   S.targetH  = numVal('targetH', 0);
   S.posType  = document.querySelector('input[name="pt"]:checked').value;
   S.maxKS    = numVal('maxKS', 30);
+  g('tiltDeg').max = S.maxKS; g('tiltDeg').min = -S.maxKS;
   S.tiltDeg  = numVal('tiltDeg', 0);
   S.drop     = numVal('dropV', 200);
   S.personOn   = g('personOn').checked;
@@ -355,15 +365,13 @@ function refresh() {
 
   // Wall height can't exceed ceiling height — the wall stops at the ceiling. Static HTML
   // min/max can't express this since it depends on the current ceiling height.
-  if (S.wallH > S.ceilH) { S.wallH = S.ceilH; g('wallH').value = S.ceilH.toFixed(0); }
-  g('wallH').max = S.ceilH;
+  if (S.wallH > S.ceilH) { S.wallH = S.ceilH; if (!_typing) g('wallH').value = S.ceilH.toFixed(0); }
 
   // Clamp person distance to prevent standing behind projector
   if (S.personDist >= S.dist) {
     S.personDist = Math.max(10, S.dist - 1);
     g('personDist').value = S.personDist.toFixed(0);
   }
-  g('personDist').max = S.dist - 1;
 
   // Auto-fit drawing width to encompass throw distance (+ person if shown)
   const personEnd = S.personOn && S.personDist > 0 ? S.personDist : 0;
@@ -414,7 +422,6 @@ function refresh() {
 
   // Clamp tilt to keystone limit
   const tiltEl = g('tiltDeg');
-  tiltEl.max = S.maxKS; tiltEl.min = -S.maxKS;
   if (S.tiltDeg >  S.maxKS) { S.tiltDeg =  S.maxKS; tiltEl.value =  S.maxKS; }
   if (S.tiltDeg < -S.maxKS) { S.tiltDeg = -S.maxKS; tiltEl.value = -S.maxKS; }
 
@@ -802,7 +809,8 @@ function applyPreset(p) {
   if (!p) { clearPreset(); refresh(); return; }
 
   g('aspect').value  = p.aspectVal;
-  g('ratio').value   = (+p.rMin.toFixed(3)).toString();
+  const lockedRatio = store.lkState.ratio && !p.fixed ? parseFloat(g('ratio').value) : null;
+  g('ratio').value   = (+(lockedRatio != null ? Math.min(p.rMax, Math.max(p.rMin, lockedRatio)) : p.rMin).toFixed(3)).toString();
   g('maxUp').value = g('maxUp').dataset.raw = p.sUp;
   g('maxDn').value = g('maxDn').dataset.raw = p.sDn;
   g('maxH').value  = g('maxH').dataset.raw  = p.hMax ?? 0;
@@ -825,11 +833,12 @@ function applyPreset(p) {
     g('zoomRow').style.display = 'none';
   } else {
     pLock(['ratio'], false);
+    if (store.lkState.ratio) g('ratio').readOnly = true;   // pLock(false) must not unlock a user lock
     lb.innerHTML = store.lkState.ratio ? LSVG : USVG;
     lb.classList.toggle('on', store.lkState.ratio); lb.classList.remove('pl');
     g('zoomRow').style.display = 'flex';
-    const zs = g('zoomSlider'); zs.min = p.rMin; zs.max = p.rMax; zs.step = 0.01; zs.value = p.rMin;
-    g('zoomVal').textContent = p.rMin.toFixed(2) + ':1';
+    const zs = g('zoomSlider'); zs.min = p.rMin; zs.max = p.rMax; zs.step = 0.01; zs.value = g('ratio').value; zs.disabled = !!store.lkState.ratio;
+    g('zoomVal').textContent = (+g('ratio').value).toFixed(2) + ':1';
   }
   const nName = ASPECT_NAMES[p.aspectVal] || p.aspectVal;
   const ovrSUp = loadPresetOverrides()[p.id]?.sUp ?? p.sUp;
@@ -860,7 +869,7 @@ function onMatchPick(p, reqRatio) {
   const aspect = g('aspect').value;
   applyPreset(p);
   g('aspect').value = aspect;
-  if (!p.fixed) {
+  if (!p.fixed && !store.lkState.ratio) {
     const ratio = Math.min(p.rMax, Math.max(p.rMin, reqRatio));
     g('ratio').value = ratio.toFixed(2);
     g('zoomSlider').value = ratio;
@@ -891,6 +900,7 @@ function toggleLock(key) {
     if (store.lkState.drop && !store.dropDriver) store.dropDriver = true;
     updateDropModeLabel();
   }
+  if (key === 'ratio') g('zoomSlider').disabled = store.lkState.ratio;
   if (key === 'dist' || key === 'ratio' || key === 'imgW') syncWidthHeightLockability();
 }
 
@@ -929,11 +939,11 @@ g('idealApply').addEventListener('click', () => {
   }
   if (ideal.compromise) {
     // Not the zero-shift spot (it blocks the viewer): solve the shift/tilt needed from here.
-    autoSolvePosition();
+    autoSolvePosition(ideal.goal);
   } else {
     S.shiftPct = 0;
     g('sPct').value = '0';
-    if (store.lkState.tilt) { autoSolvePosition(); }
+    if (store.lkState.tilt) { autoSolvePosition(ideal.goal); }
     else { S.tiltDeg = 0; g('tiltDeg').value = '0'; }
   }
   refresh();
@@ -988,12 +998,26 @@ function loadSetup(r) {
     g('maxH').value  = g('maxH').dataset.raw  = r.maxH  ?? g('maxH').value;
   } else {
     g('maxH').value  = r.maxH  ?? (proj.hMax ?? 0);
+    // Calibration (lens-to-plate, keystone range) the user set; applyPreset only knows the preset's.
+    if (r.bodyH != null) g('bodyH').value = r.bodyH;
+    if (r.maxKS != null) g('maxKS').value = r.maxKS;
   }
   document.querySelectorAll('input[name="pt"]').forEach(el => el.checked = (el.value === r.posType));
   g('posLbl').textContent = { bottom:'Media bottom height', center:'Center height', top:'Top edge height' }[r.posType];
   document.querySelectorAll('input[name="mount"]').forEach(el => el.checked = (el.value === (r.floorMode ? 'floor' : 'ceiling')));
   store.floorMode  = r.floorMode  ?? store.floorMode;
+  // The drop lock is what makes drop the driver stick; restore it with the mode.
+  if (store.lkState.drop !== !!r.dropDriver) toggleLock('drop');
   store.dropDriver = r.dropDriver ?? false;
+  if (r.personOn != null) g('personOn').checked = r.personOn;
+  if (r.personDist != null) g('personDist').value = r.personDist;
+  // A locked media width back-solves the ratio from imgW on refresh; hand it the width this
+  // room implies so the lock doesn't reinterpret the previous room's width.
+  {
+    const asp = +g('aspect').value, na = proj ? parseFloat(proj.aspectVal) : asp;
+    const nW = (+g('dist').value) / (+g('ratio').value);
+    if (nW > 0 && isFinite(nW)) g('imgW').value = (asp >= na ? nW : nW * asp / na).toFixed(1);
+  }
   updateDropModeLabel(); refresh();
 }
 
@@ -1049,6 +1073,8 @@ function currentSetup() {
     gain:       +g('gain').value,
     mCeilToExt: +g('mCeilToExt').value,
     mExtToTop:  +g('mExtToTop').value,
+    personOn:   g('personOn').checked,
+    personDist: +g('personDist').value,
     mountId:    g('mountSel').value,
     viewerOn:   g('viewerOn').checked,
     eyePreset:  g('eyePreset').value,
@@ -1117,14 +1143,16 @@ g('dropV').addEventListener('blur', function() {
 });
 
 // ─── Auto-solve: when drop is locked, find shift+tilt to reach target position ─
-function autoSolvePosition() {
+function autoSolvePosition(goalOverride) {
   rd();
   const nativeAspect = store.activePreset ? parseFloat(store.activePreset.aspectVal) : S.aspect;
   const nativeW = S.dist / S.ratio;
   const nativeH = nativeW / nativeAspect;
   const mediaH  = S.aspect >= nativeAspect ? nativeW / S.aspect : nativeH;
 
-  const cH_goal = S.posType === 'bottom' ? S.targetH + mediaH / 2
+  // goalOverride: the solver panel's goal centre. In drop mode S.targetH is a stale readout.
+  const cH_goal = goalOverride != null ? goalOverride
+                : S.posType === 'bottom' ? S.targetH + mediaH / 2
                 : S.posType === 'top'    ? S.targetH - mediaH / 2
                 :                          S.targetH;
 
@@ -1438,6 +1466,8 @@ g('pi-upd').addEventListener('click', () => {
     const ovrs = loadPresetOverrides();
     // The displayed limits are derated for the current shift (refresh writes them back), so only
     // fields the user actually typed in are saved; the rest keep their stored spec value.
+    // maxDn mirrors maxUp (no input event of its own), so editing maxUp edits both.
+    if (_presetDirty.maxUp) _presetDirty.maxDn = true;
     const prev = ovrs[p.id] || {};
     const pick = (id, key, specVal) => _presetDirty[id] ? +g(id).value : (prev[key] ?? specVal);
     ovrs[p.id] = {
