@@ -1,5 +1,5 @@
 // Increment version string to force cache refresh on update
-const CACHE = 'projis-v57';
+const CACHE = 'projis-v58';
 
 const ASSETS = [
   '/projis/',
@@ -27,7 +27,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k.startsWith('projis-') && k !== CACHE).map(k => caches.delete(k)))
     )
   );
   self.clients.claim();
@@ -42,6 +42,10 @@ self.addEventListener('message', e => {
 async function networkFirst(request) {
   try {
     const fresh = await fetch(request);
+    if (!fresh.ok) {
+      const cached = await caches.match(request);
+      return cached || fresh;
+    }
     const cache = await caches.open(CACHE);
     cache.put(request, fresh.clone());
     return fresh;
@@ -56,8 +60,10 @@ async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) return cached;
   const fresh = await fetch(request);
-  const cache = await caches.open(CACHE);
-  cache.put(request, fresh.clone());
+  if (fresh.ok) {
+    const cache = await caches.open(CACHE);
+    cache.put(request, fresh.clone());
+  }
   return fresh;
 }
 

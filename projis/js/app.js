@@ -342,7 +342,7 @@ function syncWidthHeightLockability() {
   const bothFixed = dFixed && rFixed;
   const wEl = g('imgW'), hEl = g('imgH');
   if (!wEl.classList.contains('inp-p')) wEl.readOnly = bothFixed || store.lkState.imgW;
-  if (!hEl.classList.contains('inp-p')) hEl.readOnly = bothFixed;
+  if (!hEl.classList.contains('inp-p')) hEl.readOnly = bothFixed || store.lkState.imgW;
 }
 
 // ─── Main refresh ─────────────────────────────────────────────────────────────
@@ -524,7 +524,7 @@ function drawBrightnessBar(r) {
   const tc = isDark ? '#a1a1aa' : '#71717a';
 
   // 1 sq ft = 929.03 cm²
-  const areaSqFt = (r.mediaW * r.mediaH) / 929.03;
+  const areaSqFt = (r.nativeW * r.nativeH) / 929.03;   // light spreads over the full panel, not the letterboxed content
   if (!S.lumens || areaSqFt <= 0) {
     svg.innerHTML = '';
     if (brightVal) {
@@ -798,7 +798,7 @@ function applyPreset(p) {
   if (!p) { clearPreset(); refresh(); return; }
 
   g('aspect').value  = p.aspectVal;
-  g('ratio').value   = p.rMin.toFixed(2);
+  g('ratio').value   = (+p.rMin.toFixed(3)).toString();
   g('maxUp').value = g('maxUp').dataset.raw = p.sUp;
   g('maxDn').value = g('maxDn').dataset.raw = p.sDn;
   g('maxH').value  = g('maxH').dataset.raw  = p.hMax ?? 0;
@@ -912,14 +912,15 @@ g('lkTargetH').addEventListener('click', () => setDriveMode(store.dropDriver ? f
 // Solver panel "Apply": drives drop to the value the panel computed (zero shift/tilt for
 // the current target), making drop the driver so that value actually sticks.
 g('idealApply').addEventListener('click', () => {
-  if (_idealDrop == null) return;
+  const ideal = _idealDrop;   // setDriveMode()/refresh() below reassigns _idealDrop
+  if (ideal == null) return;
   const dropWasLocked = store.lkState.drop;   // setDriveMode(true) locks it, so read first
   setDriveMode(true);
   if (!dropWasLocked) {   // a locked drop is never moved
-    S.drop = _idealDrop.drop;
-    g('dropV').value = _idealDrop.drop.toFixed(1);
+    S.drop = ideal.drop;
+    g('dropV').value = ideal.drop.toFixed(1);
   }
-  if (_idealDrop.compromise) {
+  if (ideal.compromise) {
     // Not the zero-shift spot (it blocks the viewer): solve the shift/tilt needed from here.
     autoSolvePosition();
   } else {
@@ -960,6 +961,11 @@ function loadSetup(r) {
   g('dropV').value   = r.drop;
   g('mCeilToExt').value = r.mCeilToExt ?? 0;
   g('mExtToTop').value  = r.mExtToTop  ?? 0;
+  if (r.mountId != null) g('mountSel').value = r.mountId;
+  if (r.viewerOn != null) g('viewerOn').checked = r.viewerOn;
+  if (r.eyeH != null && r.eyeH !== '') g('eyeH').value = r.eyeH;
+  if (r.eyePreset != null) g('eyePreset').value = r.eyePreset;
+  if (r.eyeDist != null) g('eyeDist').value = r.eyeDist;
   if (!proj) {
     g('bodyH').value = r.bodyH ?? g('bodyH').value;
     S.chassisH     = r.chassisH     ?? null;
@@ -990,39 +996,7 @@ g('rsel').addEventListener('change', function() {
 
 g('rsave').addEventListener('click', () => {
   const name = g('rname').value.trim() || 'Setup ' + (store.roomPresets.length + 1);
-  store.roomPresets.push({
-    name,
-    presetId:   store.activePreset ? store.activePreset.id : null,
-    ceilH:      +g('ceilH').value,
-    wallH:      +g('wallH').value,
-    dist:       +g('dist').value,
-    aspect:     +g('aspect').value,
-    ratio:      +g('ratio').value,
-    posType:    document.querySelector('input[name="pt"]:checked').value,
-    targetH:    +g('targetH').value,
-    shiftPct:   +g('sPct').value,
-    hShiftPct:  S.hShiftPct,
-    hShiftCm:   +g('hPct').value,
-    tiltDeg:    +g('tiltDeg').value,
-    floorMode:  store.floorMode,
-    drop:       +g('dropV').value,
-    dropDriver: store.dropDriver,
-    bodyH:      +g('bodyH').value,
-    chassisH:     S.chassisH,
-    feetH:        S.feetH,
-    chassisWidth: S.chassisWidth,
-    chassisDepth: S.chassisDepth,
-    lensXOffset:  S.lensXOffset,
-    lensZOffset:  S.lensZOffset,
-    maxKS:      +g('maxKS').value,
-    maxUp:      +g('maxUp').value,
-    maxDn:      +g('maxDn').value,
-    maxH:       +g('maxH').value,
-    lumens:     +g('lumens').value,
-    gain:       +g('gain').value,
-    mCeilToExt: +g('mCeilToExt').value,
-    mExtToTop:  +g('mExtToTop').value,
-  });
+  store.roomPresets.push({ name, ...currentSetup() });
   buildRoomSel();
   g('rsel').value = store.roomPresets.length - 1;
   g('rname').value = '';
@@ -1067,6 +1041,11 @@ function currentSetup() {
     gain:       +g('gain').value,
     mCeilToExt: +g('mCeilToExt').value,
     mExtToTop:  +g('mExtToTop').value,
+    mountId:    g('mountSel').value,
+    viewerOn:   g('viewerOn').checked,
+    eyePreset:  g('eyePreset').value,
+    eyeH:       g('eyeH').value,
+    eyeDist:    g('eyeDist').value,
   };
 }
 
@@ -1371,11 +1350,16 @@ g('slantDist').addEventListener('blur', function() {
   if (g('dist').readOnly) return;
   const slant = +this.value;
   if (slant <= 0) return;
-  const distSq = slant * slant - _lastHeightDiff * _lastHeightDiff;
-  if (distSq <= 0) return;
-  const newDist = Math.sqrt(distSq);
-  g('dist').value = newDist.toFixed(1);
-  tri('dist'); refresh();
+  // Height difference depends on dist when tilted, so iterate on dist until the
+  // slant distance computed by refresh() matches the entered value.
+  let d = Math.sqrt(Math.max(1, slant * slant - _lastHeightDiff * _lastHeightDiff));
+  for (let i = 0; i < 8; i++) {
+    g('dist').value = d.toFixed(1);
+    tri('dist'); refresh();
+    const cur = Math.sqrt(S.dist * S.dist + _lastHeightDiff * _lastHeightDiff);
+    if (!(cur > 0) || Math.abs(cur - slant) < 0.05) break;
+    d = S.dist * slant / cur;
+  }
 });
 g('zoomSlider').addEventListener('input', function() {
   if (g('ratio').readOnly) return;

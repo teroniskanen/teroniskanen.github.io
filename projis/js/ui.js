@@ -550,7 +550,10 @@ export function renderLaserTargets(r) {
   h += card(zLabel, `${r.targetZ.toFixed(1)} cm`, zInfo);
 
   // Yaw (Squareness)
-  h += card('Square: Screen → Both Corners', `L/R: ${r.squarenessAB.toFixed(1)} cm`, 'Measure both front corners to screen; must match exactly');
+  h += card(r.isUST ? 'Square: Surface → Both Rear Corners' : 'Square: Screen → Both Corners',
+    `L/R: ${r.squarenessAB.toFixed(1)} cm`,
+    r.isUST ? 'Measure both rear corners to the surface; must match exactly'
+            : 'Measure both front corners to screen; must match exactly');
 
   // Y-Axis (Vertical)
   const yLensLabel = store.floorMode
