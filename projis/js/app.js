@@ -2,7 +2,7 @@ import { g, S, store, DETECT_THRESHOLD_DEG } from './state.js';
 import { PRESETS, LSVG, USVG, ASPECT_NAMES } from './data.js';
 import { compute, sightCheck, opticalPanel } from './compute.js';
 import { draw, drawForPrint } from './draw.js';
-import { pLock, buildRoomSel, updateDropModeLabel, renderRes, updateSolverPanel, renderMatches, renderKeystoneTable } from './ui.js';
+import { pLock, buildRoomSel, updateDropModeLabel, renderRes, updateSolverPanel, renderMatches, renderKeystoneTable, renderSummaryStrip } from './ui.js';
 import { APP_VERSION } from './version.js';
 
 const LAYOUT_HIDE_KEY = 'proj_hide_visuals';
@@ -515,6 +515,7 @@ function refresh() {
   renderMatches(S.dist, r.mediaW, r.mediaH, S.aspect, onMatchPick);
   draw(r);
   renderRes(r);
+  renderSummaryStrip(r);
   {
     // Same elliptical V/H envelope autoSolvePosition applies, so Apply lands where the message says.
     const l = getShiftLimits();
@@ -1594,11 +1595,16 @@ window.addEventListener('afterprint', () => {
 
 // ─── Resize observer + dark mode ─────────────────────────────────────────────
 let resizeTimer;
-const ro = new ResizeObserver(() => {
+const redrawForSize = () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => draw(compute()), 10);
-});
+  resizeTimer = setTimeout(() => requestAnimationFrame(() => draw(compute())), 10);
+};
+const ro = new ResizeObserver(redrawForSize);
 ro.observe(document.querySelector('.dia'));
+// Rotation and the on-screen keyboard change the viewport without always resizing .dia's box
+// at a time the observer reports; redraw on those too.
+window.addEventListener('resize', redrawForSize);
+window.addEventListener('orientationchange', redrawForSize);
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refresh);
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────

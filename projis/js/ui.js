@@ -361,6 +361,21 @@ export function renderKeystoneTable(data, onPick) {
   });
 }
 
+// Phone layout's pinned strip: the same numbers, on the same reference surfaces, as the laser
+// installation guide, so the two can't disagree. Hidden by CSS above 600px.
+export function renderSummaryStrip(r) {
+  const el = g('sumStrip');
+  if (!el) return;
+  const f = v => v.toFixed(1);
+  const fl = store.floorMode;
+  const edges = fl ? `${f(r.effBot)}–${f(r.effTop)}` : `${f(S.ceilH - r.effTop)}–${f(S.ceilH - r.effBot)}`;
+  const nWarn = g('res') ? g('res').querySelectorAll('.rv.warn').length : 0;
+  el.innerHTML =
+    `<div><b>Throw</b>${f(r.targetZ)} <b>Lens</b>${f(r.targetYLens)} <span style="color:var(--color-text-tertiary)">from ${fl ? 'floor' : 'ceiling'}</span></div>` +
+    `<div><b>Image</b>${edges} <span style="color:var(--color-text-tertiary)">from ${fl ? 'floor' : 'ceiling'}</span> ` +
+    (nWarn ? `<span class="ss-warn">⚠ ${nWarn} warning${nWarn > 1 ? 's' : ''}</span>` : `<span class="ss-ok">✓ clear</span>`) + `</div>`;
+}
+
 // Render the results bar at the bottom
 export function renderRes(r) {
   const card = (label, value, cls, badge, wide) =>
