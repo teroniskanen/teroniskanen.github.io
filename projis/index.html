@@ -344,7 +344,7 @@
   .bright-state.high { color: var(--color-text-warning); }
 
   /* Mobile */
-  @media (max-width: 600px), (hover: none) and (pointer: coarse) and (orientation: landscape) {
+  @media screen and (max-width: 600px), screen and (hover: none) and (pointer: coarse) and (orientation: landscape) {
     .lp { width: 220px; padding: 8px 6px; }
     /* Long labels (e.g. "Extension bottom to mount plate") can't fit alongside the lock
        button, nudge buttons, input and unit in a 220px sidebar on one line without being
@@ -399,7 +399,7 @@
 
   /* Phone: stack diagram, results, then controls; the page scrolls and the strip stays pinned.
      Landscape phones keep the side-by-side layout above. */
-  @media (max-width: 600px) {
+  @media screen and (max-width: 600px) {
     body { display: block; width: 100%; height: auto; min-height: 100dvh; overflow: visible; }
     .g { flex-direction: column; height: auto; overflow: visible; }
     .sumstrip {
@@ -443,9 +443,17 @@
       padding: 0 6px 4px; font-size: 10px;
       background: transparent; border-right: 1px solid #ccc;
     }
-    .sec { font-size: 8px; margin-top: 6px; }
-    .f { height: auto; margin-bottom: 2px; gap: 4px; }
+    .sec { font-size: 9px; margin: 3px 0 1px; padding-bottom: 0; }
+    .tog { height: auto; margin-bottom: 1px; }
+    .tog input[type=checkbox] { display: inline-block !important; }
+    .rr input:not(:checked) + label { display: none; }
+    .f { height: auto; margin-bottom: 1px; gap: 4px; }
     .f label { font-size: 10px; min-width: 0; }
+
+    /* Print the complete preset name, including interchangeable lens models. */
+    .pdd-btn { display: block; height: auto; padding: 0; border: 0; background: transparent; }
+    #pddName { display: block; white-space: normal; overflow: visible; font-weight: 700; }
+    .pdd-btn::after, #pddLm { display: none; }
 
     /* Style inputs/selects as plain read values */
     input[type=number], input[type=text], select {
@@ -473,7 +481,8 @@
     /* Hide interactive chrome */
     .lkbtn, .rp-btns, #rname, #rsel, #zoomRow, #shiftRow, #hShiftRow,
     .pbox, .whlk-row, .themebtn, .hidebtn, .printbtn, .nudge, .appver,
-    #arInfo, .drive-toggle, .tog ~ .f:last-of-type { display: none !important; }
+    #arInfo, .drive-toggle, .tog:has(#liveCalc), #setupPresetSec,
+    #idealPanel, #ksBox, #matchBox, .pdd-list, .print-omit { display: none !important; }
     #brightSvg { display: none !important; }
     #brightWrap { margin-top: 0 !important; margin-bottom: 0 !important; }
     .bright-readout { margin-top: 0; padding: 0; }
@@ -484,8 +493,8 @@
     .rp { flex: 1; min-width: 0; height: auto; background: transparent; position: static; display: flex; flex-direction: column; }
     .dia { flex: none; position: static; height: auto; min-height: 0; }
 
-    /* Canvas in print: flow as a block, scale to full width */
-    canvas { position: static !important; width: 100% !important; height: auto !important; }
+    /* Reserve space for results below the diagram. */
+    canvas { display: block; position: static !important; width: 100% !important; height: 85mm !important; object-fit: contain; }
 
     /* Results bar */
     .res {
@@ -504,7 +513,7 @@
     }
     .rc {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 20ch auto;
+      grid-template-columns: minmax(0, 1fr) auto auto;
       align-items: baseline;
       column-gap: 7px;
       padding: 2px 0;
@@ -515,13 +524,16 @@
     }
     .rc:last-child { border-bottom: none; }
     .rc.tw { background: transparent !important; grid-column: 1 / -1; }
+    .rc.print-keystone { grid-column: 1; }
+    .rc.print-residual { grid-column: 2; }
+    #laserRes:not(:empty) { display: grid !important; }
+    #laserRes .tlbl { grid-column: 1 / -1; }
+    #laserRes .ba { grid-column: 1 / -1; }
     .rl {
-      font-size: 8px;
+      font-size: 9px;
       margin-bottom: 0;
       letter-spacing: 0.01em;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
     }
     .rv {
       font-size: 10px;
@@ -530,9 +542,10 @@
       font-variant-numeric: tabular-nums;
     }
     .ba {
-      font-size: 7px;
+      font-size: 8px;
       margin-top: 0;
-      white-space: nowrap;
+      white-space: normal;
+      max-width: 48ch;
     }
   }
   /* Viewer preset dropdown: smaller font so "Standing" fits at the standard select width */

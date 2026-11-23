@@ -378,8 +378,8 @@ export function renderSummaryStrip(r) {
 
 // Render the results bar at the bottom
 export function renderRes(r) {
-  const card = (label, value, cls, badge, wide) =>
-    `<div class="rc${wide ? ' tw' : ''}">` +
+  const card = (label, value, cls, badge, wide, printClass = '') =>
+    `<div class="rc ${printClass}${wide ? ' tw' : ''}">` +
     `<div class="rl">${label}</div>` +
     `<div class="rv${cls ? ' ' + cls : ''}">${value}</div>` +
     (badge ? `<div class="ba ${cls}">${badge}</div>` : '') +
@@ -529,7 +529,7 @@ export function renderRes(r) {
           `Appears ~${sg.supportOnScreenW.toFixed(0)} cm wide on the screen (${who})`, true);
       }
     } else {
-      h += card('View of image', sg.clear >= 100 ? 'Clear' : `Clear by ${sg.clear.toFixed(1)} cm`, sg.clear < SIGHT_MARGIN_CM ? 'warn' : 'ok', sg.clear < SIGHT_MARGIN_CM ? 'Tight' : '', true);
+      h += card('View of image', sg.clear >= 100 ? 'Clear' : `Clear by ${sg.clear.toFixed(1)} cm`, sg.clear < SIGHT_MARGIN_CM ? 'warn' : 'ok', sg.clear < SIGHT_MARGIN_CM ? 'Tight' : '', true, sg.clear >= 100 ? 'print-omit' : '');
     }
   } else if (store.floorMode) {
     const belowBot = r.effBot - r.lH;
@@ -544,7 +544,7 @@ export function renderRes(r) {
     h += card('Keystone required', `${r.ksN.toFixed(1)}°`,
       r.ksOk ? 'ok' : 'warn',
       r.ksOk ? 'OK' : 'Exceeds max limit',
-      true
+      true, 'print-keystone'
     );
     // Correction menus only take whole degrees — show what's actually left over after
     // rounding to the nearest one, at the CURRENT distance/tilt (works the same for a
@@ -556,7 +556,7 @@ export function renderRes(r) {
     h += card('Residual after whole-degree correction', `${nearestDeg}° set → ±${residualDeg.toFixed(2)}°`,
       residualOk ? 'ok' : 'warn',
       residualOk ? 'Imperceptible' : 'Visible trapezoid',
-      true
+      true, 'print-residual'
     );
   }
 
