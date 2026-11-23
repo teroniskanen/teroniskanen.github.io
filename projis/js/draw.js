@@ -58,16 +58,17 @@ function _draw(r, xctx, dpr, W, H, isPrint) {
   xctx.fillStyle = c.bg; xctx.fillRect(0, 0, W, H);
 
   // Font size: scales with canvas width so labels stay proportional at every size.
-  // Print: 18pt at 96 dpi = 24 CSS px; at dpr=2 → 48 canvas px on an 840px-wide canvas.
-  // Screen: same formula — ~24pt equivalent across window sizes.
+  // Screen: about 0.48% of the canvas width (cssW/27 × 0.13).
+  // Print: 7 CSS px on the 840px print canvas (0.83% of its width, ~1.7× the screen ratio).
+  // The printed diagram is shrunk to ~17 cm wide, so the same ratio as screen reads too small.
   const cssW  = W / dpr;                                // logical canvas width
   // Mobile: the drawing area is much narrower (sidebar eats most of the viewport width),
   // so keep a smaller bump there.
   const isMobile = !isPrint && matchMedia('(max-width: 600px)').matches;
-  const sizeMult = isPrint ? 0.13 : (isMobile ? 0.115 : 0.13);
-  const fSz   = (isPrint
-    ? Math.round(24 * dpr)                              // 18pt at 96 dpi
-    : Math.max(18, Math.round(cssW / 27)) * dpr) * sizeMult;
+  const sizeMult = isMobile ? 0.115 : 0.13;
+  const fSz   = isPrint
+    ? 7 * dpr
+    : Math.max(18, Math.round(cssW / 27)) * dpr * sizeMult;
 
   let WW = 16*dpr;
   let PL = 54*dpr + WW;

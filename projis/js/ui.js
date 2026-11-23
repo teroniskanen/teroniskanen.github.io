@@ -518,7 +518,7 @@ export function renderRes(r) {
     const sg = r.sight;
     const who = `${S.eyeH.toFixed(0)} cm eye${sg.auto ? ', just behind projector' : ` at ${S.eyeDist.toFixed(0)} cm`}`;
     if (!sg.applicable) {
-      h += card('View of image', 'Not blocked', 'ok', 'Viewer is in front of the projector', true);
+      h += card('View of image', 'Not blocked', 'ok', `Viewer is in front of the projector<span class="print-only"> (${who})</span>`, true);
     } else if (sg.clear < 0) {
       const support = store.floorMode ? 'pedestal' : 'mount rod';
       if (sg.hiddenBody > 0) {
@@ -529,7 +529,9 @@ export function renderRes(r) {
           `Appears ~${sg.supportOnScreenW.toFixed(0)} cm wide on the screen (${who})`, true);
       }
     } else {
-      h += card('View of image', sg.clear >= 100 ? 'Clear' : `Clear by ${sg.clear.toFixed(1)} cm`, sg.clear < SIGHT_MARGIN_CM ? 'warn' : 'ok', sg.clear < SIGHT_MARGIN_CM ? 'Tight' : '', true, sg.clear >= 100 ? 'print-omit' : '');
+      h += card('View of image', sg.clear >= 100 ? 'Clear' : `Clear by ${sg.clear.toFixed(1)} cm`, sg.clear < SIGHT_MARGIN_CM ? 'warn' : 'ok',
+        `${sg.clear < SIGHT_MARGIN_CM ? 'Tight ' : ''}<span class="print-only">(${who})</span>`, true,
+        sg.clear < SIGHT_MARGIN_CM ? '' : 'print-badge-only');
     }
   } else if (store.floorMode) {
     const belowBot = r.effBot - r.lH;
@@ -623,6 +625,16 @@ export function renderLaserTargets(r) {
       : r.bodyBelowFloor ? 'NOT BUILDABLE: base would be below the floor. Raise the lens or the image.'
       : store.floorMode ? 'NOT BUILDABLE: the chassis would reach above the ceiling. Lower the lens or the image.'
       : 'NOT BUILDABLE: lens is closer to the ceiling than the body allows. Lower the lens.');
+
+  // Ceiling mode: the row above measures down from the ceiling; installers also need the
+  // clearance from the floor up to the underside of the hanging projector.
+  // (Floor mode already has this as Floor → Projector Base.)
+  if (!store.floorMode) {
+    const bot = bodyBox(r.lH).yBot;
+    h += card('Height: Floor → Projector Bottom', `${bot.toFixed(1)} cm`,
+      S.chassisH != null ? 'Underside of the projector body'
+        : 'Underside of the projector body (estimated: this preset has no chassis height)');
+  }
 
   const yImgAbsLabel = store.floorMode
     ? 'Height: Floor → Image Bottom'

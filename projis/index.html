@@ -431,7 +431,10 @@
   #printImg { display:none; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
 
   /* ── Print styles ────────────────────────────────────────────── */
+  .print-only { display: none; }
+  @media screen { .rc.print-badge-only .ba { display: none; } }
   @media print {
+    .print-only { display: inline !important; }
     @page { size: A4 landscape; margin: 8mm; }
 
     body { width: auto; height: auto; overflow: visible; }
@@ -481,7 +484,7 @@
     /* Hide interactive chrome */
     .lkbtn, .rp-btns, #rname, #rsel, #zoomRow, #shiftRow, #hShiftRow,
     .pbox, .whlk-row, .themebtn, .hidebtn, .printbtn, .nudge, .appver,
-    #arInfo, .drive-toggle, .tog:has(#liveCalc), #setupPresetSec,
+    #arInfo, .drive-toggle, #setupPresetSec,
     #idealPanel, #ksBox, #matchBox, .pdd-list, .print-omit { display: none !important; }
     #brightSvg { display: none !important; }
     #brightWrap { margin-top: 0 !important; margin-bottom: 0 !important; }
@@ -558,7 +561,7 @@
  <div class="sumstrip" id="sumStrip" aria-live="polite"></div>
  <div class="lp">
   <div class="appver" id="appVer">v0.9</div>
-  <div class="tog" title="Room dimensions and limits update as you type instead of waiting until you leave the field. Geometry fields (distance, ratio, image size, drop, shift, target height) always wait for you to leave the field, since typing in them would fight the recalculated value."><label for="liveCalc">Live calculate</label><label class="switch"><input type="checkbox" id="liveCalc"><span class="slider"></span></label></div>
+  <div class="tog print-omit" title="Room dimensions and limits update as you type instead of waiting until you leave the field. Geometry fields (distance, ratio, image size, drop, shift, target height) always wait for you to leave the field, since typing in them would fight the recalculated value."><label for="liveCalc">Live calculate</label><label class="switch"><input type="checkbox" id="liveCalc"><span class="slider"></span></label></div>
   <div class="sec" id="projPresetSec" style="margin-top:0">Projector preset</div>
   <select id="psel" hidden></select>
   <div class="pdd" id="pdd">
@@ -733,15 +736,15 @@
     </div>
   </div>
 
-  <div class="sec">Person / shadow check</div>
-  <div class="tog"><label>Show 175 cm person</label><input type="checkbox" id="personOn"></div>
-  <div class="f"><label>Person distance</label><input type="number" id="personDist" value="200" step="5" min="10"><span class="u">cm</span></div>
+  <div class="sec print-omit">Person / shadow check</div>
+  <div class="tog print-omit"><label>Show 175 cm person</label><input type="checkbox" id="personOn"></div>
+  <div class="f print-omit"><label>Person distance</label><input type="number" id="personDist" value="200" step="5" min="10"><span class="u">cm</span></div>
 
-  <div class="sec">Viewer sightline</div>
-  <div class="tog"><label>Check projector blocks view</label><input type="checkbox" id="viewerOn" checked></div>
-  <div class="f"><label>Viewer</label><select id="eyePreset"><option value="120">Seated</option><option value="165" selected>Standing</option><option value="">Custom</option></select><span class="u"></span></div>
-  <div class="f"><label>Eye height</label><input type="number" id="eyeH" value="165" step="5" min="50" max="220"><span class="u">cm</span></div>
-  <div class="f"><label>Viewer distance</label><input type="number" id="eyeDist" placeholder="auto" step="10" min="0"><span class="u">cm</span></div>
+  <div class="sec print-omit">Viewer sightline</div>
+  <div class="tog print-omit"><label>Check projector blocks view</label><input type="checkbox" id="viewerOn" checked></div>
+  <div class="f print-omit"><label>Viewer</label><select id="eyePreset"><option value="120">Seated</option><option value="165" selected>Standing</option><option value="">Custom</option></select><span class="u"></span></div>
+  <div class="f print-omit"><label>Eye height</label><input type="number" id="eyeH" value="165" step="5" min="50" max="220"><span class="u">cm</span></div>
+  <div class="f print-omit"><label>Viewer distance</label><input type="number" id="eyeDist" placeholder="auto" step="10" min="0"><span class="u">cm</span></div>
 
  </div>
 
